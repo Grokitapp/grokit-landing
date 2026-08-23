@@ -1,0 +1,53 @@
+/**
+ * THEME CONFIGURATION — Tailwind v4
+ * Grokit Dark Design System
+ */
+@theme {
+	/* Grokit Dark Colors */
+	--color-black: #000000;
+	--color-dark: #0A0A0A;
+	--color-dark-elevated: #111111;
+	--color-dark-border: #1A1A1A;
+	--color-white: #FFFFFF;
+	--color-white-muted: #E5E5E5;
+	--color-gray: #666666;
+	--color-gray-light: #999999;
+	--color-cobalt: #3B82F6;
+	--color-cobalt-bright: #60A5FA;
+	--color-cobalt-glow: #2563EB;
+	--color-purple: #8B5CF6;
+	--color-cyan: #06B6D4;
+
+	/* Semantic Colors */
+	--color-primary: #3B82F6;
+	--color-primary-foreground: #FFFFFF;
+
+	--color-secondary: #666666;
+	--color-secondary-foreground: #FFFFFF;
+
+	--color-destructive: #EF4444;
+	--color-destructive-foreground: #FFFFFF;
+
+	--color-muted: #1A1A1A;
+	--color-muted-foreground: #666666;
+
+	--color-accent: #8B5CF6;
+	--color-accent-foreground: #FFFFFF;
+
+	--color-border: #1A1A1A;
+	--color-input: #1A1A1A;
+	--color-ring: #3B82F6;
+
+	/* Typography */
+	--font-display: 'Inter', system-ui, sans-serif;
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-mono: 'JetBrains Mono', monospace;
+
+	/* Radius */
+	--radius-sm: 0.375rem;
+	--radius-md: 0.5rem;
+	--radius-lg: 0.75rem;
+	--radius-xl: 1rem;
+	--radius-2xl: 1.5rem;
+	--radius-full: 9999px;
+}
