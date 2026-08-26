@@ -6,7 +6,7 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
-    /* Bundler mode — Vite handles the actual bundling, tsc just type-checks */
+    /* Bundler mode - Vite handles the actual bundling, tsc just type-checks */
     "moduleResolution": "Bundler",
     "allowImportingTsExtensions": true,
     "isolatedModules": true,

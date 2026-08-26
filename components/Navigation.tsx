@@ -24,6 +24,14 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
   { label: 'Explore', href: '#explore' },
   { label: 'About', href: '#about' }];
 
+  // Smooth-scrolls to the target section without ever writing #hash into the URL bar.
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const target = document.querySelector(href);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
     <>
@@ -52,6 +60,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
             <a
             key={link.href}
             href={link.href}
+            onClick={(e) => handleNavClick(e, link.href)}
             className="text-sm text-gray-light hover:text-white transition-colors duration-300 font-sans font-bold">
 
                 {link.label}
@@ -103,7 +112,10 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
               <motion.a
                 key={link.href}
                 href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  handleNavClick(e, link.href);
+                }}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.1 }}

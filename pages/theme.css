@@ -1,5 +1,5 @@
 /**
- * THEME CONFIGURATION — Tailwind v4
+ * THEME CONFIGURATION - Tailwind v4
  * Grokit Dark Design System
  *
  * IMPORTANT: Tokens must live inside @theme (not :root) for Tailwind v4
@@ -42,7 +42,7 @@
 	--color-input: #1A1A1A;
 	--color-ring: #3B82F6;
 
-	/* Typography — bold, rounded, friendly (Duolingo/Wondering-inspired) */
+	/* Typography - bold, rounded, friendly (Duolingo/Wondering-inspired) */
 	--font-display: 'Baloo 2', system-ui, sans-serif;
 	--font-sans: 'Nunito', system-ui, sans-serif;
 	--font-mono: 'JetBrains Mono', monospace;

@@ -5,6 +5,28 @@
 /* @theme must not be nested inside @layer, so this is a plain import */
 @import './theme.css';
 
+@layer base {
+	html,
+	body {
+		background-color: var(--color-black);
+		/* Safety net: stops any oversized/off-screen element from causing
+		   horizontal scroll and exposing the browser's default white background. */
+		overflow-x: hidden;
+		max-width: 100%;
+	}
+
+	/* Browsers only show a pointer cursor on <a> by default, not <button>.
+	   This makes every clickable control feel clickable. */
+	button,
+	[role='button'],
+	a {
+		cursor: pointer;
+	}
+	button:disabled {
+		cursor: not-allowed;
+	}
+}
+
 @layer components {
 	/* Duolingo/Wondering-style pill button with a "pressed 3D" shelf shadow */
 	.btn-duo {
@@ -23,6 +45,7 @@
 	}
 	.btn-duo:hover {
 		filter: brightness(1.06);
+		transform: translateY(-2px);
 	}
 	.btn-duo:active {
 		transform: translateY(4px);
@@ -51,6 +74,7 @@
 	}
 	.btn-duo-outline:hover {
 		background: var(--color-dark-elevated);
+		transform: translateY(-2px);
 	}
 	.btn-duo-outline:active {
 		transform: translateY(4px);

@@ -9,20 +9,43 @@ interface WaitlistModalProps {
 }
 
 type FormState = 'default' | 'loading' | 'success' | 'error';
+type FieldErrors = { firstName?: string; email?: string };
 
 // Set VITE_FORMSPREE_ID in your .env file; falls back to the existing form id.
 const FORMSPREE_ENDPOINT = `https://formspree.io/f/${import.meta.env.VITE_FORMSPREE_ID ?? 'xdenvlno'}`;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
   const [formState, setFormState] = useState<FormState>('default');
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [formData, setFormData] = useState({
     firstName: '',
     email: '',
     learnFirst: ''
   });
 
+  const validate = (): FieldErrors => {
+    const next: FieldErrors = {};
+    if (!formData.firstName.trim()) {
+      next.firstName = 'Tell us what to call you.';
+    }
+    if (!formData.email.trim()) {
+      next.email = "We'll need an email to add you to the list.";
+    } else if (!EMAIL_PATTERN.test(formData.email.trim())) {
+      next.email = "That doesn't look like a valid email — double check it?";
+    }
+    return next;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validationErrors = validate();
+    setErrors(validationErrors);
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
     setFormState('loading');
 
     try {
@@ -53,6 +76,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
     // Reset form after animation
     setTimeout(() => {
       setFormState('default');
+      setErrors({});
       setFormData({ firstName: '', email: '', learnFirst: '' });
     }, 300);
   };
@@ -106,7 +130,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     We're building a new way to learn anything. Join the early access list.
                   </p>
 
-                  <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                  <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
                     <div>
                       <label htmlFor="firstName" className="block text-sm font-sans font-bold text-white mb-2">
                         First name
@@ -114,12 +138,18 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                       <input
                   type="text"
                   id="firstName"
-                  required
                   value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
+                  onChange={(e) => {
+                    setFormData({ ...formData, firstName: e.target.value });
+                    if (errors.firstName) setErrors({ ...errors, firstName: undefined });
+                  }}
+                  className={`w-full px-4 py-3 bg-black border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none transition-colors ${
+                  errors.firstName ? 'border-red-500 focus:border-red-500' : 'border-dark-border focus:border-cobalt'}`}
                   placeholder="Your name" />
 
+                      {errors.firstName &&
+                  <p className="mt-2 text-sm text-red-400 font-sans font-semibold">{errors.firstName}</p>
+                  }
                     </div>
 
                     <div>
@@ -129,12 +159,18 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                       <input
                   type="email"
                   id="email"
-                  required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
+                  onChange={(e) => {
+                    setFormData({ ...formData, email: e.target.value });
+                    if (errors.email) setErrors({ ...errors, email: undefined });
+                  }}
+                  className={`w-full px-4 py-3 bg-black border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none transition-colors ${
+                  errors.email ? 'border-red-500 focus:border-red-500' : 'border-dark-border focus:border-cobalt'}`}
                   placeholder="you@example.com" />
 
+                      {errors.email &&
+                  <p className="mt-2 text-sm text-red-400 font-sans font-semibold">{errors.email}</p>
+                  }
                     </div>
 
                     <div>
@@ -216,10 +252,10 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     <AlertCircle className="w-8 h-8 text-red-500" />
                   </motion.div>
                   <h2 className="font-display text-2xl text-white font-extrabold mb-3">
-                    Something went wrong.
+                    Something went wrong on our end.
                   </h2>
                   <p className="text-gray font-sans font-medium mb-6">
-                    Please try again.
+                    Your details weren't lost — just try submitting again in a moment.
                   </p>
                   <button
               onClick={() => setFormState('default')}

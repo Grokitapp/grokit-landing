@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react';
 
 /**
- * App-wide providers. Add new providers here — they'll be available in all routes.
+ * App-wide providers. Add new providers here, they'll be available in all routes.
  * Providers MUST wrap <BrowserRouter> to be accessible everywhere.
  *
  * Example:
