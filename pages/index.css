@@ -1,2 +1,59 @@
-@import "tailwindcss";
-@import "./theme.css" layer(theme);
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@import 'tailwindcss';
+
+/* @theme must not be nested inside @layer, so this is a plain import */
+@import './theme.css';
+
+@layer components {
+	/* Duolingo/Wondering-style pill button with a "pressed 3D" shelf shadow */
+	.btn-duo {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		border-radius: var(--radius-full);
+		font-family: var(--font-display);
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		color: var(--color-white);
+		background: var(--color-cobalt);
+		box-shadow: 0 5px 0 var(--color-cobalt-glow);
+		transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+	}
+	.btn-duo:hover {
+		filter: brightness(1.06);
+	}
+	.btn-duo:active {
+		transform: translateY(4px);
+		box-shadow: 0 1px 0 var(--color-cobalt-glow);
+	}
+	.btn-duo:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	/* Secondary / outline pill, same press mechanic */
+	.btn-duo-outline {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		border-radius: var(--radius-full);
+		font-family: var(--font-display);
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		color: var(--color-white);
+		background: transparent;
+		border: 2px solid var(--color-dark-border);
+		box-shadow: 0 5px 0 var(--color-dark-border);
+		transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
+	}
+	.btn-duo-outline:hover {
+		background: var(--color-dark-elevated);
+	}
+	.btn-duo-outline:active {
+		transform: translateY(4px);
+		box-shadow: 0 1px 0 var(--color-dark-border);
+	}
+}

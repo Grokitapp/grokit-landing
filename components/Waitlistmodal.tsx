@@ -11,7 +11,7 @@ interface WaitlistModalProps {
 type FormState = 'default' | 'loading' | 'success' | 'error';
 
 // Set VITE_FORMSPREE_ID in your .env file; falls back to the existing form id.
-const FORMSPREE_ENDPOINT = `https://formspree.io/f/xdenvlno`;
+const FORMSPREE_ENDPOINT = `https://formspree.io/f/${import.meta.env.VITE_FORMSPREE_ID ?? 'xdenvlno'}`;
 
 export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
   const [formState, setFormState] = useState<FormState>('default');
@@ -84,7 +84,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
           className="relative w-full max-w-lg bg-dark-elevated border border-dark-border rounded-3xl p-8 md:p-10 shadow-2xl">
 
             {/* Close button */}
-            <button data-ev-id="ev_f6e8464e95"
+            <button
           onClick={handleClose}
           className="absolute top-6 right-6 p-2 text-gray hover:text-white transition-colors">
 
@@ -99,75 +99,70 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}>
 
-                  <h2 data-ev-id="ev_51d0b11e75" className="font-display text-3xl md:text-4xl text-white font-bold mb-3">
+                  <h2 className="font-display text-3xl md:text-4xl text-white font-extrabold mb-3">
                     Be among the first to learn with Grokit.
                   </h2>
-                  <p data-ev-id="ev_4e525892ef" className="text-gray mb-8">
+                  <p className="text-gray font-sans font-medium mb-8">
                     We're building a new way to learn anything. Join the early access list.
                   </p>
 
-                  <form data-ev-id="ev_aeab2c6436" onSubmit={handleSubmit} className="flex flex-col gap-5">
-                    <div data-ev-id="ev_ac6072e4c8">
-                      <label data-ev-id="ev_34ce78e4a0" htmlFor="firstName" className="block text-sm font-medium text-white mb-2">
+                  <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                    <div>
+                      <label htmlFor="firstName" className="block text-sm font-sans font-bold text-white mb-2">
                         First name
                       </label>
-                      <input data-ev-id="ev_8f541373e3"
+                      <input
                   type="text"
                   id="firstName"
                   required
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
+                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
                   placeholder="Your name" />
 
                     </div>
 
-                    <div data-ev-id="ev_d1e725c5ea">
-                      <label data-ev-id="ev_16af26d550" htmlFor="email" className="block text-sm font-medium text-white mb-2">
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-sans font-bold text-white mb-2">
                         Email
                       </label>
-                      <input data-ev-id="ev_e880124022"
+                      <input
                   type="email"
                   id="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
+                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
                   placeholder="you@example.com" />
 
                     </div>
 
-                    <div data-ev-id="ev_cf303ac0b6">
-                      <label data-ev-id="ev_d3ca7d4ace" htmlFor="learnFirst" className="block text-sm font-medium text-white mb-2">
-                        What do you want to learn first? <span data-ev-id="ev_a37cd2a5ba" className="text-gray font-normal">(optional)</span>
+                    <div>
+                      <label htmlFor="learnFirst" className="block text-sm font-sans font-bold text-white mb-2">
+                        What do you want to learn first? <span className="text-gray font-normal">(optional)</span>
                       </label>
-                      <input data-ev-id="ev_3fbd5ede15"
+                      <input
                   type="text"
                   id="learnFirst"
                   value={formData.learnFirst}
                   onChange={(e) => setFormData({ ...formData, learnFirst: e.target.value })}
-                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
+                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
                   placeholder="e.g., Machine learning, startups, investing..." />
 
                     </div>
 
-                    <motion.button
+                    <button
                   type="submit"
                   disabled={formState === 'loading'}
-                  className="group relative mt-4 px-8 py-4 rounded-full font-semibold text-lg overflow-hidden disabled:opacity-70 text-white"
-                  style={{
-                    background: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)'
-                  }}
-                  whileHover={{ scale: formState === 'loading' ? 1 : 1.02 }}
-                  whileTap={{ scale: formState === 'loading' ? 1 : 0.98 }}>
+                  className="btn-duo relative mt-4 px-8 py-4 text-lg">
 
-                      <span data-ev-id="ev_7bc419e8ea" className={`flex items-center justify-center gap-2 transition-opacity ${formState === 'loading' ? 'opacity-0' : 'opacity-100'}`}>
+                      <span className={`flex items-center justify-center gap-2 transition-opacity ${formState === 'loading' ? 'opacity-0' : 'opacity-100'}`}>
                         Request early access
-                        <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                        <ArrowRight className="w-5 h-5" />
                       </span>
                       
                       {formState === 'loading' &&
-                  <div data-ev-id="ev_ce22f4798f" className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center">
                           <motion.div
                       animate={{ rotate: 360 }}
                       transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
@@ -175,7 +170,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
 
                         </div>
                   }
-                    </motion.button>
+                    </button>
                   </form>
                 </motion.div>
             }
@@ -195,10 +190,10 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
 
                     <Check className="w-8 h-8 text-white" />
                   </motion.div>
-                  <h2 data-ev-id="ev_a9eeedc85d" className="font-display text-3xl md:text-4xl text-white font-bold mb-3">
+                  <h2 className="font-display text-3xl md:text-4xl text-white font-extrabold mb-3">
                     You're on the list.
                   </h2>
-                  <p data-ev-id="ev_8ee2ba282d" className="text-gray mb-6">
+                  <p className="text-gray font-sans font-medium mb-6">
                     We'll let you know when Grokit is ready for you.
                   </p>
                   <GrokitLogo size={48} className="mx-auto opacity-20" animate />
@@ -220,15 +215,15 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
 
                     <AlertCircle className="w-8 h-8 text-red-500" />
                   </motion.div>
-                  <h2 data-ev-id="ev_a8299d7c12" className="font-display text-2xl text-white font-bold mb-3">
+                  <h2 className="font-display text-2xl text-white font-extrabold mb-3">
                     Something went wrong.
                   </h2>
-                  <p data-ev-id="ev_7bcd90e5a8" className="text-gray mb-6">
+                  <p className="text-gray font-sans font-medium mb-6">
                     Please try again.
                   </p>
-                  <button data-ev-id="ev_d2e2f58405"
+                  <button
               onClick={() => setFormState('default')}
-              className="px-6 py-3 bg-white text-black rounded-full font-semibold">
+              className="btn-duo px-6 py-3 text-base">
 
                     Try again
                   </button>

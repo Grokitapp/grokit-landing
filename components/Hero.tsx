@@ -28,9 +28,9 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
   }, [scrollYProgress]);
 
   return (
-    <section data-ev-id="ev_f19911d583"
-    ref={containerRef}
-    className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden bg-black">
+    <section
+      ref={containerRef}
+      className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-black">
 
       {/* 3D Scene */}
       <KnowledgeScene scrollProgress={scrollProgress} />
@@ -53,51 +53,38 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
             className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
 
             <Sparkles className="w-4 h-4 text-cobalt" />
-            <span data-ev-id="ev_f43c732ecd" className="text-sm text-white/80">AI-powered learning platform</span>
+            <span className="text-sm text-white/80 font-sans font-semibold">AI-powered learning platform</span>
           </motion.div>
 
-          <h1 data-ev-id="ev_315e7a5cc3" className="font-display text-5xl md:text-7xl lg:text-8xl text-white font-bold leading-[1.05] mb-6 tracking-tight">
+          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white font-extrabold leading-[1.05] mb-6 tracking-tight">
             Learn{' '}
-            <span data-ev-id="ev_4292a500cd" className="bg-linear-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
               anything.
             </span>
-            <br data-ev-id="ev_743d46c2e5" />
-            <span data-ev-id="ev_c5ed33a63a" className="text-white/90">Understand it for real.</span>
+            <br />
+            <span className="text-white/90">Understand it for real.</span>
           </h1>
           
-          <p data-ev-id="ev_38b7338851" className="max-w-2xl mx-auto text-lg md:text-xl text-gray-light font-sans leading-relaxed mb-12">
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-light font-sans font-medium leading-relaxed mb-10">
             Grokit turns what you want to learn into a personalized learning journey — 
             generated for you and grounded in real knowledge.
           </p>
 
-          <div data-ev-id="ev_86457b5687" className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             {/* Primary CTA */}
             <motion.button
               onClick={onOpenWaitlist}
-              className="group relative px-8 py-4 rounded-full font-semibold text-lg overflow-hidden"
-              style={{
-                background: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)'
-              }}
-              whileHover={{ scale: 1.02, boxShadow: '0 0 40px rgba(59, 130, 246, 0.4)' }}
+              className="btn-duo px-8 py-4 text-lg"
               whileTap={{ scale: 0.98 }}>
 
-              {/* Shine effect */}
-              <motion.div
-                className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent -translate-x-full"
-                animate={{ x: ['100%', '-100%'] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }} />
-
-              <span data-ev-id="ev_b63f9aaf26" className="relative flex items-center gap-2 text-white">
-                Start learning
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-              </span>
+              Start learning
+              <ArrowRight className="w-5 h-5" />
             </motion.button>
 
             {/* Secondary CTA */}
             <motion.button
               onClick={onOpenWaitlist}
-              className="px-8 py-4 text-white border border-white/20 rounded-full font-semibold text-lg hover:bg-white/5 transition-all duration-300"
-              whileHover={{ scale: 1.02 }}
+              className="btn-duo-outline px-8 py-4 text-lg"
               whileTap={{ scale: 0.98 }}>
 
               Join the waitlist

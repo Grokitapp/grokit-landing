@@ -17,7 +17,7 @@ interface InteractivePromptProps {
 export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [particles, setParticles] = useState<Array<{id: number;x: number;y: number;}>>([]);
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number }>>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleExampleClick = (example: string) => {
@@ -65,12 +65,12 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
   };
 
   return (
-    <section data-ev-id="ev_d5c4f19535"
+    <section
     id="explore"
-    className="relative py-32 md:py-48 bg-black overflow-hidden">
+    className="relative py-16 md:py-24 bg-black overflow-hidden">
 
       {/* Background glow */}
-      <div data-ev-id="ev_96a12af8a5"
+      <div
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 rounded-full"
       style={{
         background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 60%)',
@@ -79,7 +79,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
 
 
       {/* Background particles */}
-      <div data-ev-id="ev_d126733f30" className="absolute inset-0 pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none">
         <AnimatePresence>
           {particles.map((particle) =>
           <motion.div
@@ -95,17 +95,17 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
         </AnimatePresence>
       </div>
 
-      <div data-ev-id="ev_dc38d0e458" className="relative max-w-4xl mx-auto px-6">
+      <div className="relative max-w-4xl mx-auto px-6">
         {/* Headline */}
         <motion.div
-          className="text-center mb-12"
+          className="text-center mb-10"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}>
 
-          <h2 data-ev-id="ev_e74cc4f28b" className="font-display text-4xl md:text-6xl lg:text-7xl text-white font-bold">
+          <h2 className="font-display text-4xl md:text-6xl lg:text-7xl text-white font-extrabold">
             What do you want to{' '}
-            <span data-ev-id="ev_6fb66fc44d" className="bg-linear-to-r from-cobalt to-cyan bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-cobalt to-cyan bg-clip-text text-transparent">
               understand?
             </span>
           </h2>
@@ -119,37 +119,32 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           transition={{ delay: 0.2 }}
           className="relative">
 
-          <div data-ev-id="ev_7fc1c6c77a" className="relative bg-dark-elevated border border-dark-border rounded-3xl p-6 md:p-8 hover:border-cobalt/30 transition-colors duration-500">
+          <div className="relative bg-dark-elevated border border-dark-border rounded-3xl p-6 md:p-8 hover:border-cobalt/30 transition-colors duration-500">
             {/* Decorative element */}
-            <div data-ev-id="ev_ce357f3bf0" className="absolute -top-3 left-8 px-3 py-1 bg-black border border-dark-border rounded-full">
+            <div className="absolute -top-3 left-8 px-3 py-1 bg-black border border-dark-border rounded-full">
               <Sparkles className="w-4 h-4 text-cobalt" />
             </div>
 
-            <textarea data-ev-id="ev_47a8c6edbe"
+            <textarea
             ref={inputRef}
             value={inputValue}
             onChange={handleInputChange}
             placeholder="Ask anything..."
-            className="w-full text-xl md:text-2xl text-white placeholder:text-gray resize-none bg-transparent outline-none min-h-25"
+            className="w-full text-xl md:text-2xl text-white font-sans placeholder:text-gray resize-none bg-transparent outline-none min-h-25"
             disabled={isTyping} />
 
 
-            <div data-ev-id="ev_19254d4d2d" className="flex items-center justify-between mt-6 pt-6 border-t border-dark-border">
-              <p data-ev-id="ev_344bc1c0d6" className="text-sm text-gray hidden sm:block">
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-dark-border">
+              <p className="text-sm text-gray font-sans font-semibold hidden sm:block">
                 Press Enter or click to start
               </p>
-              <motion.button
+              <button
                 onClick={handleSubmit}
-                className="group flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-white"
-                style={{
-                  background: 'linear-gradient(135deg, #3B82F6 0%, #8B5CF6 100%)'
-                }}
-                whileHover={{ scale: 1.02, boxShadow: '0 0 30px rgba(59, 130, 246, 0.4)' }}
-                whileTap={{ scale: 0.98 }}>
+                className="btn-duo px-6 py-3 text-base">
 
                 Create your learning path
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-              </motion.button>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </motion.div>
@@ -170,7 +165,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.5 + idx * 0.1 }}
-            className="px-4 py-2 text-sm text-gray border border-dark-border rounded-full hover:border-cobalt hover:text-cobalt transition-colors duration-300"
+            className="px-4 py-2 text-sm font-sans font-bold text-gray border border-dark-border rounded-full hover:border-cobalt hover:text-cobalt transition-colors duration-300"
             disabled={isTyping}>
 
               {prompt}

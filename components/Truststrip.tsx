@@ -14,12 +14,12 @@ export function TrustStrip() {
   const line2X = useTransform(scrollYProgress, [0.2, 0.5], ['10%', '0%']);
 
   return (
-    <section data-ev-id="ev_ea0a91f67f"
-    ref={containerRef}
-    className="relative py-32 md:py-48 bg-black overflow-hidden">
+    <section
+      ref={containerRef}
+      className="relative py-16 md:py-24 bg-black overflow-hidden">
 
       {/* Subtle grid background */}
-      <div data-ev-id="ev_58cfcab8c2"
+      <div
       className="absolute inset-0 opacity-[0.03]"
       style={{
         backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
@@ -31,19 +31,19 @@ export function TrustStrip() {
         className="max-w-5xl mx-auto px-6 text-center"
         style={{ opacity }}>
 
-        <div data-ev-id="ev_2c77612d2c" className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4">
           <motion.p
-            className="font-display text-3xl md:text-5xl lg:text-6xl text-gray font-semibold"
+            className="font-display text-3xl md:text-5xl lg:text-6xl text-gray font-extrabold"
             style={{ x: line1X }}>
 
             AI can give you information.
           </motion.p>
           <motion.p
-            className="font-display text-3xl md:text-5xl lg:text-6xl text-white font-bold"
+            className="font-display text-3xl md:text-5xl lg:text-6xl text-white font-extrabold"
             style={{ x: line2X }}>
 
             Grokit helps you build{' '}
-            <span data-ev-id="ev_c24ac634ef" className="bg-linear-to-r from-cobalt to-purple bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-cobalt to-purple bg-clip-text text-transparent">
               understanding.
             </span>
           </motion.p>

@@ -1,6 +1,10 @@
 /**
  * THEME CONFIGURATION — Tailwind v4
  * Grokit Dark Design System
+ *
+ * IMPORTANT: Tokens must live inside @theme (not :root) for Tailwind v4
+ * to generate matching utility classes like bg-cobalt, text-gray,
+ * border-dark-border, font-display, etc.
  */
 @theme {
 	/* Grokit Dark Colors */
@@ -38,9 +42,9 @@
 	--color-input: #1A1A1A;
 	--color-ring: #3B82F6;
 
-	/* Typography */
-	--font-display: 'Inter', system-ui, sans-serif;
-	--font-sans: 'Inter', system-ui, sans-serif;
+	/* Typography — bold, rounded, friendly (Duolingo/Wondering-inspired) */
+	--font-display: 'Baloo 2', system-ui, sans-serif;
+	--font-sans: 'Nunito', system-ui, sans-serif;
 	--font-mono: 'JetBrains Mono', monospace;
 
 	/* Radius */
