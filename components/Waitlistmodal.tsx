@@ -88,7 +88,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-200 flex items-center justify-center p-6">
+        className="fixed inset-0 z-200 flex items-center justify-center p-4 sm:p-6">
 
           {/* Backdrop */}
           <motion.div
@@ -105,12 +105,12 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-lg bg-dark-elevated border border-dark-border rounded-3xl p-8 md:p-10 shadow-2xl">
+          className="relative w-full max-w-lg max-h-[85dvh] overflow-y-auto bg-dark-elevated border border-dark-border rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl">
 
             {/* Close button */}
             <button
           onClick={handleClose}
-          className="absolute top-6 right-6 p-2 text-gray hover:text-white transition-colors">
+          className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 text-gray hover:text-white transition-colors">
 
               <X className="w-5 h-5" />
             </button>
@@ -123,14 +123,14 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}>
 
-                  <h2 className="font-display text-3xl md:text-4xl text-white font-extrabold mb-3">
+                  <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-white font-extrabold mb-2 sm:mb-3 pr-8">
                     Be among the first to learn with Grokit.
                   </h2>
-                  <p className="text-gray font-sans font-medium mb-8">
+                  <p className="text-sm sm:text-base text-gray font-sans font-medium mb-6 sm:mb-8">
                     We're building a new way to learn anything. Join the early access list.
                   </p>
 
-                  <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-5">
+                  <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4 sm:gap-5">
                     <div>
                       <label htmlFor="firstName" className="block text-sm font-sans font-bold text-white mb-2">
                         First name
@@ -143,7 +143,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     setFormData({ ...formData, firstName: e.target.value });
                     if (errors.firstName) setErrors({ ...errors, firstName: undefined });
                   }}
-                  className={`w-full px-4 py-3 bg-black border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none transition-colors ${
+                  className={`w-full px-4 py-2.5 sm:py-3 bg-black border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none transition-colors ${
                   errors.firstName ? 'border-red-500 focus:border-red-500' : 'border-dark-border focus:border-cobalt'}`}
                   placeholder="Your name" />
 
@@ -164,7 +164,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     setFormData({ ...formData, email: e.target.value });
                     if (errors.email) setErrors({ ...errors, email: undefined });
                   }}
-                  className={`w-full px-4 py-3 bg-black border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none transition-colors ${
+                  className={`w-full px-4 py-2.5 sm:py-3 bg-black border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none transition-colors ${
                   errors.email ? 'border-red-500 focus:border-red-500' : 'border-dark-border focus:border-cobalt'}`}
                   placeholder="you@example.com" />
 
@@ -182,7 +182,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                   id="learnFirst"
                   value={formData.learnFirst}
                   onChange={(e) => setFormData({ ...formData, learnFirst: e.target.value })}
-                  className="w-full px-4 py-3 bg-black border border-dark-border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
+                  className="w-full px-4 py-2.5 sm:py-3 bg-black border border-dark-border rounded-xl text-white font-sans placeholder:text-gray focus:outline-none focus:border-cobalt transition-colors"
                   placeholder="e.g., Machine learning, startups, investing..." />
 
                     </div>
@@ -190,7 +190,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     <button
                   type="submit"
                   disabled={formState === 'loading'}
-                  className="btn-duo relative mt-4 px-8 py-4 text-lg">
+                  className="btn-duo relative mt-2 sm:mt-4 px-6 py-3.5 text-base sm:px-8 sm:py-4 sm:text-lg">
 
                       <span className={`flex items-center justify-center gap-2 transition-opacity ${formState === 'loading' ? 'opacity-0' : 'opacity-100'}`}>
                         Request early access
@@ -226,7 +226,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
 
                     <Check className="w-8 h-8 text-white" />
                   </motion.div>
-                  <h2 className="font-display text-3xl md:text-4xl text-white font-extrabold mb-3">
+                  <h2 className="font-display text-2xl sm:text-3xl md:text-4xl text-white font-extrabold mb-3">
                     You're on the list.
                   </h2>
                   <p className="text-gray font-sans font-medium mb-6">
@@ -251,7 +251,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
 
                     <AlertCircle className="w-8 h-8 text-red-500" />
                   </motion.div>
-                  <h2 className="font-display text-2xl text-white font-extrabold mb-3">
+                  <h2 className="font-display text-xl sm:text-2xl text-white font-extrabold mb-3">
                     Something went wrong on our end.
                   </h2>
                   <p className="text-gray font-sans font-medium mb-6">

@@ -30,9 +30,9 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
   return (
     <section
       ref={containerRef}
-      className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-black">
+      className="relative min-h-dvh sm:min-h-[90vh] flex flex-col items-center justify-center pt-24 pb-12 bg-black">
 
-      {/* 3D Scene */}
+      {/* 3D Scene (self-contained overflow clipping, safe to keep here) */}
       <KnowledgeScene scrollProgress={scrollProgress} />
 
       {/* Content */}
@@ -50,13 +50,13 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.1 }}
-            className="inline-flex items-center gap-2 px-4 py-2 mb-8 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
+            className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 mb-6 sm:mb-8 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
 
-            <Sparkles className="w-4 h-4 text-cobalt" />
-            <span className="text-sm text-white/80 font-sans font-semibold">AI-powered learning platform</span>
+            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cobalt" />
+            <span className="text-xs sm:text-sm text-white/80 font-sans font-semibold">AI-powered learning platform</span>
           </motion.div>
 
-          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white font-extrabold leading-[1.05] mb-6 tracking-tight">
+          <h1 className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-white font-extrabold leading-[1.1] sm:leading-[1.05] mb-4 sm:mb-6 tracking-tight">
             Learn{' '}
             <span className="bg-linear-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
               anything.
@@ -65,26 +65,26 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
             <span className="text-white/90">Understand it for real.</span>
           </h1>
           
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-gray-light font-sans font-medium leading-relaxed mb-10">
+          <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-gray-light font-sans font-medium leading-relaxed mb-8 sm:mb-10">
             Grokit turns what you want to learn into a personalized learning journey — 
             generated for you and grounded in real knowledge.
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
             {/* Primary CTA */}
             <motion.button
               onClick={onOpenWaitlist}
-              className="btn-duo px-8 py-4 text-lg"
+              className="btn-duo px-6 py-3.5 text-base sm:px-8 sm:py-4 sm:text-lg w-full sm:w-auto"
               whileTap={{ scale: 0.98 }}>
 
               Start learning
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </motion.button>
 
             {/* Secondary CTA */}
             <motion.button
               onClick={onOpenWaitlist}
-              className="btn-duo-outline px-8 py-4 text-lg"
+              className="btn-duo-outline px-6 py-3.5 text-base sm:px-8 sm:py-4 sm:text-lg w-full sm:w-auto"
               whileTap={{ scale: 0.98 }}>
 
               Join the waitlist
@@ -92,6 +92,6 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
           </div>
         </motion.div>
       </motion.div>
-    </section>
-    );
+    </section>);
+
 }
