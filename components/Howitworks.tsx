@@ -69,7 +69,7 @@ export function HowItWorks() {
               {idx === activeStep &&
             <motion.div
               layoutId="stepIndicator"
-              className="absolute -bottom-2 left-0 right-0 h-0.5 bg-linear-to-r from-cobalt to-purple" />
+              className="absolute -bottom-2 left-0 right-0 h-0.5 bg-gradient-to-r from-cobalt to-purple" />
 
             }
             </button>
@@ -77,7 +77,7 @@ export function HowItWorks() {
         </div>
 
         {/* Content area */}
-        <div className="relative min-h-80">
+        <div className="relative min-h-[320px]">
           <AnimatePresence mode="wait">
             {activeStep === 0 &&
             <motion.div
@@ -88,14 +88,14 @@ export function HowItWorks() {
               transition={{ duration: 0.5 }}
               className="flex flex-col gap-8">
 
-                <h3 className="font-display text-3xl md:text-5xl text-white font-extrabold">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-white font-extrabold">
                   {steps[0].title}
                 </h3>
                 
                 {/* AI Input mockup */}
                 <div className="max-w-2xl bg-dark-elevated border border-dark-border rounded-3xl p-6">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-linear-to-br from-cobalt to-purple flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cobalt to-purple flex items-center justify-center">
                       <span className="text-xs">✨</span>
                     </div>
                     <div className="flex-1">
@@ -118,7 +118,7 @@ export function HowItWorks() {
               transition={{ duration: 0.5 }}
               className="flex flex-col gap-8">
 
-                <h3 className="font-display text-3xl md:text-5xl text-white font-extrabold">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-white font-extrabold">
                   {steps[1].title}
                 </h3>
                 
@@ -160,7 +160,7 @@ export function HowItWorks() {
               transition={{ duration: 0.5 }}
               className="flex flex-col gap-8">
 
-                <h3 className="font-display text-3xl md:text-5xl text-white font-extrabold">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-white font-extrabold">
                   {steps[2].title}
                 </h3>
                 
@@ -176,7 +176,7 @@ export function HowItWorks() {
 
                       <div className={`px-6 py-3 rounded-2xl border font-sans font-bold ${
                   idx === 2 ?
-                  'bg-linear-to-r from-cobalt to-purple text-white border-transparent' :
+                  'bg-gradient-to-r from-cobalt to-purple text-white border-transparent' :
                   'bg-dark-elevated border-dark-border text-white'}`
                   }>
                         {item}
@@ -189,13 +189,13 @@ export function HowItWorks() {
                 </div>
                 
                 <p className="text-gray font-sans font-medium max-w-xl">
-                  Learning built on real knowledge and sources — so understanding has something solid beneath it.
+                  Learning built on real knowledge and sources, so understanding has something solid beneath it.
                 </p>
               </motion.div>
             }
           </AnimatePresence>
         </div>
       </div>
-    </section>
-    );
+    </section>);
+
 }

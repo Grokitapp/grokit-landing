@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { KnowledgeScene } from './Knowledgescene';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
@@ -8,38 +7,15 @@ interface HeroProps {
 }
 
 export function Hero({ onOpenWaitlist }: HeroProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [scrollProgress, setScrollProgress] = useState(0);
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start start', 'end start']
-  });
-
-  const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
-  const y = useTransform(scrollYProgress, [0, 0.5], [0, 100]);
-  const scale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95]);
-
-  useEffect(() => {
-    const unsubscribe = scrollYProgress.on('change', (v) => {
-      setScrollProgress(v);
-    });
-    return () => unsubscribe();
-  }, [scrollYProgress]);
-
   return (
     <section
-      ref={containerRef}
-      className="relative min-h-dvh sm:min-h-[90vh] flex flex-col items-center justify-center pt-24 pb-12 bg-black">
+      className="relative min-h-[100dvh] sm:min-h-[min(90vh,800px)] flex flex-col items-center justify-center pt-24 pb-12 bg-black">
 
       {/* 3D Scene (self-contained overflow clipping, safe to keep here) */}
-      <KnowledgeScene scrollProgress={scrollProgress} />
+      <KnowledgeScene scrollProgress={1} />
 
       {/* Content */}
-      <motion.div
-        className="relative z-10 max-w-5xl mx-auto px-6 text-center"
-        style={{ opacity, y, scale }}>
-
+      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -58,15 +34,15 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
 
           <h1 className="font-display text-4xl sm:text-5xl md:text-7xl lg:text-8xl text-white font-extrabold leading-[1.1] sm:leading-[1.05] mb-4 sm:mb-6 tracking-tight">
             Learn{' '}
-            <span className="bg-linear-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
               anything.
             </span>
             <br />
             <span className="text-white/90">Understand it for real.</span>
           </h1>
           
-          <p className="max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-gray-light font-sans font-medium leading-relaxed mb-8 sm:mb-10">
-            Grokit turns what you want to learn into a personalized learning journey — 
+          <p className="max-w-2xl mx-auto text-sm sm:text-lg md:text-xl text-gray-light font-sans font-medium leading-relaxed mb-8 sm:mb-10 px-2 sm:px-0">
+            Grokit turns what you want to learn into a personalized learning journey, 
             generated for you and grounded in real knowledge.
           </p>
 
@@ -74,7 +50,7 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
             {/* Primary CTA */}
             <motion.button
               onClick={onOpenWaitlist}
-              className="btn-duo px-6 py-3.5 text-base sm:px-8 sm:py-4 sm:text-lg w-full sm:w-auto"
+              className="btn-duo px-6 py-3 text-sm sm:px-8 sm:py-4 sm:text-lg"
               whileTap={{ scale: 0.98 }}>
 
               Start learning
@@ -84,14 +60,14 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
             {/* Secondary CTA */}
             <motion.button
               onClick={onOpenWaitlist}
-              className="btn-duo-outline px-6 py-3.5 text-base sm:px-8 sm:py-4 sm:text-lg w-full sm:w-auto"
+              className="btn-duo-outline px-6 py-3 text-sm sm:px-8 sm:py-4 sm:text-lg"
               whileTap={{ scale: 0.98 }}>
 
               Join the waitlist
             </motion.button>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     </section>);
 
 }

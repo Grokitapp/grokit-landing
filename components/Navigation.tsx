@@ -22,7 +22,8 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
   const navLinks = [
   { label: 'How it works', href: '#how-it-works' },
   { label: 'Explore', href: '#explore' },
-  { label: 'About', href: '#about' }];
+  { label: 'About', href: '#about' },
+  { label: 'FAQ', href: '#faq' }];
 
   // Smooth-scrolls to the target section without ever writing #hash into the URL bar.
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
@@ -95,7 +96,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-100 bg-black">
+          className="fixed inset-0 z-[100] bg-black">
 
             <div className="p-6">
               <div className="flex justify-between items-center mb-12">

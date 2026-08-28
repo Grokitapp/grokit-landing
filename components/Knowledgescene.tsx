@@ -24,10 +24,6 @@ interface OrbitRing {
   particles: number;
 }
 
-// Topic labels for the floating knowledge nodes — makes "learn anything" concrete
-// rather than just decorative dots.
-const TOPICS = ['Code', 'Math', 'History', 'Physics', 'Business', 'Language', 'Art', 'Science'];
-
 export function KnowledgeScene({ scrollProgress }: KnowledgeSceneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [time, setTime] = useState(0);
@@ -211,50 +207,35 @@ export function KnowledgeScene({ scrollProgress }: KnowledgeSceneProps) {
             </motion.div>
           )}
 
-          {/* Floating knowledge nodes — labeled with subjects to make "learn anything" concrete */}
-          {TOPICS.map((topic, i) => {
-            const angle = i / TOPICS.length * Math.PI * 2 + time * 0.2;
+          {/* Floating data nodes */}
+          {[...Array(8)].map((_, i) => {
+            const angle = i / 8 * Math.PI * 2 + time * 0.2;
             const radius = 100 + Math.sin(time * 0.5 + i) * 20;
             const x = Math.cos(angle) * radius;
             const y = Math.sin(angle) * radius * 0.4;
             const z = Math.sin(angle) * radius * 0.6;
             const scale = 0.8 + (z + radius) / (radius * 2) * 0.4;
-            // Label only becomes visible when the node is "forward" (larger/closer),
-            // so labels don't clutter the scene all at once.
-            const labelOpacity = Math.max(0, Math.min(1, (scale - 1.02) * 8));
 
             return (
               <motion.div
-                key={topic}
-                className="absolute top-1/2 left-1/2 flex items-center gap-1.5"
+                key={i}
+                className="absolute top-1/2 left-1/2 w-4 h-4 rounded-full"
                 style={{
                   x: x - 8,
                   y: y - 8,
                   scale,
                   opacity: (0.4 + scale * 0.4) * (0.5 + eased * 0.5),
+                  background: i % 2 === 0 ?
+                  'linear-gradient(135deg, #3B82F6, #8B5CF6)' :
+                  'linear-gradient(135deg, #8B5CF6, #06B6D4)',
+                  boxShadow: `0 0 20px rgba(59, 130, 246, ${0.3 * scale})`,
                   zIndex: Math.round(z)
-                }}>
+                }} />);
 
-                <div
-                  className="w-4 h-4 rounded-full shrink-0"
-                  style={{
-                    background: i % 2 === 0 ?
-                    'linear-gradient(135deg, #3B82F6, #8B5CF6)' :
-                    'linear-gradient(135deg, #8B5CF6, #06B6D4)',
-                    boxShadow: `0 0 20px rgba(59, 130, 246, ${0.3 * scale})`
-                  }} />
-
-                <span
-                  className="text-[10px] font-display font-bold text-white whitespace-nowrap"
-                  style={{ opacity: labelOpacity, transition: 'opacity 0.2s linear' }}>
-
-                  {topic}
-                </span>
-              </motion.div>);
 
           })}
 
-          {/* Connection lines — animated flowing dashes to suggest knowledge "flowing" along a path */}
+          {/* Connection lines — animated flowing dashes to suggest knowledge flowing along a path */}
           <svg className="absolute inset-0 w-full h-full" style={{ opacity: 0.2 + eased * 0.25 }}>
             <defs>
               <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="100%">

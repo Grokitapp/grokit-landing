@@ -28,6 +28,22 @@
 }
 
 @layer components {
+	/* Thin, subtle scrollbar for the waitlist modal (only visible when actually needed) */
+	.modal-scroll {
+		scrollbar-width: thin;
+		scrollbar-color: var(--color-dark-border) transparent;
+	}
+	.modal-scroll::-webkit-scrollbar {
+		width: 6px;
+	}
+	.modal-scroll::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	.modal-scroll::-webkit-scrollbar-thumb {
+		background: var(--color-dark-border);
+		border-radius: var(--radius-full);
+	}
+
 	/* Duolingo/Wondering-style pill button with a "pressed 3D" shelf shadow */
 	.btn-duo {
 		display: inline-flex;

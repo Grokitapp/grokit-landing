@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, Check, AlertCircle } from 'lucide-react';
 import { GrokitLogo } from './Grokitlogo';
@@ -24,6 +24,17 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
     learnFirst: ''
   });
 
+  // Lock background scroll while the modal is open
+  useEffect(() => {
+    if (isOpen) {
+      const original = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = original;
+      };
+    }
+  }, [isOpen]);
+
   const validate = (): FieldErrors => {
     const next: FieldErrors = {};
     if (!formData.firstName.trim()) {
@@ -32,7 +43,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
     if (!formData.email.trim()) {
       next.email = "We'll need an email to add you to the list.";
     } else if (!EMAIL_PATTERN.test(formData.email.trim())) {
-      next.email = "That doesn't look like a valid email — double check it?";
+      next.email = "That doesn't look like a valid email. Mind double-checking it?";
     }
     return next;
   };
@@ -88,7 +99,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-200 flex items-center justify-center p-4 sm:p-6">
+        className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6">
 
           {/* Backdrop */}
           <motion.div
@@ -105,7 +116,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-lg max-h-[85dvh] overflow-y-auto bg-dark-elevated border border-dark-border rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl">
+          className="modal-scroll relative w-full max-w-lg max-h-[92dvh] overflow-y-auto bg-dark-elevated border border-dark-border rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl">
 
             {/* Close button */}
             <button
@@ -222,7 +233,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.2 }}
-                className="w-16 h-16 mx-auto mb-6 rounded-full bg-linear-to-br from-cobalt to-purple flex items-center justify-center">
+                className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-cobalt to-purple flex items-center justify-center">
 
                     <Check className="w-8 h-8 text-white" />
                   </motion.div>
@@ -255,7 +266,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     Something went wrong on our end.
                   </h2>
                   <p className="text-gray font-sans font-medium mb-6">
-                    Your details weren't lost — just try submitting again in a moment.
+                    Your details weren't lost. Just try submitting again in a moment.
                   </p>
                   <button
               onClick={() => setFormState('default')}
