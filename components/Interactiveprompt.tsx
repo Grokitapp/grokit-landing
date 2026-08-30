@@ -73,7 +73,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
       <div
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full"
       style={{
-        background: 'radial-gradient(circle, rgba(47,111,237,0.08) 0%, transparent 60%)',
+        background: 'radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 60%)',
         filter: 'blur(60px)'
       }} />
 
@@ -95,7 +95,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
         </AnimatePresence>
       </div>
 
-      <div className="relative max-w-4xl mx-auto px-6">
+      <div className="relative max-w-4xl mx-auto px-6 lg:px-12">
         {/* Headline */}
         <motion.div
           className="text-center mb-10"
@@ -104,10 +104,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           viewport={{ once: true }}>
 
           <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold">
-            What do you want to{' '}
-            <span className="bg-gradient-to-r from-cobalt to-cyan bg-clip-text text-transparent">
-              understand?
-            </span>
+            What do you want to <span className="text-cobalt">understand?</span>
           </h2>
         </motion.div>
 

@@ -22,13 +22,13 @@ export function TrustStrip() {
       <div
       className="absolute inset-0 opacity-[0.05]"
       style={{
-        backgroundImage: `linear-gradient(rgba(14,21,38,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(14,21,38,0.15) 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(rgba(20,21,26,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(20,21,26,0.15) 1px, transparent 1px)`,
         backgroundSize: '60px 60px'
       }} />
 
 
       <motion.div
-        className="max-w-5xl mx-auto px-6 text-center"
+        className="max-w-5xl mx-auto px-6 lg:px-12 text-center"
         style={{ opacity }}>
 
         <div className="flex flex-col gap-4">
@@ -43,9 +43,7 @@ export function TrustStrip() {
             style={{ x: line2X }}>
 
             Grokit helps you build{' '}
-            <span className="bg-gradient-to-r from-cobalt to-purple bg-clip-text text-transparent">
-              understanding.
-            </span>
+            <span className="text-cobalt">understanding.</span>
           </motion.p>
         </div>
       </motion.div>

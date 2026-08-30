@@ -1,6 +1,6 @@
 /**
  * THEME CONFIGURATION - Tailwind v4
- * Grokit Light Design System
+ * Grokit Light Design System v2
  *
  * IMPORTANT: Tokens must live inside @theme (not :root) for Tailwind v4
  * to generate matching utility classes like bg-cobalt, text-body,
@@ -9,17 +9,23 @@
 @theme {
 	/* Core palette */
 	--color-surface: #FFFFFF;       /* page / section background */
-	--color-surface-alt: #F5F7FB;   /* cards, elevated panels, inputs */
-	--color-line: #E3E8F0;          /* borders, dividers */
-	--color-ink: #0E1526;           /* headings, primary text */
-	--color-body: #4B5768;          /* paragraph / secondary text */
-	--color-muted: #6B7686;         /* tertiary text, inactive states */
+	--color-surface-alt: #F5F4FF;   /* cards, elevated panels, inputs (faint indigo tint) */
+	--color-line: #E7E7EF;          /* borders, dividers */
+	--color-ink: #14151A;           /* headings, primary text */
+	--color-body: #565B66;          /* paragraph / secondary text */
+	--color-muted: #8A8F99;         /* tertiary text, inactive states */
 	--color-on-primary: #FFFFFF;    /* text on filled accent buttons */
 
-	/* Brand accents */
-	--color-cobalt: #2F6FED;
-	--color-cobalt-bright: #4C86FF;
-	--color-cobalt-glow: #1E54C9;
+	/* Brand accent — single confident indigo (replaces the old blue/purple/cyan gradient) */
+	--color-cobalt: #4F46E5;
+	--color-cobalt-bright: #6366F1;
+	--color-cobalt-glow: #4338CA;
+
+	/* Warm secondary accent — for highlights, badges, personality touches */
+	--color-amber: #F5A623;
+	--color-amber-glow: #D98C0F;
+
+	/* Supporting tones — used sparingly (FinalCTA card gradient only) */
 	--color-purple: #7C5CFC;
 	--color-cyan: #0E9AAE;
 
