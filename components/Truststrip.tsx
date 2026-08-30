@@ -16,7 +16,7 @@ export function TrustStrip() {
   return (
     <section
       ref={containerRef}
-      className="relative py-16 md:py-24 bg-black overflow-hidden">
+      className="relative py-12 md:py-20 bg-black overflow-hidden">
 
       {/* Subtle grid background */}
       <div
@@ -33,17 +33,17 @@ export function TrustStrip() {
 
         <div className="flex flex-col gap-4">
           <motion.p
-            className="font-display text-3xl md:text-5xl lg:text-6xl text-gray font-extrabold"
+            className="font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-gray font-extrabold"
             style={{ x: line1X }}>
 
             AI can give you information.
           </motion.p>
           <motion.p
-            className="font-display text-3xl md:text-5xl lg:text-6xl text-white font-extrabold"
+            className="font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-white font-extrabold"
             style={{ x: line2X }}>
 
             Grokit helps you build{' '}
-            <span className="bg-linear-to-r from-cobalt to-purple bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cobalt to-purple bg-clip-text text-transparent">
               understanding.
             </span>
           </motion.p>

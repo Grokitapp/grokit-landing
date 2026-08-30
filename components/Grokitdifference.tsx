@@ -33,7 +33,7 @@ export function GrokitDifference() {
     <section
       ref={containerRef}
       id="about"
-      className="relative py-16 md:py-24 bg-black overflow-hidden">
+      className="relative py-12 md:py-20 bg-black overflow-hidden">
 
       {/* Gradient orb */}
       <div
@@ -99,6 +99,6 @@ export function GrokitDifference() {
           )}
         </div>
       </motion.div>
-    </section>);
-
+    </section>
+    );
 }

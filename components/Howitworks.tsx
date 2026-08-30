@@ -42,7 +42,7 @@ export function HowItWorks() {
   return (
     <section
     id="how-it-works"
-    className="relative py-16 md:py-24 bg-black">
+    className="relative py-12 md:py-20 bg-black">
 
       <div className="max-w-6xl mx-auto px-6">
         {/* Section header */}
@@ -196,6 +196,6 @@ export function HowItWorks() {
           </AnimatePresence>
         </div>
       </div>
-    </section>);
-
+    </section>
+    );
 }

@@ -20,7 +20,7 @@ export function FinalCTA({ onOpenWaitlist }: FinalCTAProps) {
   return (
     <section
     ref={containerRef}
-    className="relative py-16 md:py-24 min-h-[60vh] flex items-center bg-black overflow-hidden">
+    className="relative py-12 md:py-20 min-h-[60vh] flex items-center bg-black overflow-hidden">
 
       {/* Animated gradient background */}
       <motion.div
@@ -28,7 +28,7 @@ export function FinalCTA({ onOpenWaitlist }: FinalCTAProps) {
         style={{ opacity: glowOpacity }}>
 
         <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-250 h-250 rounded-full"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] rounded-full"
         style={{
           background: 'radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 40%, transparent 70%)',
           filter: 'blur(80px)'
@@ -43,16 +43,16 @@ export function FinalCTA({ onOpenWaitlist }: FinalCTAProps) {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}>
 
-          <h2 className="font-display text-4xl md:text-6xl lg:text-7xl text-white font-extrabold mb-6 leading-tight">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-extrabold mb-6 leading-tight">
             Curiosity is the beginning.
             <br />
-            <span className="bg-linear-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
               Understanding
             </span>{' '}
             is the goal.
           </h2>
           
-          <p className="text-xl md:text-2xl text-gray font-sans font-medium mb-10">
+          <p className="text-lg sm:text-xl md:text-2xl text-gray font-sans font-medium mb-10">
             Start building the way you learn.
           </p>
 

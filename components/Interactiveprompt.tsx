@@ -67,11 +67,11 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
   return (
     <section
     id="explore"
-    className="relative py-16 md:py-24 bg-black overflow-hidden">
+    className="relative py-12 md:py-20 bg-black overflow-hidden">
 
       {/* Background glow */}
       <div
-      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 rounded-full"
+      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full"
       style={{
         background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 60%)',
         filter: 'blur(60px)'
@@ -103,9 +103,9 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}>
 
-          <h2 className="font-display text-4xl md:text-6xl lg:text-7xl text-white font-extrabold">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-extrabold">
             What do you want to{' '}
-            <span className="bg-linear-to-r from-cobalt to-cyan bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-cobalt to-cyan bg-clip-text text-transparent">
               understand?
             </span>
           </h2>
@@ -130,7 +130,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
             value={inputValue}
             onChange={handleInputChange}
             placeholder="Ask anything..."
-            className="w-full text-xl md:text-2xl text-white font-sans placeholder:text-gray resize-none bg-transparent outline-none min-h-25"
+            className="w-full text-lg sm:text-xl md:text-2xl text-white font-sans placeholder:text-gray resize-none bg-transparent outline-none min-h-[100px]"
             disabled={isTyping} />
 
 

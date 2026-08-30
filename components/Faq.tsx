@@ -4,7 +4,7 @@ import { ChevronDown } from 'lucide-react';
 
 const faqs = [
 {
-  question: 'How is this different from just asking ChatGPT, Claude, or any other LLM?',
+  question: 'How is Grokit different from just asking ChatGPT, or any other LLM?',
   answer: 'While modern AI models have persistent memory, they still operate on a prompt-by-prompt basis. Grokit builds a structured, step-by-step path: it breaks topics into ordered modules, tracks your mastery over time, and grounds each step in verified sources rather than generating floating conversational answers. You get a complete course, not just a customized chat.'
 },
 {
@@ -31,7 +31,7 @@ export function FAQ() {
   return (
     <section
     id="faq"
-    className="relative py-16 md:py-24 bg-black">
+    className="relative py-12 md:py-20 bg-black">
 
       <div className="max-w-3xl mx-auto px-6">
         <motion.div
@@ -93,6 +93,6 @@ export function FAQ() {
           })}
         </div>
       </div>
-    </section>);
-
+    </section>
+    );
 }

@@ -28,7 +28,12 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
             transition={{ duration: 0.8, delay: 0.1 }}
             className="inline-flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 mb-6 sm:mb-8 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
 
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cobalt" />
+            <motion.span
+              animate={{ rotate: [0, -15, 15, -8, 0], scale: [1, 1.15, 1.15, 1.05, 1] }}
+              transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2.5, ease: 'easeInOut' }}>
+
+              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cobalt" />
+            </motion.span>
             <span className="text-xs sm:text-sm text-white/80 font-sans font-semibold">AI-powered learning platform</span>
           </motion.div>
 
@@ -42,8 +47,7 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
           </h1>
           
           <p className="max-w-2xl mx-auto text-sm sm:text-lg md:text-xl text-gray-light font-sans font-medium leading-relaxed mb-8 sm:mb-10 px-2 sm:px-0">
-            Grokit turns what you want to learn into a personalized learning journey, 
-            generated for you and grounded in real knowledge.
+            A personalized learning path, built just for you. Grounded in real knowledge.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
@@ -68,6 +72,6 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
           </div>
         </motion.div>
       </div>
-    </section>);
-
+    </section>
+    );
 }

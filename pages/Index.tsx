@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Navigation } from '../components/Navigation';
 import { Hero } from '../components/Hero';
+import { HighlightStrip } from '../components/Highlightstrip';
 import { TrustStrip } from '../components/Truststrip';
 import { HowItWorks } from '../components/Howitworks';
 import { InteractivePrompt } from '../components/Interactiveprompt';
@@ -20,6 +21,7 @@ export default function Index() {
     <div className="bg-black">
       <Navigation onOpenWaitlist={openWaitlist} />
       <Hero onOpenWaitlist={openWaitlist} />
+      <HighlightStrip />
       <TrustStrip />
       <HowItWorks />
       <InteractivePrompt onOpenWaitlist={openWaitlist} />
