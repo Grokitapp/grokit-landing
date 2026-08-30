@@ -33,13 +33,13 @@ export function GrokitDifference() {
     <section
       ref={containerRef}
       id="about"
-      className="relative py-12 md:py-20 bg-black overflow-hidden">
+      className="relative py-12 md:py-20 bg-surface overflow-hidden">
 
       {/* Gradient orb */}
       <div
-      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-20"
+      className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-10"
       style={{
-        background: 'radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(124,92,252,0.35) 0%, transparent 70%)',
         filter: 'blur(80px)'
       }} />
 
@@ -51,7 +51,7 @@ export function GrokitDifference() {
         {/* Headline */}
         <div className="mb-12 md:mb-16">
           <motion.h2
-            className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-extrabold mb-6"
+            className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold mb-6"
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -60,7 +60,7 @@ export function GrokitDifference() {
             Not another AI answer.
           </motion.h2>
           <motion.p
-            className="text-lg sm:text-xl md:text-2xl text-gray font-sans font-medium max-w-2xl leading-relaxed"
+            className="text-lg sm:text-xl md:text-2xl text-body font-sans font-medium max-w-2xl leading-relaxed"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
@@ -81,17 +81,17 @@ export function GrokitDifference() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: idx * 0.15 }}
-            className="relative p-8 rounded-3xl bg-dark-elevated border border-dark-border group hover:border-cobalt/30 transition-colors duration-500">
+            className="relative p-8 rounded-3xl bg-surface-alt border border-line group hover:border-cobalt/30 transition-colors duration-500">
 
               {/* Glow on hover */}
               <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cobalt/5 to-purple/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
               <div className="relative">
                 <span className="text-2xl text-cobalt mb-4 block">{principle.icon}</span>
-                <h3 className="font-display text-2xl text-white font-extrabold mb-3">
+                <h3 className="font-display text-2xl text-ink font-extrabold mb-3">
                   {principle.title}
                 </h3>
-                <p className="text-gray font-sans font-medium leading-relaxed">
+                <p className="text-body font-sans font-medium leading-relaxed">
                   {principle.description}
                 </p>
               </div>

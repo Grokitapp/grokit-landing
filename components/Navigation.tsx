@@ -39,7 +39,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
       <motion.nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled ?
-        'py-3 bg-black/70 backdrop-blur-xl border-b border-white/5' :
+        'py-3 bg-surface/80 backdrop-blur-xl border-b border-line' :
         'py-5 bg-transparent'}`
         }
         initial={{ y: -100 }}
@@ -50,7 +50,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
           {/* Logo */}
           <a href="/" className="flex items-center gap-3 group">
             <GrokitLogo size={36} className="transition-transform duration-300 group-hover:scale-105" />
-            <span className="font-display text-xl text-white font-extrabold tracking-tight">
+            <span className="font-display text-xl text-ink font-extrabold tracking-tight">
               Grokit
             </span>
           </a>
@@ -62,7 +62,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
             key={link.href}
             href={link.href}
             onClick={(e) => handleNavClick(e, link.href)}
-            className="text-sm text-gray-light hover:text-white transition-colors duration-300 font-sans font-bold">
+            className="text-sm text-body hover:text-ink transition-colors duration-300 font-sans font-bold">
 
                 {link.label}
               </a>
@@ -81,7 +81,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
             {/* Mobile Menu Button */}
             <button
             onClick={() => setMobileMenuOpen(true)}
-            className="md:hidden p-2 text-white">
+            className="md:hidden p-2 text-ink">
 
               <Menu size={24} />
             </button>
@@ -96,16 +96,16 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] bg-black">
+          className="fixed inset-0 z-[100] bg-surface">
 
             <div className="p-6">
               <div className="flex justify-between items-center mb-12">
                 <div className="flex items-center gap-3">
                   <GrokitLogo size={32} />
-                  <span className="font-display text-xl text-white font-extrabold">Grokit</span>
+                  <span className="font-display text-xl text-ink font-extrabold">Grokit</span>
                 </div>
                 <button onClick={() => setMobileMenuOpen(false)}>
-                  <X size={24} className="text-white" />
+                  <X size={24} className="text-ink" />
                 </button>
               </div>
               <div className="flex flex-col gap-6">
@@ -120,7 +120,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="text-3xl font-display text-white font-bold">
+                className="text-3xl font-display text-ink font-bold">
 
                     {link.label}
                   </motion.a>

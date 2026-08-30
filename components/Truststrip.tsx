@@ -16,13 +16,13 @@ export function TrustStrip() {
   return (
     <section
       ref={containerRef}
-      className="relative py-12 md:py-20 bg-black overflow-hidden">
+      className="relative py-12 md:py-20 bg-surface overflow-hidden">
 
       {/* Subtle grid background */}
       <div
-      className="absolute inset-0 opacity-[0.03]"
+      className="absolute inset-0 opacity-[0.05]"
       style={{
-        backgroundImage: `linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+        backgroundImage: `linear-gradient(rgba(14,21,38,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(14,21,38,0.15) 1px, transparent 1px)`,
         backgroundSize: '60px 60px'
       }} />
 
@@ -33,13 +33,13 @@ export function TrustStrip() {
 
         <div className="flex flex-col gap-4">
           <motion.p
-            className="font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-gray font-extrabold"
+            className="font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-muted font-extrabold"
             style={{ x: line1X }}>
 
             AI can give you information.
           </motion.p>
           <motion.p
-            className="font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-white font-extrabold"
+            className="font-display text-2xl sm:text-3xl md:text-5xl lg:text-6xl text-ink font-extrabold"
             style={{ x: line2X }}>
 
             Grokit helps you build{' '}

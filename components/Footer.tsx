@@ -55,29 +55,29 @@ export function Footer() {
   ];
 
   return (
-    <footer data-ev-id="ev_717b8ef5ec" className="bg-black border-t border-dark-border py-12 md:py-16">
-      <div data-ev-id="ev_16b0bd2298" className="max-w-6xl mx-auto px-6">
-        <div data-ev-id="ev_3c3986113d" className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+    <footer className="bg-surface-alt border-t border-line py-12 md:py-16">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
           {/* Left */}
-          <div data-ev-id="ev_92f32aacd1">
-            <div data-ev-id="ev_be705d4f00" className="flex items-center gap-3 mb-3">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
               <GrokitLogo size={28} />
-              <span data-ev-id="ev_8c3b3c393f" className="font-display text-lg text-white font-semibold">Grokit</span>
+              <span className="font-display text-lg text-ink font-semibold">Grokit</span>
             </div>
-            <p data-ev-id="ev_be78d677d9" className="text-gray text-sm max-w-xs">
+            <p className="text-body text-sm max-w-xs">
               Generative learning, grounded in real knowledge.
             </p>
           </div>
 
           {/* Right - Social */}
-          <div data-ev-id="ev_dba2cb1e4b" className="flex items-center gap-4">
+          <div className="flex items-center gap-4">
             {socialLinks.map(({ icon: Icon, href, label }) => (
-              <a data-ev-id="ev_28f8d06744"
+              <a
                 key={label}
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-gray hover:text-white transition-colors"
+                className="p-2 text-body hover:text-cobalt transition-colors"
                 aria-label={label}
               >
                 <Icon className="w-5 h-5" />
@@ -87,8 +87,8 @@ export function Footer() {
         </div>
 
         {/* Bottom */}
-        <div data-ev-id="ev_685098a9dc" className="mt-12 pt-8 border-t border-dark-border">
-          <p data-ev-id="ev_6f94801a2c" className="text-gray/60 text-sm">
+        <div className="mt-12 pt-8 border-t border-line">
+          <p className="text-muted text-sm">
             © {new Date().getFullYear()} Grokit. All rights reserved.
           </p>
         </div>

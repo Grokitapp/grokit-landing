@@ -18,7 +18,7 @@ export default function Index() {
   const closeWaitlist = () => setIsWaitlistOpen(false);
 
   return (
-    <div className="bg-black">
+    <div className="bg-surface">
       <Navigation onOpenWaitlist={openWaitlist} />
       <Hero onOpenWaitlist={openWaitlist} />
       <HighlightStrip />

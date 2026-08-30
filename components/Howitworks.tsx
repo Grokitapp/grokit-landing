@@ -42,7 +42,7 @@ export function HowItWorks() {
   return (
     <section
     id="how-it-works"
-    className="relative py-12 md:py-20 bg-black">
+    className="relative py-12 md:py-20 bg-surface">
 
       <div className="max-w-6xl mx-auto px-6">
         {/* Section header */}
@@ -62,7 +62,7 @@ export function HowItWorks() {
           key={step.number}
           onClick={() => setActiveStep(idx)}
           className={`relative font-mono text-sm font-bold transition-colors duration-300 ${
-          idx === activeStep ? 'text-white' : 'text-gray'}`
+          idx === activeStep ? 'text-ink' : 'text-muted'}`
           }>
 
               {step.number}
@@ -88,18 +88,18 @@ export function HowItWorks() {
               transition={{ duration: 0.5 }}
               className="flex flex-col gap-8">
 
-                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-white font-extrabold">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-ink font-extrabold">
                   {steps[0].title}
                 </h3>
                 
                 {/* AI Input mockup */}
-                <div className="max-w-2xl bg-dark-elevated border border-dark-border rounded-3xl p-6">
+                <div className="max-w-2xl bg-surface-alt border border-line rounded-3xl p-6">
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cobalt to-purple flex items-center justify-center">
                       <span className="text-xs">✨</span>
                     </div>
                     <div className="flex-1">
-                      <p className="text-gray-light font-sans font-medium text-lg">
+                      <p className="text-body font-sans font-medium text-lg">
                         {steps[0].example}
                         <span className={`inline-block w-0.5 h-5 bg-cobalt ml-1 align-middle transition-opacity ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
                       </p>
@@ -118,7 +118,7 @@ export function HowItWorks() {
               transition={{ duration: 0.5 }}
               className="flex flex-col gap-8">
 
-                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-white font-extrabold">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-ink font-extrabold">
                   {steps[1].title}
                 </h3>
                 
@@ -134,14 +134,14 @@ export function HowItWorks() {
 
                       <div className="flex flex-col items-center">
                         <div className={`w-3 h-3 rounded-full ${
-                    idx === 0 ? 'bg-cobalt shadow-[0_0_10px_rgba(59,130,246,0.5)]' : 'bg-gray'}`
+                    idx === 0 ? 'bg-cobalt shadow-[0_0_10px_rgba(47,111,237,0.4)]' : 'bg-muted'}`
                     } />
                         {idx < (steps[1].topics?.length ?? 0) - 1 &&
-                    <div className="w-0.5 h-8 bg-dark-border" />
+                    <div className="w-0.5 h-8 bg-line" />
                     }
                       </div>
                       <span className={`font-sans font-bold ${
-                  idx === 0 ? 'text-white text-lg' : 'text-gray'}`
+                  idx === 0 ? 'text-ink text-lg' : 'text-muted'}`
                   }>
                         {topic}
                       </span>
@@ -160,7 +160,7 @@ export function HowItWorks() {
               transition={{ duration: 0.5 }}
               className="flex flex-col gap-8">
 
-                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-white font-extrabold">
+                <h3 className="font-display text-2xl sm:text-3xl md:text-5xl text-ink font-extrabold">
                   {steps[2].title}
                 </h3>
                 
@@ -177,18 +177,18 @@ export function HowItWorks() {
                       <div className={`px-6 py-3 rounded-2xl border font-sans font-bold ${
                   idx === 2 ?
                   'bg-gradient-to-r from-cobalt to-purple text-white border-transparent' :
-                  'bg-dark-elevated border-dark-border text-white'}`
+                  'bg-surface-alt border-line text-ink'}`
                   }>
                         {item}
                       </div>
                       {idx < 2 &&
-                  <span className="text-gray">→</span>
+                  <span className="text-muted">→</span>
                   }
                     </motion.div>
                 )}
                 </div>
                 
-                <p className="text-gray font-sans font-medium max-w-xl">
+                <p className="text-body font-sans font-medium max-w-xl">
                   Learning built on real knowledge and sources, so understanding has something solid beneath it.
                 </p>
               </motion.div>

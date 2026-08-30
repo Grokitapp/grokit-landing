@@ -1,48 +1,29 @@
 /**
  * THEME CONFIGURATION - Tailwind v4
- * Grokit Dark Design System
+ * Grokit Light Design System
  *
  * IMPORTANT: Tokens must live inside @theme (not :root) for Tailwind v4
- * to generate matching utility classes like bg-cobalt, text-gray,
- * border-dark-border, font-display, etc.
+ * to generate matching utility classes like bg-cobalt, text-body,
+ * border-line, font-display, etc.
  */
 @theme {
-	/* Grokit Dark Colors */
-	--color-black: #000000;
-	--color-dark: #0A0A0A;
-	--color-dark-elevated: #111111;
-	--color-dark-border: #1A1A1A;
-	--color-white: #FFFFFF;
-	--color-white-muted: #E5E5E5;
-	--color-gray: #666666;
-	--color-gray-light: #999999;
-	--color-cobalt: #3B82F6;
-	--color-cobalt-bright: #60A5FA;
-	--color-cobalt-glow: #2563EB;
-	--color-purple: #8B5CF6;
-	--color-cyan: #06B6D4;
+	/* Core palette */
+	--color-surface: #FFFFFF;       /* page / section background */
+	--color-surface-alt: #F5F7FB;   /* cards, elevated panels, inputs */
+	--color-line: #E3E8F0;          /* borders, dividers */
+	--color-ink: #0E1526;           /* headings, primary text */
+	--color-body: #4B5768;          /* paragraph / secondary text */
+	--color-muted: #6B7686;         /* tertiary text, inactive states */
+	--color-on-primary: #FFFFFF;    /* text on filled accent buttons */
 
-	/* Semantic Colors */
-	--color-primary: #3B82F6;
-	--color-primary-foreground: #FFFFFF;
+	/* Brand accents */
+	--color-cobalt: #2F6FED;
+	--color-cobalt-bright: #4C86FF;
+	--color-cobalt-glow: #1E54C9;
+	--color-purple: #7C5CFC;
+	--color-cyan: #0E9AAE;
 
-	--color-secondary: #666666;
-	--color-secondary-foreground: #FFFFFF;
-
-	--color-destructive: #EF4444;
-	--color-destructive-foreground: #FFFFFF;
-
-	--color-muted: #1A1A1A;
-	--color-muted-foreground: #666666;
-
-	--color-accent: #8B5CF6;
-	--color-accent-foreground: #FFFFFF;
-
-	--color-border: #1A1A1A;
-	--color-input: #1A1A1A;
-	--color-ring: #3B82F6;
-
-	/* Typography - bold, rounded, friendly (Duolingo/Wondering-inspired) */
+	/* Typography - bold, rounded, friendly */
 	--font-display: 'Baloo 2', system-ui, sans-serif;
 	--font-sans: 'Nunito', system-ui, sans-serif;
 	--font-mono: 'JetBrains Mono', monospace;

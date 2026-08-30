@@ -67,13 +67,13 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
   return (
     <section
     id="explore"
-    className="relative py-12 md:py-20 bg-black overflow-hidden">
+    className="relative py-12 md:py-20 bg-surface overflow-hidden">
 
       {/* Background glow */}
       <div
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full"
       style={{
-        background: 'radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 60%)',
+        background: 'radial-gradient(circle, rgba(47,111,237,0.08) 0%, transparent 60%)',
         filter: 'blur(60px)'
       }} />
 
@@ -103,7 +103,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}>
 
-          <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-extrabold">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold">
             What do you want to{' '}
             <span className="bg-gradient-to-r from-cobalt to-cyan bg-clip-text text-transparent">
               understand?
@@ -119,9 +119,9 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           transition={{ delay: 0.2 }}
           className="relative">
 
-          <div className="relative bg-dark-elevated border border-dark-border rounded-3xl p-6 md:p-8 hover:border-cobalt/30 transition-colors duration-500">
+          <div className="relative bg-surface-alt border border-line rounded-3xl p-6 md:p-8 hover:border-cobalt/30 transition-colors duration-500">
             {/* Decorative element */}
-            <div className="absolute -top-3 left-8 px-3 py-1 bg-black border border-dark-border rounded-full">
+            <div className="absolute -top-3 left-8 px-3 py-1 bg-surface border border-line rounded-full">
               <Sparkles className="w-4 h-4 text-cobalt" />
             </div>
 
@@ -130,12 +130,12 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
             value={inputValue}
             onChange={handleInputChange}
             placeholder="Ask anything..."
-            className="w-full text-lg sm:text-xl md:text-2xl text-white font-sans placeholder:text-gray resize-none bg-transparent outline-none min-h-[100px]"
+            className="w-full text-lg sm:text-xl md:text-2xl text-ink font-sans placeholder:text-muted resize-none bg-transparent outline-none min-h-[100px]"
             disabled={isTyping} />
 
 
-            <div className="flex items-center justify-between mt-6 pt-6 border-t border-dark-border">
-              <p className="text-sm text-gray font-sans font-semibold hidden sm:block">
+            <div className="flex items-center justify-between mt-6 pt-6 border-t border-line">
+              <p className="text-sm text-muted font-sans font-semibold hidden sm:block">
                 Press Enter or click to start
               </p>
               <button
@@ -165,7 +165,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.5 + idx * 0.1 }}
-            className="px-4 py-2 text-sm font-sans font-bold text-gray border border-dark-border rounded-full hover:border-cobalt hover:text-cobalt transition-colors duration-300"
+            className="px-4 py-2 text-sm font-sans font-bold text-body border border-line rounded-full hover:border-cobalt hover:text-cobalt transition-colors duration-300"
             disabled={isTyping}>
 
               {prompt}

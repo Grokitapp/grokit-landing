@@ -31,7 +31,7 @@ export function FAQ() {
   return (
     <section
     id="faq"
-    className="relative py-12 md:py-20 bg-black">
+    className="relative py-12 md:py-20 bg-surface">
 
       <div className="max-w-3xl mx-auto px-6">
         <motion.div
@@ -41,7 +41,7 @@ export function FAQ() {
           viewport={{ once: true }}>
 
           <span className="text-sm font-mono text-cobalt uppercase tracking-wider font-bold">FAQ</span>
-          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-white font-extrabold mt-3">
+          <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-ink font-extrabold mt-3">
             Questions, answered.
           </h2>
         </motion.div>
@@ -56,19 +56,19 @@ export function FAQ() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: idx * 0.05 }}
-                className="rounded-2xl bg-dark-elevated border border-dark-border overflow-hidden">
+                className="rounded-2xl bg-surface-alt border border-line overflow-hidden">
 
                 <button
                   onClick={() => setOpenIndex(isOpen ? null : idx)}
                   className="w-full flex items-center justify-between gap-4 px-5 py-4 sm:px-6 sm:py-5 text-left">
 
-                  <span className="font-display font-bold text-white text-base sm:text-lg">
+                  <span className="font-display font-bold text-ink text-base sm:text-lg">
                     {faq.question}
                   </span>
                   <motion.span
                     animate={{ rotate: isOpen ? 180 : 0 }}
                     transition={{ duration: 0.2 }}
-                    className="shrink-0 text-gray-light">
+                    className="shrink-0 text-muted">
 
                     <ChevronDown className="w-5 h-5" />
                   </motion.span>
@@ -82,7 +82,7 @@ export function FAQ() {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.25, ease: 'easeInOut' }}>
 
-                      <p className="px-5 pb-4 sm:px-6 sm:pb-5 text-gray font-sans font-medium leading-relaxed">
+                      <p className="px-5 pb-4 sm:px-6 sm:pb-5 text-body font-sans font-medium leading-relaxed">
                         {faq.answer}
                       </p>
                     </motion.div>

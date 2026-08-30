@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight, GraduationCap, Code2, TrendingUp, Compass, Check } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
+import { WaitlistModal } from '../components/Waitlistmodal';
 
 // ---- Step config ---------------------------------------------------------
 
@@ -47,6 +48,7 @@ export default function Onboarding() {
   const [interests, setInterests] = useState<string[]>([]);
   const [goal, setGoal] = useState<string | null>(null);
   const [timeCommitment, setTimeCommitment] = useState<string | null>(null);
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
   const canContinue =
   step === 0 ? role !== null :
@@ -81,18 +83,18 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-black flex flex-col">
+    <div className="min-h-[100dvh] bg-surface flex flex-col">
       {/* Top bar: back + progress */}
       <div className="w-full px-6 pt-6 pb-4">
         <div className="max-w-xl mx-auto flex items-center gap-4">
           <button
             onClick={handleBack}
-            className="p-2 -ml-2 text-gray-light hover:text-white transition-colors"
+            className="p-2 -ml-2 text-body hover:text-ink transition-colors"
             aria-label="Back">
 
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div className="flex-1 h-2.5 rounded-full bg-dark-elevated border border-dark-border overflow-hidden">
+          <div className="flex-1 h-2.5 rounded-full bg-surface-alt border border-line overflow-hidden">
             <motion.div
               className="h-full rounded-full bg-gradient-to-r from-cobalt to-purple"
               initial={false}
@@ -116,10 +118,10 @@ export default function Onboarding() {
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.3 }}>
 
-                <h1 className="font-display text-3xl sm:text-4xl text-white font-extrabold mb-2 text-center">
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
                   Which one are you?
                 </h1>
-                <p className="text-gray font-sans font-medium text-center mb-8">
+                <p className="text-body font-sans font-medium text-center mb-8">
                   This helps us shape how we explain things.
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -130,11 +132,11 @@ export default function Onboarding() {
                   className={`flex flex-col items-center gap-3 p-5 sm:p-6 rounded-3xl border-2 transition-colors text-center ${
                   role === id ?
                   'bg-cobalt/10 border-cobalt' :
-                  'bg-dark-elevated border-dark-border hover:border-white/20'}`
+                  'bg-surface-alt border-line hover:border-cobalt/30'}`
                   }>
 
-                      <Icon className={`w-7 h-7 ${role === id ? 'text-cobalt' : 'text-gray-light'}`} />
-                      <span className={`font-display font-bold text-sm sm:text-base ${role === id ? 'text-white' : 'text-gray-light'}`}>
+                      <Icon className={`w-7 h-7 ${role === id ? 'text-cobalt' : 'text-muted'}`} />
+                      <span className={`font-display font-bold text-sm sm:text-base ${role === id ? 'text-ink' : 'text-body'}`}>
                         {label}
                       </span>
                     </button>
@@ -151,10 +153,10 @@ export default function Onboarding() {
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.3 }}>
 
-                <h1 className="font-display text-3xl sm:text-4xl text-white font-extrabold mb-2 text-center">
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
                   What are you into?
                 </h1>
-                <p className="text-gray font-sans font-medium text-center mb-8">
+                <p className="text-body font-sans font-medium text-center mb-8">
                   Pick as many as you like. This just gives us a starting point.
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
@@ -166,8 +168,8 @@ export default function Onboarding() {
                       onClick={() => toggleInterest(interest)}
                       className={`inline-flex items-center gap-2 px-5 py-3 rounded-full border-2 font-sans font-bold text-sm sm:text-base transition-colors ${
                       selected ?
-                      'bg-cobalt/10 border-cobalt text-white' :
-                      'bg-dark-elevated border-dark-border text-gray-light hover:border-white/20'}`
+                      'bg-cobalt/10 border-cobalt text-ink' :
+                      'bg-surface-alt border-line text-body hover:border-cobalt/30'}`
                       }>
 
                         {selected && <Check className="w-4 h-4 text-cobalt" />}
@@ -187,10 +189,10 @@ export default function Onboarding() {
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.3 }}>
 
-                <h1 className="font-display text-3xl sm:text-4xl text-white font-extrabold mb-2 text-center">
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
                   What's your goal?
                 </h1>
-                <p className="text-gray font-sans font-medium text-center mb-8">
+                <p className="text-body font-sans font-medium text-center mb-8">
                   We'll shape your path around this.
                 </p>
                 <div className="flex flex-col gap-3">
@@ -201,13 +203,13 @@ export default function Onboarding() {
                   className={`text-left p-5 rounded-2xl border-2 transition-colors ${
                   goal === id ?
                   'bg-cobalt/10 border-cobalt' :
-                  'bg-dark-elevated border-dark-border hover:border-white/20'}`
+                  'bg-surface-alt border-line hover:border-cobalt/30'}`
                   }>
 
-                      <div className={`font-display font-bold mb-1 ${goal === id ? 'text-white' : 'text-gray-light'}`}>
+                      <div className={`font-display font-bold mb-1 ${goal === id ? 'text-ink' : 'text-body'}`}>
                         {label}
                       </div>
-                      <div className="text-sm text-gray font-sans font-medium">{description}</div>
+                      <div className="text-sm text-muted font-sans font-medium">{description}</div>
                     </button>
                 )}
                 </div>
@@ -222,10 +224,10 @@ export default function Onboarding() {
               exit={{ opacity: 0, x: -30 }}
               transition={{ duration: 0.3 }}>
 
-                <h1 className="font-display text-3xl sm:text-4xl text-white font-extrabold mb-2 text-center">
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
                   How much time per day?
                 </h1>
-                <p className="text-gray font-sans font-medium text-center mb-8">
+                <p className="text-body font-sans font-medium text-center mb-8">
                   Be realistic, you can always change this later.
                 </p>
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
@@ -236,13 +238,13 @@ export default function Onboarding() {
                   className={`text-center p-5 rounded-2xl border-2 transition-colors ${
                   timeCommitment === id ?
                   'bg-cobalt/10 border-cobalt' :
-                  'bg-dark-elevated border-dark-border hover:border-white/20'}`
+                  'bg-surface-alt border-line hover:border-cobalt/30'}`
                   }>
 
-                      <div className={`font-display font-extrabold text-2xl mb-1 ${timeCommitment === id ? 'text-white' : 'text-gray-light'}`}>
+                      <div className={`font-display font-extrabold text-2xl mb-1 ${timeCommitment === id ? 'text-ink' : 'text-body'}`}>
                         {label}
                       </div>
-                      <div className="text-xs text-gray font-sans font-medium">{description}</div>
+                      <div className="text-xs text-muted font-sans font-medium">{description}</div>
                     </button>
                 )}
                 </div>
@@ -258,19 +260,29 @@ export default function Onboarding() {
               className="text-center">
 
                 <GrokitLogo size={56} className="mx-auto mb-6" animate />
-                <h1 className="font-display text-3xl sm:text-4xl text-white font-extrabold mb-3">
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-3">
                   You're all set.
                 </h1>
-                <p className="text-gray font-sans font-medium mb-8 max-w-md mx-auto">
+                <p className="text-body font-sans font-medium mb-8 max-w-md mx-auto">
                   Next, tell Grokit what you want to learn and we'll build your first course.
-                  This part of the app is coming very soon.
+                  That part is coming very soon — join the waitlist and we'll email you the
+                  moment it's ready.
                 </p>
-                <button
-                onClick={() => navigate('/')}
-                className="btn-duo px-8 py-4 text-lg mx-auto">
+                <div className="flex flex-col items-center gap-4">
+                  <button
+                  onClick={() => setIsWaitlistOpen(true)}
+                  className="btn-duo px-8 py-4 text-lg">
 
-                  Back to home
-                </button>
+                    Join the waitlist
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                  <button
+                  onClick={() => navigate('/')}
+                  className="text-sm text-muted hover:text-body font-sans font-bold transition-colors">
+
+                    Back to home
+                  </button>
+                </div>
               </motion.div>
             }
           </AnimatePresence>
@@ -292,6 +304,8 @@ export default function Onboarding() {
           </div>
         </div>
       }
+
+      <WaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
     </div>
     );
 }

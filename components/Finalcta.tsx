@@ -1,5 +1,4 @@
-import { useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { ArrowRight } from 'lucide-react';
 import { GrokitLogo } from './Grokitlogo';
 
@@ -8,72 +7,39 @@ interface FinalCTAProps {
 }
 
 export function FinalCTA({ onOpenWaitlist }: FinalCTAProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ['start end', 'end end']
-  });
-
-  const glowOpacity = useTransform(scrollYProgress, [0.5, 1], [0, 0.5]);
-
   return (
-    <section
-    ref={containerRef}
-    className="relative py-12 md:py-20 min-h-[60vh] flex items-center bg-black overflow-hidden">
-
-      {/* Animated gradient background */}
-      <motion.div
-        className="absolute inset-0"
-        style={{ opacity: glowOpacity }}>
-
-        <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] rounded-full"
-        style={{
-          background: 'radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 40%, transparent 70%)',
-          filter: 'blur(80px)'
-        }} />
-
-      </motion.div>
-
-      <div className="relative max-w-5xl mx-auto px-6 text-center">
+    <section className="relative py-12 md:py-20 bg-surface">
+      <div className="max-w-5xl mx-auto px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8 }}>
+          transition={{ duration: 0.8 }}
+          className="relative overflow-hidden rounded-[2.5rem] px-8 py-14 sm:px-12 sm:py-20 text-center"
+          style={{ background: 'linear-gradient(135deg, var(--color-cobalt), var(--color-purple))' }}>
 
-          <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-extrabold mb-6 leading-tight">
-            Curiosity is the beginning.
-            <br />
-            <span className="bg-gradient-to-r from-cobalt via-purple to-cyan bg-clip-text text-transparent">
-              Understanding
-            </span>{' '}
-            is the goal.
-          </h2>
-          
-          <p className="text-lg sm:text-xl md:text-2xl text-gray font-sans font-medium mb-10">
-            Start building the way you learn.
-          </p>
+          {/* Watermark logo */}
+          <GrokitLogo size={220} className="absolute -bottom-10 -right-10 opacity-10 pointer-events-none" />
 
-          <button
-            onClick={onOpenWaitlist}
-            className="btn-duo px-10 py-5 text-lg">
+          <div className="relative">
+            <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-white font-extrabold mb-6 leading-tight">
+              Curiosity is the beginning.
+              <br />
+              Understanding is the goal.
+            </h2>
 
-            Join the waitlist
-            <ArrowRight className="w-5 h-5" />
-          </button>
-        </motion.div>
+            <p className="text-lg sm:text-xl md:text-2xl text-white/85 font-sans font-medium mb-10">
+              Start building the way you learn.
+            </p>
 
-        {/* Logo mark */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
-          className="mt-16">
+            <button
+              onClick={onOpenWaitlist}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-white text-cobalt font-display font-bold px-10 py-5 text-lg shadow-lg hover:brightness-95 transition">
 
-          <GrokitLogo size={64} className="mx-auto opacity-10" />
+              Join the waitlist
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
         </motion.div>
       </div>
     </section>

@@ -8,9 +8,9 @@
 @layer base {
 	html,
 	body {
-		background-color: var(--color-black);
+		background-color: var(--color-surface);
 		/* Safety net: stops any oversized/off-screen element from causing
-		   horizontal scroll and exposing the browser's default white background. */
+		   horizontal scroll and exposing the browser's default background. */
 		overflow-x: hidden;
 		max-width: 100%;
 	}
@@ -31,7 +31,7 @@
 	/* Thin, subtle scrollbar for the waitlist modal (only visible when actually needed) */
 	.modal-scroll {
 		scrollbar-width: thin;
-		scrollbar-color: var(--color-dark-border) transparent;
+		scrollbar-color: var(--color-line) transparent;
 	}
 	.modal-scroll::-webkit-scrollbar {
 		width: 6px;
@@ -40,11 +40,11 @@
 		background: transparent;
 	}
 	.modal-scroll::-webkit-scrollbar-thumb {
-		background: var(--color-dark-border);
+		background: var(--color-line);
 		border-radius: var(--radius-full);
 	}
 
-	/* Duolingo/Wondering-style pill button with a "pressed 3D" shelf shadow */
+	/* Duolingo-style pill button with a "pressed 3D" shelf shadow */
 	.btn-duo {
 		display: inline-flex;
 		align-items: center;
@@ -54,7 +54,7 @@
 		font-family: var(--font-display);
 		font-weight: 700;
 		letter-spacing: 0.02em;
-		color: var(--color-white);
+		color: var(--color-on-primary);
 		background: var(--color-cobalt);
 		box-shadow: 0 5px 0 var(--color-cobalt-glow);
 		transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
@@ -82,18 +82,18 @@
 		font-family: var(--font-display);
 		font-weight: 700;
 		letter-spacing: 0.02em;
-		color: var(--color-white);
-		background: transparent;
-		border: 2px solid var(--color-dark-border);
-		box-shadow: 0 5px 0 var(--color-dark-border);
+		color: var(--color-ink);
+		background: var(--color-surface);
+		border: 2px solid var(--color-line);
+		box-shadow: 0 5px 0 var(--color-line);
 		transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.15s ease;
 	}
 	.btn-duo-outline:hover {
-		background: var(--color-dark-elevated);
+		background: var(--color-surface-alt);
 		transform: translateY(-2px);
 	}
 	.btn-duo-outline:active {
 		transform: translateY(4px);
-		box-shadow: 0 1px 0 var(--color-dark-border);
+		box-shadow: 0 1px 0 var(--color-line);
 	}
 }
