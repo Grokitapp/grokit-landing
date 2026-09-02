@@ -7,7 +7,7 @@ import { Amplify } from 'aws-amplify';
 import { AppProviders } from './pages/providers';
 import App from './pages/App';
 import './pages/index.css';
-import outputs from '../amplify_outputs.json';
+import outputs from './amplify_outputs.json';
 
 Amplify.configure(outputs);
 
