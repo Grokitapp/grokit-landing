@@ -52,7 +52,7 @@ export function HowItWorks() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}>
 
-          <span className="text-sm font-mono text-teal uppercase tracking-wider font-bold">How it works</span>
+          <span className="text-sm font-mono text-cobalt uppercase tracking-wider font-bold">How it works</span>
         </motion.div>
 
         {/* Steps indicator */}
@@ -69,7 +69,7 @@ export function HowItWorks() {
               {idx === activeStep &&
             <motion.div
               layoutId="stepIndicator"
-              className="absolute -bottom-2 left-0 right-0 h-0.5 bg-gradient-to-r from-teal to-teal-bright" />
+              className="absolute -bottom-2 left-0 right-0 h-0.5 bg-gradient-to-r from-cobalt to-purple" />
 
             }
             </button>
@@ -95,13 +95,13 @@ export function HowItWorks() {
                 {/* AI Input mockup */}
                 <div className="max-w-2xl bg-surface-alt border border-line rounded-3xl p-6">
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal to-teal-bright flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cobalt to-purple flex items-center justify-center">
                       <span className="text-xs">✨</span>
                     </div>
                     <div className="flex-1">
                       <p className="text-body font-sans font-medium text-lg">
                         {steps[0].example}
-                        <span className={`inline-block w-0.5 h-5 bg-teal ml-1 align-middle transition-opacity ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
+                        <span className={`inline-block w-0.5 h-5 bg-cobalt ml-1 align-middle transition-opacity ${cursorVisible ? 'opacity-100' : 'opacity-0'}`} />
                       </p>
                     </div>
                   </div>
@@ -134,7 +134,7 @@ export function HowItWorks() {
 
                       <div className="flex flex-col items-center">
                         <div className={`w-3 h-3 rounded-full ${
-                    idx === 0 ? 'bg-teal shadow-[0_0_10px_rgba(13,148,136,0.4)]' : 'bg-muted'}`
+                    idx === 0 ? 'bg-cobalt shadow-[0_0_10px_rgba(47,111,237,0.4)]' : 'bg-muted'}`
                     } />
                         {idx < (steps[1].topics?.length ?? 0) - 1 &&
                     <div className="w-0.5 h-8 bg-line" />
@@ -176,7 +176,7 @@ export function HowItWorks() {
 
                       <div className={`px-6 py-3 rounded-2xl border font-sans font-bold ${
                   idx === 2 ?
-                  'bg-gradient-to-r from-teal to-teal-bright text-white border-transparent' :
+                  'bg-gradient-to-r from-cobalt to-purple text-white border-transparent' :
                   'bg-surface-alt border-line text-ink'}`
                   }>
                         {item}

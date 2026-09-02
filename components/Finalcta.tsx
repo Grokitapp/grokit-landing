@@ -16,7 +16,7 @@ export function FinalCTA({ onOpenWaitlist }: FinalCTAProps) {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
           className="relative overflow-hidden rounded-[2.5rem] px-8 py-14 sm:px-14 sm:py-16 text-center"
-          style={{ background: 'linear-gradient(135deg, var(--color-teal), var(--color-teal-glow))' }}>
+          style={{ background: 'linear-gradient(135deg, var(--color-cobalt), var(--color-purple))' }}>
 
           {/* Dot texture for polish, contained within the card */}
           <div
@@ -43,7 +43,7 @@ export function FinalCTA({ onOpenWaitlist }: FinalCTAProps) {
 
             <button
               onClick={onOpenWaitlist}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-white text-teal font-display font-bold px-8 py-4 text-base sm:text-lg shadow-lg hover:brightness-95 transition">
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-white text-cobalt font-display font-bold px-8 py-4 text-base sm:text-lg shadow-lg hover:brightness-95 transition">
 
               Join the waitlist
               <ArrowRight className="w-5 h-5" />

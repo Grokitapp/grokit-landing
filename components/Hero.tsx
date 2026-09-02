@@ -38,13 +38,13 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
                 animate={{ rotate: [0, -15, 15, -8, 0], scale: [1, 1.15, 1.15, 1.05, 1] }}
                 transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 2.5, ease: 'easeInOut' }}>
 
-                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-teal" />
+                <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-cobalt" />
               </motion.span>
               <span className="text-xs sm:text-sm text-body font-sans font-semibold">AI-powered learning platform</span>
             </div>
 
             <h1 className="font-display text-4xl sm:text-5xl md:text-5xl lg:text-6xl text-ink font-extrabold leading-[1.1] mb-5 tracking-tight">
-              Learn <span className="text-teal">anything.</span>
+              Learn <span className="text-cobalt">anything.</span>
               <br />
               Understand it for real.
             </h1>

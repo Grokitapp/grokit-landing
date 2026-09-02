@@ -39,7 +39,7 @@ export function GrokitDifference() {
       <div
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-10"
       style={{
-        background: 'radial-gradient(circle, rgba(13,148,136,0.35) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(124,92,252,0.35) 0%, transparent 70%)',
         filter: 'blur(80px)'
       }} />
 
@@ -81,13 +81,13 @@ export function GrokitDifference() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: idx * 0.15 }}
-            className="relative p-8 rounded-3xl bg-surface-alt border border-line group hover:border-teal/30 transition-colors duration-500">
+            className="relative p-8 rounded-3xl bg-surface-alt border border-line group hover:border-cobalt/30 transition-colors duration-500">
 
               {/* Glow on hover */}
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-teal/6 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-cobalt/5 to-purple/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               
               <div className="relative">
-                <span className="text-2xl text-teal mb-4 block">{principle.icon}</span>
+                <span className="text-2xl text-cobalt mb-4 block">{principle.icon}</span>
                 <h3 className="font-display text-2xl text-ink font-extrabold mb-3">
                   {principle.title}
                 </h3>

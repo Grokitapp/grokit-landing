@@ -1,788 +1,311 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signUp, confirmSignUp, signIn, signInWithRedirect } from 'aws-amplify/auth';
-import { ArrowLeft, ArrowRight, Check, Plus, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, GraduationCap, Code2, TrendingUp, Compass, Check } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
-import { GrokitMascot, type MascotPose } from '../components/Grokitmascot';
 import { WaitlistModal } from '../components/Waitlistmodal';
-import { saveProfile } from '../lib/profile';
 
-// ---------------------------------------------------------------------------
-// Data
-// ---------------------------------------------------------------------------
+// ---- Step config ---------------------------------------------------------
 
-const WORK_TYPES = [
-'Product Manager', 'Business/Management', 'Designer/Creative', 'Student',
-'Developer/Engineer', 'Research/Academic', 'Finance/Investment', 'Marketing'];
+interface RoleOption {
+  id: string;
+  label: string;
+  icon: typeof GraduationCap;
+}
+
+const ROLE_OPTIONS: RoleOption[] = [
+{ id: 'student', label: 'Student', icon: GraduationCap },
+{ id: 'developer', label: 'Developer', icon: Code2 },
+{ id: 'finance', label: 'Finance professional', icon: TrendingUp },
+{ id: 'curious', label: 'Curious learner', icon: Compass }];
 
 
-const TOPIC_OPTIONS = [
-'AI', 'Business', 'Psychology', 'Science', 'Philosophy', 'Economics',
-'History', 'Investing', 'Design', 'Self-Improvement', 'Strategy',
-'Learning', 'Longevity', 'Decision Making', 'Software Engineering'];
+const INTEREST_OPTIONS = [
+'AI', 'Finance', 'Behavioral Science', 'Startups',
+'Science', 'History', 'Design', 'Marketing'];
 
 
 const GOAL_OPTIONS = [
-'Make better use of my time', 'Build new skills', 'Boost my career',
-'Understand complex topics', 'Explore new topics', 'Just for fun',
-'Remember important learning'];
+{ id: 'skills', label: 'Build new skills', description: 'Pick up practical, applicable knowledge' },
+{ id: 'career', label: 'Boost my career', description: 'Get ahead in my current field or a new one' },
+{ id: 'understand', label: 'Understand complex topics', description: 'Go deep on things I\'ve always wondered about' },
+{ id: 'explore', label: 'Just exploring', description: 'See what Grokit can teach me' }];
 
 
 const TIME_OPTIONS = [
-{ id: '5', label: '5 min', description: 'Just a quick spark' },
-{ id: '10', label: '10 min', description: 'Your coffee break' },
-{ id: '15', label: '15 min', description: 'A lunch-break session' },
-{ id: '20', label: '20+ min', description: "I'm serious about this" }];
+{ id: '5', label: '5 min', description: 'A quick daily habit' },
+{ id: '10', label: '10 min', description: 'Steady, consistent progress' },
+{ id: '15', label: '15 min', description: 'A solid daily session' },
+{ id: '20', label: '20+ min', description: 'I\'m ready to dive in' }];
 
 
-const EXAMPLE_COURSES = [
-{ title: 'Atomic Habits', author: 'James Clear', tag: 'Self-Improvement', blurb: 'Build better habits to optimize your study time.' },
-{ title: 'Deep Dive Into LLMs', author: 'Andrej Karpathy', tag: 'AI', blurb: 'Explores the core technology behind modern language models.' }];
-
-
-// NOTE: swap this once your Discord server exists.
-const DISCORD_INVITE_URL = 'https://discord.gg/your-invite';
-
-const STEP = {
-  AUTH: 0,
-  WELCOME: 1,
-  INTRO: 2,
-  WORK_TYPE: 3,
-  T_PERSONALIZED: 4,
-  TOPICS: 5,
-  T_PERFECT: 6,
-  GOALS: 7,
-  T_GREAT: 8,
-  TIME: 9,
-  T_BOOKS: 10,
-  LOADING: 11,
-  FINAL: 12
-} as const;
-
-const TOTAL_QUESTIONS = 4;
-const PROGRESS_BY_STEP: Record<number, number> = {
-  [STEP.WORK_TYPE]: 1, [STEP.T_PERSONALIZED]: 1,
-  [STEP.TOPICS]: 2, [STEP.T_PERFECT]: 2,
-  [STEP.GOALS]: 3, [STEP.T_GREAT]: 3,
-  [STEP.TIME]: 4, [STEP.T_BOOKS]: 4
-};
-
-// ---------------------------------------------------------------------------
-// Small shared pieces
-// ---------------------------------------------------------------------------
-
-function ProgressBar({ value }: {value: number;}) {
-  return (
-    <div className="w-full px-6 pt-6 pb-2">
-      <div className="max-w-xl mx-auto h-2.5 rounded-full bg-surface-alt border border-line overflow-hidden">
-        <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-teal to-teal-bright"
-          initial={false}
-          animate={{ width: `${value * 100}%` }}
-          transition={{ duration: 0.4, ease: 'easeInOut' }} />
-
-      </div>
-    </div>);
-
-}
-
-function OptionRow({ label, selected, onClick }: {label: string;selected: boolean;onClick: () => void;}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left px-5 py-4 rounded-2xl border-2 font-sans font-bold transition-colors ${
-      selected ?
-      'bg-teal/10 border-teal text-ink' :
-      'bg-surface-alt border-line text-body hover:border-teal/30'}`
-      }>
-
-      <span className="flex items-center gap-3">
-        <span className={`w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center ${
-        selected ? 'bg-teal border-teal' : 'border-line'}`
-        }>
-          {selected && <Check className="w-3.5 h-3.5 text-white" />}
-        </span>
-        {label}
-      </span>
-    </button>);
-
-}
-
-function PillOption({ label, selected, onClick }: {label: string;selected: boolean;onClick: () => void;}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-2 px-5 py-3 rounded-full border-2 font-sans font-bold text-sm sm:text-base transition-colors ${
-      selected ?
-      'bg-teal/10 border-teal text-ink' :
-      'bg-surface-alt border-line text-body hover:border-teal/30'}`
-      }>
-
-      {selected && <Check className="w-4 h-4 text-teal" />}
-      {label}
-    </button>);
-
-}
-
-function OtherInput({ value, onChange, onAdd, placeholder }: {
-  value: string;
-  onChange: (v: string) => void;
-  onAdd: () => void;
-  placeholder: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 px-5 py-3 rounded-full border-2 border-line bg-surface-alt focus-within:border-teal/40 transition-colors">
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && value.trim()) {
-            e.preventDefault();
-            onAdd();
-          }
-        }}
-        placeholder={placeholder}
-        className="flex-1 bg-transparent outline-none text-ink font-sans placeholder:text-muted" />
-
-      <button
-        onClick={onAdd}
-        disabled={!value.trim()}
-        aria-label="Add"
-        className="w-7 h-7 shrink-0 rounded-full bg-teal text-white flex items-center justify-center disabled:opacity-30 transition-opacity">
-
-        <Plus className="w-4 h-4" />
-      </button>
-    </div>);
-
-}
-
-function TransitionScreen({ pose, heading, sub, note, onContinue }: {
-  pose: MascotPose;
-  heading: string;
-  sub: string;
-  note?: string;
-  onContinue: () => void;
-}) {
-  return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-      <GrokitMascot size={130} pose={pose} className="mb-8" />
-      <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-ink font-extrabold mb-3 max-w-lg">
-        {heading}
-      </h1>
-      <p className="text-body font-sans font-medium max-w-md mb-2">{sub}</p>
-      {note && <p className="text-muted font-sans text-sm max-w-md">{note}</p>}
-
-      <div className="w-full max-w-xl mt-10">
-        <button onClick={onContinue} className="btn-duo w-full px-8 py-4 text-lg">
-          Continue
-          <ArrowRight className="w-5 h-5" />
-        </button>
-      </div>
-    </div>);
-
-}
-
-// ---------------------------------------------------------------------------
-// Main component
-// ---------------------------------------------------------------------------
+const TOTAL_STEPS = 4;
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const [step, setStep] = useState<number>(STEP.AUTH);
-
-  // Auth — real Cognito calls. Sign-up requires an email confirmation code,
-  // so there's a small 'form' -> 'confirm' sub-stage within this one step.
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
-  const [authStage, setAuthStage] = useState<'form' | 'confirm'>('form');
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [confirmCode, setConfirmCode] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-
-  // Question answers
-  const [workTypes, setWorkTypes] = useState<string[]>([]);
-  const [topics, setTopics] = useState<string[]>([]);
-  const [otherTopic, setOtherTopic] = useState('');
-  const [goals, setGoals] = useState<string[]>([]);
-  const [otherGoal, setOtherGoal] = useState('');
-  const [timeId, setTimeId] = useState<string | null>(null);
-  const [learnPrompt, setLearnPrompt] = useState('');
-
+  const [step, setStep] = useState(0);
+  const [role, setRole] = useState<string | null>(null);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [goal, setGoal] = useState<string | null>(null);
+  const [timeCommitment, setTimeCommitment] = useState<string | null>(null);
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
 
-  const toggle = (list: string[], setList: (v: string[]) => void, item: string) => {
-    setList(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
-  };
+  const canContinue =
+  step === 0 ? role !== null :
+  step === 1 ? interests.length > 0 :
+  step === 2 ? goal !== null :
+  timeCommitment !== null;
 
-  // Fire a profile save without blocking navigation — persistence is
-  // best-effort here, not a gate on the onboarding UX.
-  const persist = (fields: Parameters<typeof saveProfile>[0]) => {
-    saveProfile(fields).catch((err) => console.error('Failed to save profile:', err));
+  const toggleInterest = (interest: string) => {
+    setInterests((prev) =>
+    prev.includes(interest) ? prev.filter((i) => i !== interest) : [...prev, interest]
+    );
   };
-
-  useEffect(() => {
-    if (step === STEP.LOADING) {
-      const t = setTimeout(() => setStep(STEP.FINAL), 1800);
-      return () => clearTimeout(t);
-    }
-  }, [step]);
 
   const handleBack = () => {
-    if (step === STEP.AUTH) {
+    if (step === 0) {
       navigate('/');
     } else {
       setStep((s) => s - 1);
     }
   };
 
-  const handleAuthSubmit = async () => {
-    setAuthError('');
-    setAuthLoading(true);
-    try {
-      if (authMode === 'signup') {
-        await signUp({
-          username: authEmail,
-          password: authPassword,
-          options: { userAttributes: { email: authEmail } }
-        });
-        setAuthStage('confirm');
-      } else {
-        await signIn({ username: authEmail, password: authPassword });
-        setStep(STEP.WELCOME);
-      }
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setAuthLoading(false);
+  const handleContinue = () => {
+    if (!canContinue) return;
+    if (step < TOTAL_STEPS - 1) {
+      setStep((s) => s + 1);
+    } else {
+      // Onboarding data collected: { role, interests, goal, timeCommitment }
+      // Next step in the roadmap: the "what do you want to learn?" input +
+      // generation call. For now this just confirms completion.
+      setStep(TOTAL_STEPS);
     }
   };
-
-  const handleConfirmSubmit = async () => {
-    setAuthError('');
-    setAuthLoading(true);
-    try {
-      await confirmSignUp({ username: authEmail, confirmationCode: confirmCode });
-      await signIn({ username: authEmail, password: authPassword });
-      setStep(STEP.WELCOME);
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Invalid code. Please try again.');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  // Requires Google/Facebook configured as external providers in
-  // amplify/auth/resource.ts with your own OAuth app credentials — see the
-  // comment in that file. Will error until that's set up.
-  const handleSocialAuth = (provider: 'Google' | 'Facebook') => {
-    signInWithRedirect({ provider }).catch((err) =>
-    setAuthError(err instanceof Error ? err.message : `${provider} sign-in isn't configured yet.`)
-    );
-  };
-
-  const canContinue =
-  step === STEP.AUTH ? authEmail.trim().length > 0 && authPassword.trim().length > 0 :
-  step === STEP.WORK_TYPE ? workTypes.length > 0 :
-  step === STEP.TOPICS ? topics.length > 0 :
-  step === STEP.GOALS ? goals.length > 0 :
-  step === STEP.TIME ? timeId !== null :
-  true;
-
-  const progress = PROGRESS_BY_STEP[step];
 
   return (
     <div className="min-h-[100dvh] bg-surface flex flex-col">
-      {/* Top bar */}
-      <div className="w-full px-6 pt-6 pb-2 flex items-start">
-        <button
-          onClick={handleBack}
-          className="p-2 -ml-2 text-body hover:text-ink transition-colors shrink-0"
-          aria-label="Back">
+      {/* Top bar: back + progress */}
+      <div className="w-full px-6 pt-6 pb-4">
+        <div className="max-w-xl mx-auto flex items-center gap-4">
+          <button
+            onClick={handleBack}
+            className="p-2 -ml-2 text-body hover:text-ink transition-colors"
+            aria-label="Back">
 
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        {progress !== undefined &&
-        <div className="flex-1">
-            <ProgressBar value={progress / TOTAL_QUESTIONS} />
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1 h-2.5 rounded-full bg-surface-alt border border-line overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-cobalt to-purple"
+              initial={false}
+              animate={{ width: `${Math.min(step, TOTAL_STEPS) / TOTAL_STEPS * 100}%` }}
+              transition={{ duration: 0.4, ease: 'easeInOut' }} />
+
           </div>
-        }
+        </div>
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={`${step}-${authStage}`}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-          className="flex-1 flex flex-col">
+      {/* Step content */}
+      <div className="flex-1 flex items-center justify-center px-6 py-8">
+        <div className="w-full max-w-xl">
+          <AnimatePresence mode="wait">
 
-          {/* --- AUTH ------------------------------------------------ */}
-          {step === STEP.AUTH && authStage === 'form' &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-              <div className="w-full max-w-sm">
-                <div className="flex justify-center mb-6">
-                  <GrokitLogo size={40} className="text-ink" />
-                </div>
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
-                  {authMode === 'signup' ? 'Create your account' : 'Log in'}
-                </h1>
-                <p className="text-body font-sans text-sm text-center mb-8">
-                  {authMode === 'signup' ?
-                'One step from a personalized learning path.' :
-                'Welcome back.'}
-                </p>
+            {step === 0 &&
+            <motion.div
+              key="role"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3 }}>
 
-                <div className="flex flex-col gap-3 mb-2">
-                  <input
-                  type="email"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="Email"
-                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-teal transition-colors" />
-
-                  <input
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="Password"
-                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-teal transition-colors" />
-
-                </div>
-
-                {authError &&
-              <p className="text-sm text-red-600 font-sans font-semibold mb-3">{authError}</p>
-              }
-
-                <button
-                onClick={handleAuthSubmit}
-                disabled={!canContinue || authLoading}
-                className="btn-duo w-full px-6 py-3.5 text-base disabled:opacity-40 mb-5 mt-3">
-
-                  {authLoading ? 'Please wait...' : authMode === 'signup' ? 'Sign up' : 'Log in'}
-                </button>
-
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="flex-1 h-px bg-line" />
-                  <span className="text-xs text-muted font-sans font-bold uppercase tracking-wider">or</span>
-                  <div className="flex-1 h-px bg-line" />
-                </div>
-
-                <div className="flex flex-col gap-3 mb-6">
-                  <button
-                  onClick={() => handleSocialAuth('Google')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-line text-ink font-sans font-bold hover:bg-surface-alt transition-colors">
-
-                    <span className="text-[#4285F4] font-extrabold">G</span> Continue with Google
-                  </button>
-                  <button
-                  onClick={() => handleSocialAuth('Facebook')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-line text-ink font-sans font-bold hover:bg-surface-alt transition-colors">
-
-                    <span className="text-[#1877F2] font-extrabold">f</span> Continue with Facebook
-                  </button>
-                </div>
-
-                <p className="text-center text-sm text-muted font-sans">
-                  {authMode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}
-                  <button
-                  onClick={() => {
-                    setAuthMode(authMode === 'signup' ? 'login' : 'signup');
-                    setAuthError('');
-                  }}
-                  className="text-teal font-bold hover:underline">
-
-                    {authMode === 'signup' ? 'Log in' : 'Sign up'}
-                  </button>
-                </p>
-              </div>
-            </div>
-          }
-
-          {/* --- AUTH: email confirmation ----------------------------- */}
-          {step === STEP.AUTH && authStage === 'confirm' &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-              <div className="w-full max-w-sm text-center">
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-2">Check your email</h1>
-                <p className="text-body font-sans text-sm mb-8">
-                  We sent a code to <span className="font-bold text-ink">{authEmail}</span>. Enter it below.
-                </p>
-                <input
-                value={confirmCode}
-                onChange={(e) => setConfirmCode(e.target.value)}
-                placeholder="Confirmation code"
-                className="w-full text-center tracking-widest px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans font-bold placeholder:text-muted placeholder:tracking-normal placeholder:font-normal focus:outline-none focus:border-teal transition-colors mb-3" />
-
-                {authError &&
-              <p className="text-sm text-red-600 font-sans font-semibold mb-3">{authError}</p>
-              }
-                <button
-                onClick={handleConfirmSubmit}
-                disabled={!confirmCode.trim() || authLoading}
-                className="btn-duo w-full px-6 py-3.5 text-base disabled:opacity-40">
-
-                  {authLoading ? 'Verifying...' : 'Verify'}
-                </button>
-              </div>
-            </div>
-          }
-
-          {/* --- WELCOME ---------------------------------------------- */}
-          {step === STEP.WELCOME &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-              <div className="relative mb-8">
-                <div className="px-5 py-3 rounded-2xl bg-surface-alt border border-line font-sans font-bold text-ink mb-3">
-                  Thanks for being here!
-                </div>
-                <GrokitMascot size={110} pose="wave" className="mx-auto" />
-              </div>
-              <h1 className="font-display text-2xl sm:text-3xl text-ink font-extrabold mb-2 max-w-md">
-                You're one of the first to explore Grokit
-              </h1>
-              <p className="text-body font-sans font-medium max-w-sm mb-10">
-                It's early — your input will help shape what's next.
-              </p>
-
-              <div className="w-full max-w-xl">
-                <p className="text-sm text-body font-sans font-semibold mb-2 text-left">
-                  Join our Discord for feedback and learning tips!
-                </p>
-                <a
-                href={DISCORD_INVITE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-duo-outline w-full px-6 py-3.5 text-base mb-3">
-
-                  Join our Discord
-                </a>
-                <button onClick={() => setStep(STEP.INTRO)} className="btn-duo w-full px-6 py-3.5 text-base">
-                  Let's go!
-                </button>
-              </div>
-            </div>
-          }
-
-          {/* --- INTRO -------------------------------------------------- */}
-          {step === STEP.INTRO &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-surface-alt flex items-center justify-center mb-6">
-                <Zap className="w-7 h-7 text-amber" />
-              </div>
-              <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2">
-                Just 4 short questions
-              </h1>
-              <p className="text-body font-sans font-medium mb-10">
-                to build a learning journey designed for you!
-              </p>
-              <div className="w-full max-w-xl">
-                <button onClick={() => setStep(STEP.WORK_TYPE)} className="btn-duo w-full px-8 py-4 text-lg">
-                  Continue
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          }
-
-          {/* --- WORK TYPE ------------------------------------------- */}
-          {step === STEP.WORK_TYPE &&
-          <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-xl mx-auto flex-1">
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
-                  What types of work do you do?
-                </h1>
-                <p className="text-body font-sans font-medium text-center mb-8">Select all that apply</p>
-                <div className="flex flex-col gap-3">
-                  {WORK_TYPES.map((type) =>
-                <OptionRow
-                  key={type}
-                  label={type}
-                  selected={workTypes.includes(type)}
-                  onClick={() => toggle(workTypes, setWorkTypes, type)} />
-
-                )}
-                </div>
-              </div>
-              <div className="w-full max-w-xl mx-auto mt-8">
-                <button
-                onClick={() => {
-                  if (!canContinue) return;
-                  persist({ workTypes });
-                  setStep(STEP.T_PERSONALIZED);
-                }}
-                disabled={!canContinue}
-                className="btn-duo w-full px-8 py-4 text-lg disabled:opacity-40">
-
-                  Continue
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          }
-
-          {step === STEP.T_PERSONALIZED &&
-          <TransitionScreen
-            pose="thinking"
-            heading="Personalized learning for you"
-            sub="We'll use examples relevant to your role and expertise when it's helpful."
-            note="You can update this anytime in your settings."
-            onContinue={() => setStep(STEP.TOPICS)} />
-
-          }
-
-          {/* --- TOPICS ------------------------------------------------ */}
-          {step === STEP.TOPICS &&
-          <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-2xl mx-auto flex-1">
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
-                  What topics interest you?
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
+                  Which one are you?
                 </h1>
                 <p className="text-body font-sans font-medium text-center mb-8">
-                  Don't worry, this won't limit your experience
+                  This helps us shape how we explain things.
                 </p>
-                <div className="flex flex-wrap justify-center gap-3 mb-6">
-                  {TOPIC_OPTIONS.map((topic) =>
-                <PillOption
-                  key={topic}
-                  label={topic}
-                  selected={topics.includes(topic)}
-                  onClick={() => toggle(topics, setTopics, topic)} />
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  {ROLE_OPTIONS.map(({ id, label, icon: Icon }) =>
+                <button
+                  key={id}
+                  onClick={() => setRole(id)}
+                  className={`flex flex-col items-center gap-3 p-5 sm:p-6 rounded-3xl border-2 transition-colors text-center ${
+                  role === id ?
+                  'bg-cobalt/10 border-cobalt' :
+                  'bg-surface-alt border-line hover:border-cobalt/30'}`
+                  }>
 
-                )}
-                  {topics.
-                filter((t) => !TOPIC_OPTIONS.includes(t)).
-                map((topic) =>
-                <PillOption key={topic} label={topic} selected onClick={() => toggle(topics, setTopics, topic)} />
+                      <Icon className={`w-7 h-7 ${role === id ? 'text-cobalt' : 'text-muted'}`} />
+                      <span className={`font-display font-bold text-sm sm:text-base ${role === id ? 'text-ink' : 'text-body'}`}>
+                        {label}
+                      </span>
+                    </button>
                 )}
                 </div>
-                <OtherInput
-                value={otherTopic}
-                onChange={setOtherTopic}
-                placeholder="Other topics (optional)"
-                onAdd={() => {
-                  if (otherTopic.trim()) {
-                    setTopics([...topics, otherTopic.trim()]);
-                    setOtherTopic('');
-                  }
-                }} />
+              </motion.div>
+            }
 
-              </div>
-              <div className="w-full max-w-2xl mx-auto mt-8">
-                <button
-                onClick={() => {
-                  if (!canContinue) return;
-                  persist({ topics });
-                  setStep(STEP.T_PERFECT);
-                }}
-                disabled={!canContinue}
-                className="btn-duo w-full px-8 py-4 text-lg disabled:opacity-40">
+            {step === 1 &&
+            <motion.div
+              key="interests"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3 }}>
 
-                  Continue
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          }
-
-          {step === STEP.T_PERFECT &&
-          <TransitionScreen
-            pose="celebrate"
-            heading="Perfect choice! We'll use this to find the best courses for you"
-            sub="You can also build your own course for any topic you want to learn."
-            onContinue={() => setStep(STEP.GOALS)} />
-
-          }
-
-          {/* --- GOALS --------------------------------------------------- */}
-          {step === STEP.GOALS &&
-          <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-xl mx-auto flex-1">
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
-                  What do you want to achieve?
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
+                  What are you into?
                 </h1>
-                <p className="text-body font-sans font-medium text-center mb-8">Select all that apply</p>
-                <div className="flex flex-col gap-3 mb-4">
-                  {GOAL_OPTIONS.map((goal) =>
-                <OptionRow
-                  key={goal}
-                  label={goal}
-                  selected={goals.includes(goal)}
-                  onClick={() => toggle(goals, setGoals, goal)} />
+                <p className="text-body font-sans font-medium text-center mb-8">
+                  Pick as many as you like. This just gives us a starting point.
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  {INTEREST_OPTIONS.map((interest) => {
+                  const selected = interests.includes(interest);
+                  return (
+                    <button
+                      key={interest}
+                      onClick={() => toggleInterest(interest)}
+                      className={`inline-flex items-center gap-2 px-5 py-3 rounded-full border-2 font-sans font-bold text-sm sm:text-base transition-colors ${
+                      selected ?
+                      'bg-cobalt/10 border-cobalt text-ink' :
+                      'bg-surface-alt border-line text-body hover:border-cobalt/30'}`
+                      }>
 
-                )}
-                  {goals.
-                filter((g) => !GOAL_OPTIONS.includes(g)).
-                map((goal) =>
-                <OptionRow key={goal} label={goal} selected onClick={() => toggle(goals, setGoals, goal)} />
-                )}
+                        {selected && <Check className="w-4 h-4 text-cobalt" />}
+                        {interest}
+                      </button>);
+
+                })}
                 </div>
-                <OtherInput
-                value={otherGoal}
-                onChange={setOtherGoal}
-                placeholder="Other (optional)"
-                onAdd={() => {
-                  if (otherGoal.trim()) {
-                    setGoals([...goals, otherGoal.trim()]);
-                    setOtherGoal('');
-                  }
-                }} />
+              </motion.div>
+            }
 
-              </div>
-              <div className="w-full max-w-xl mx-auto mt-8">
-                <button
-                onClick={() => {
-                  if (!canContinue) return;
-                  persist({ goals });
-                  setStep(STEP.T_GREAT);
-                }}
-                disabled={!canContinue}
-                className="btn-duo w-full px-8 py-4 text-lg disabled:opacity-40">
+            {step === 2 &&
+            <motion.div
+              key="goal"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3 }}>
 
-                  Continue
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          }
-
-          {step === STEP.T_GREAT &&
-          <TransitionScreen
-            pose="wave"
-            heading="Great! We'll help you learn what you thought you didn't have time for"
-            sub="Finally learn the things you've always wanted to learn."
-            onContinue={() => setStep(STEP.TIME)} />
-
-          }
-
-          {/* --- TIME --------------------------------------------------- */}
-          {step === STEP.TIME &&
-          <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-xl mx-auto flex-1">
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-8 text-center">
-                  How long do you want to learn every day?
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
+                  What's your goal?
                 </h1>
+                <p className="text-body font-sans font-medium text-center mb-8">
+                  We'll shape your path around this.
+                </p>
                 <div className="flex flex-col gap-3">
+                  {GOAL_OPTIONS.map(({ id, label, description }) =>
+                <button
+                  key={id}
+                  onClick={() => setGoal(id)}
+                  className={`text-left p-5 rounded-2xl border-2 transition-colors ${
+                  goal === id ?
+                  'bg-cobalt/10 border-cobalt' :
+                  'bg-surface-alt border-line hover:border-cobalt/30'}`
+                  }>
+
+                      <div className={`font-display font-bold mb-1 ${goal === id ? 'text-ink' : 'text-body'}`}>
+                        {label}
+                      </div>
+                      <div className="text-sm text-muted font-sans font-medium">{description}</div>
+                    </button>
+                )}
+                </div>
+              </motion.div>
+            }
+
+            {step === 3 &&
+            <motion.div
+              key="time"
+              initial={{ opacity: 0, x: 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -30 }}
+              transition={{ duration: 0.3 }}>
+
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2 text-center">
+                  How much time per day?
+                </h1>
+                <p className="text-body font-sans font-medium text-center mb-8">
+                  Be realistic, you can always change this later.
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   {TIME_OPTIONS.map(({ id, label, description }) =>
                 <button
                   key={id}
-                  onClick={() => setTimeId(id)}
-                  className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-colors ${
-                  timeId === id ?
-                  'bg-teal/10 border-teal' :
-                  'bg-surface-alt border-line hover:border-teal/30'}`
+                  onClick={() => setTimeCommitment(id)}
+                  className={`text-center p-5 rounded-2xl border-2 transition-colors ${
+                  timeCommitment === id ?
+                  'bg-cobalt/10 border-cobalt' :
+                  'bg-surface-alt border-line hover:border-cobalt/30'}`
                   }>
 
-                      <span className={`font-display font-extrabold text-lg ${timeId === id ? 'text-ink' : 'text-body'}`}>
+                      <div className={`font-display font-extrabold text-2xl mb-1 ${timeCommitment === id ? 'text-ink' : 'text-body'}`}>
                         {label}
-                      </span>
-                      <span className="text-muted font-sans text-sm">{description}</span>
+                      </div>
+                      <div className="text-xs text-muted font-sans font-medium">{description}</div>
                     </button>
                 )}
                 </div>
-              </div>
-              <div className="w-full max-w-xl mx-auto mt-8">
-                <button
-                onClick={() => {
-                  if (!canContinue || !timeId) return;
-                  persist({ timeCommitment: timeId });
-                  setStep(STEP.T_BOOKS);
-                }}
-                disabled={!canContinue}
-                className="btn-duo w-full px-8 py-4 text-lg disabled:opacity-40">
+              </motion.div>
+            }
 
-                  Continue
-                  <ArrowRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          }
+            {step === TOTAL_STEPS &&
+            <motion.div
+              key="done"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="text-center">
 
-          {step === STEP.T_BOOKS && (() => {
-            const lessonsPerWeek = timeId === '5' ? 7 : timeId === '10' ? 10 : timeId === '15' ? 12 : 14;
-            return (
-              <TransitionScreen
-                pose="celebrate"
-                heading={`${lessonsPerWeek} lessons in your first week`}
-                sub="You're on your way to building a lasting learning habit!"
-                onContinue={() => setStep(STEP.LOADING)} />);
-
-
-          })()}
-
-          {/* --- LOADING ------------------------------------------------- */}
-          {step === STEP.LOADING &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-              <GrokitMascot size={120} pose="thinking" className="mb-6" />
-              <p className="text-body font-sans font-semibold">
-                Picking courses based on your role, goals, and interests...
-              </p>
-            </div>
-          }
-
-          {/* --- FINAL PROMPT --------------------------------------------- */}
-          {step === STEP.FINAL &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-              <div className="w-full max-w-2xl mx-auto text-center">
-                <GrokitMascot size={90} pose="idle" className="mx-auto mb-6" />
-                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-2">
-                  What do you want to learn?
+                <GrokitLogo size={56} className="mx-auto mb-6" animate />
+                <h1 className="font-display text-3xl sm:text-4xl text-ink font-extrabold mb-3">
+                  You're all set.
                 </h1>
-                <p className="text-body font-sans font-medium mb-8">
-                  Tell me what you're curious about, and I'll build a personalized course for you.
+                <p className="text-body font-sans font-medium mb-8 max-w-md mx-auto">
+                  Next, tell Grokit what you want to learn and we'll build your first course.
+                  That part is coming very soon — join the waitlist and we'll email you the
+                  moment it's ready.
                 </p>
-
-                <div className="bg-surface-alt border border-line rounded-3xl p-5 mb-3 text-left">
-                  <textarea
-                  value={learnPrompt}
-                  onChange={(e) => setLearnPrompt(e.target.value)}
-                  placeholder="I want to learn about..."
-                  className="w-full min-h-[80px] bg-transparent outline-none resize-none text-ink font-sans placeholder:text-muted" />
-
-                  <div className="flex justify-end pt-3 border-t border-line mt-3">
-                    <button
-                    onClick={() => {
-                      if (!learnPrompt.trim()) return;
-                      persist({ learnPrompt, onboardingCompleted: true });
-                      setIsWaitlistOpen(true);
-                    }}
-                    disabled={!learnPrompt.trim()}
-                    className="btn-duo px-6 py-3 text-base disabled:opacity-40">
-
-                      Create my learning path
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                <p className="text-sm text-muted font-sans font-semibold text-left mb-4 mt-8">
-                  Or, see what people like you are learning
-                </p>
-                <div className="flex flex-col gap-3 text-left">
-                  {EXAMPLE_COURSES.map((course) =>
-                <button
-                  key={course.title}
+                <div className="flex flex-col items-center gap-4">
+                  <button
                   onClick={() => setIsWaitlistOpen(true)}
-                  className="flex items-center gap-4 p-3 rounded-2xl border border-line bg-surface hover:border-teal/30 transition-colors">
+                  className="btn-duo px-8 py-4 text-lg">
 
-                      <span className="shrink-0 w-16 h-16 rounded-xl bg-teal/10 flex items-center justify-center text-xs font-bold text-teal text-center px-1">
-                        {course.tag}
-                      </span>
-                      <span>
-                        <span className="block font-display font-bold text-ink">{course.title}</span>
-                        <span className="block text-xs text-muted font-sans font-semibold mb-1">{course.author}</span>
-                        <span className="block text-sm text-body font-sans">{course.blurb}</span>
-                      </span>
-                    </button>
-                )}
+                    Join the waitlist
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                  <button
+                  onClick={() => navigate('/')}
+                  className="text-sm text-muted hover:text-body font-sans font-bold transition-colors">
+
+                    Back to home
+                  </button>
                 </div>
-              </div>
-            </div>
-          }
-        </motion.div>
-      </AnimatePresence>
+              </motion.div>
+            }
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Bottom action bar */}
+      {step < TOTAL_STEPS &&
+      <div className="w-full px-6 pb-8 pt-4">
+          <div className="max-w-xl mx-auto">
+            <button
+            onClick={handleContinue}
+            disabled={!canContinue}
+            className="btn-duo w-full px-8 py-4 text-lg disabled:opacity-40">
+
+              Continue
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      }
 
       <WaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
-    </div>);
-
+    </div>
+    );
 }

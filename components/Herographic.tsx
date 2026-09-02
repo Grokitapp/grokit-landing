@@ -23,7 +23,7 @@ export function HeroGraphic() {
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-[85%] rounded-full"
         style={{
-          background: 'radial-gradient(circle, rgba(13,148,136,0.12) 0%, rgba(245,166,35,0.08) 55%, transparent 75%)',
+          background: 'radial-gradient(circle, rgba(79,70,229,0.12) 0%, rgba(245,166,35,0.08) 55%, transparent 75%)',
           filter: 'blur(20px)'
         }} />
 
@@ -44,7 +44,7 @@ export function HeroGraphic() {
           y: { duration: 4, repeat: Infinity, ease: 'easeInOut', delay }
         }}>
 
-          <Icon className="w-3.5 h-3.5 text-teal shrink-0" />
+          <Icon className="w-3.5 h-3.5 text-cobalt shrink-0" />
           <span className="text-xs font-sans font-bold text-body whitespace-nowrap">{label}</span>
         </motion.div>
       )}
