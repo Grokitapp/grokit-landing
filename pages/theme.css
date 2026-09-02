@@ -1,29 +1,33 @@
 /**
  * THEME CONFIGURATION - Tailwind v4
- * Grokit Light Design System v3 — teal + amber
+ * Grokit Light Design System v2
  *
  * IMPORTANT: Tokens must live inside @theme (not :root) for Tailwind v4
- * to generate matching utility classes like bg-teal, text-body,
+ * to generate matching utility classes like bg-cobalt, text-body,
  * border-line, font-display, etc.
  */
 @theme {
 	/* Core palette */
 	--color-surface: #FFFFFF;       /* page / section background */
-	--color-surface-alt: #F3FAF9;   /* cards, elevated panels, inputs (faint teal tint) */
-	--color-line: #E2EDEB;          /* borders, dividers */
-	--color-ink: #10201D;           /* headings, primary text */
-	--color-body: #4B5D59;          /* paragraph / secondary text */
-	--color-muted: #708983;         /* tertiary text, inactive states */
+	--color-surface-alt: #F5F4FF;   /* cards, elevated panels, inputs (faint indigo tint) */
+	--color-line: #E7E7EF;          /* borders, dividers */
+	--color-ink: #14151A;           /* headings, primary text */
+	--color-body: #565B66;          /* paragraph / secondary text */
+	--color-muted: #8A8F99;         /* tertiary text, inactive states */
 	--color-on-primary: #FFFFFF;    /* text on filled accent buttons */
 
-	/* Brand accent — teal (replaces indigo/purple) */
-	--color-teal: #0D9488;
-	--color-teal-bright: #14B8A6;
-	--color-teal-glow: #0F766E;
+	/* Brand accent — single confident indigo (replaces the old blue/purple/cyan gradient) */
+	--color-cobalt: #4F46E5;
+	--color-cobalt-bright: #6366F1;
+	--color-cobalt-glow: #4338CA;
 
-	/* Warm secondary accent — energy, highlights, personality touches */
+	/* Warm secondary accent — for highlights, badges, personality touches */
 	--color-amber: #F5A623;
 	--color-amber-glow: #D98C0F;
+
+	/* Supporting tones — used sparingly (FinalCTA card gradient only) */
+	--color-purple: #7C5CFC;
+	--color-cyan: #0E9AAE;
 
 	/* Typography - bold, rounded, friendly */
 	--font-display: 'Baloo 2', system-ui, sans-serif;
