@@ -19,7 +19,7 @@ export function HighlightStrip() {
 
         {highlights.map(({ icon: Icon, label }) =>
         <div key={label} className="flex items-center gap-2">
-            <Icon className="w-4 h-4 text-cobalt shrink-0" />
+            <Icon className="w-4 h-4 text-teal shrink-0" />
             <span className="text-xs sm:text-sm font-sans font-bold text-body whitespace-nowrap">
               {label}
             </span>

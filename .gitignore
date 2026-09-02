@@ -62,3 +62,8 @@ coverage/
 
 # Vite
 vite.config.ts.timestamp-*
+
+# amplify
+.amplify
+amplify_outputs*
+amplifyconfiguration*
