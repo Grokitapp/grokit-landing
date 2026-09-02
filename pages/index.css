@@ -9,8 +9,6 @@
 	html,
 	body {
 		background-color: var(--color-surface);
-		/* Safety net: stops any oversized/off-screen element from causing
-		   horizontal scroll and exposing the browser's default background. */
 		overflow-x: hidden;
 		max-width: 100%;
 	}
@@ -55,8 +53,8 @@
 		font-weight: 700;
 		letter-spacing: 0.02em;
 		color: var(--color-on-primary);
-		background: var(--color-cobalt);
-		box-shadow: 0 5px 0 var(--color-cobalt-glow);
+		background: var(--color-teal);
+		box-shadow: 0 5px 0 var(--color-teal-glow);
 		transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
 	}
 	.btn-duo:hover {
@@ -65,7 +63,7 @@
 	}
 	.btn-duo:active {
 		transform: translateY(4px);
-		box-shadow: 0 1px 0 var(--color-cobalt-glow);
+		box-shadow: 0 1px 0 var(--color-teal-glow);
 	}
 	.btn-duo:disabled {
 		opacity: 0.6;
