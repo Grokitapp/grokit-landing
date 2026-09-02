@@ -73,7 +73,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
       <div
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full"
       style={{
-        background: 'radial-gradient(circle, rgba(79,70,229,0.08) 0%, transparent 60%)',
+        background: 'radial-gradient(circle, rgba(13,148,136,0.08) 0%, transparent 60%)',
         filter: 'blur(60px)'
       }} />
 
@@ -88,7 +88,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
             animate={{ opacity: 0.6, scale: 1 }}
             exit={{ opacity: 0, scale: 0, y: -50 }}
             transition={{ duration: 1 }}
-            className="absolute w-2 h-2 rounded-full bg-cobalt"
+            className="absolute w-2 h-2 rounded-full bg-teal"
             style={{ left: `${particle.x}%`, top: `${particle.y}%` }} />
 
           )}
@@ -104,7 +104,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           viewport={{ once: true }}>
 
           <h2 className="font-display text-3xl sm:text-4xl md:text-6xl lg:text-7xl text-ink font-extrabold">
-            What do you want to <span className="text-cobalt">understand?</span>
+            What do you want to <span className="text-teal">understand?</span>
           </h2>
         </motion.div>
 
@@ -116,10 +116,10 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           transition={{ delay: 0.2 }}
           className="relative">
 
-          <div className="relative bg-surface-alt border border-line rounded-3xl p-6 md:p-8 hover:border-cobalt/30 transition-colors duration-500">
+          <div className="relative bg-surface-alt border border-line rounded-3xl p-6 md:p-8 hover:border-teal/30 transition-colors duration-500">
             {/* Decorative element */}
             <div className="absolute -top-3 left-8 px-3 py-1 bg-surface border border-line rounded-full">
-              <Sparkles className="w-4 h-4 text-cobalt" />
+              <Sparkles className="w-4 h-4 text-teal" />
             </div>
 
             <textarea
@@ -162,7 +162,7 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.5 + idx * 0.1 }}
-            className="px-4 py-2 text-sm font-sans font-bold text-body border border-line rounded-full hover:border-cobalt hover:text-cobalt transition-colors duration-300"
+            className="px-4 py-2 text-sm font-sans font-bold text-body border border-line rounded-full hover:border-teal hover:text-teal transition-colors duration-300"
             disabled={isTyping}>
 
               {prompt}
