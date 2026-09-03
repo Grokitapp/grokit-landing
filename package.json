@@ -1,16 +1,19 @@
 {
   "devDependencies": {
+    "@aws-amplify/backend": "^1.24.0",
+    "@aws-amplify/backend-cli": "^1.9.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.1.0",
     "gh-pages": "^6.3.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "typescript": "^7.0.2",
+    "typescript": "^5.9.3",
     "vite": "^8.2.2"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "aws-amplify": "^6.20.0",
     "framer-motion": "^13.1.1",
     "lucide-react": "^1.33.0",
     "react-router": "^7.18.2",
