@@ -1,29 +1,25 @@
 /**
  * THEME CONFIGURATION - Tailwind v4
- * Grokit Light Design System v3 — teal + amber
- *
- * IMPORTANT: Tokens must live inside @theme (not :root) for Tailwind v4
- * to generate matching utility classes like bg-teal, text-body,
- * border-line, font-display, etc.
+ * Grokit Light Design System v4 — orange and gold
  */
 @theme {
 	/* Core palette */
 	--color-surface: #FFFFFF;       /* page / section background */
-	--color-surface-alt: #F3FAF9;   /* cards, elevated panels, inputs (faint teal tint) */
-	--color-line: #E2EDEB;          /* borders, dividers */
-	--color-ink: #10201D;           /* headings, primary text */
-	--color-body: #4B5D59;          /* paragraph / secondary text */
-	--color-muted: #708983;         /* tertiary text, inactive states */
+	--color-surface-alt: #FDF6F2;   /* cards, elevated panels, inputs (faint warm tint) */
+	--color-line: #F0E3DA;          /* borders, dividers */
+	--color-ink: #201510;           /* headings, primary text */
+	--color-body: #5D4F47;          /* paragraph / secondary text */
+	--color-muted: #8A796E;         /* tertiary text, inactive states */
 	--color-on-primary: #FFFFFF;    /* text on filled accent buttons */
 
-	/* Brand accent — teal (replaces indigo/purple) */
-	--color-teal: #0D9488;
-	--color-teal-bright: #14B8A6;
-	--color-teal-glow: #0F766E;
+	/* Brand accent — orange */
+	--color-orange: #C2410C;
+	--color-orange-bright: #EA580C;
+	--color-orange-glow: #9A3412;
 
-	/* Warm secondary accent — energy, highlights, personality touches */
-	--color-amber: #F5A623;
-	--color-amber-glow: #D98C0F;
+	/* Warm secondary accent — gold, kept distinct from orange for contrast against it */
+	--color-amber: #FDB022;
+	--color-amber-glow: #DC8B0A;
 
 	/* Typography - bold, rounded, friendly */
 	--font-display: 'Baloo 2', system-ui, sans-serif;

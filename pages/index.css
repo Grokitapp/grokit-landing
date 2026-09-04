@@ -53,8 +53,8 @@
 		font-weight: 700;
 		letter-spacing: 0.02em;
 		color: var(--color-on-primary);
-		background: var(--color-teal);
-		box-shadow: 0 5px 0 var(--color-teal-glow);
+		background: var(--color-orange);
+		box-shadow: 0 5px 0 var(--color-orange-glow);
 		transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
 	}
 	.btn-duo:hover {
@@ -63,7 +63,7 @@
 	}
 	.btn-duo:active {
 		transform: translateY(4px);
-		box-shadow: 0 1px 0 var(--color-teal-glow);
+		box-shadow: 0 1px 0 var(--color-orange-glow);
 	}
 	.btn-duo:disabled {
 		opacity: 0.6;

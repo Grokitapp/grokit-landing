@@ -77,7 +77,7 @@ export function Footer() {
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-2 text-body hover:text-teal transition-colors"
+                className="p-2 text-body hover:text-orange transition-colors"
                 aria-label={label}
               >
                 <Icon className="w-5 h-5" />

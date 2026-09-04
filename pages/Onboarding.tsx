@@ -77,7 +77,7 @@ function ProgressBar({ value }: {value: number;}) {
     <div className="w-full px-6 pt-6 pb-2">
       <div className="max-w-xl mx-auto h-2.5 rounded-full bg-surface-alt border border-line overflow-hidden">
         <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-teal to-teal-bright"
+          className="h-full rounded-full bg-gradient-to-r from-orange to-amber"
           initial={false}
           animate={{ width: `${value * 100}%` }}
           transition={{ duration: 0.4, ease: 'easeInOut' }} />
@@ -93,13 +93,13 @@ function OptionRow({ label, selected, onClick }: {label: string;selected: boolea
       onClick={onClick}
       className={`w-full text-left px-5 py-4 rounded-2xl border-2 font-sans font-bold transition-colors ${
       selected ?
-      'bg-teal/10 border-teal text-ink' :
-      'bg-surface-alt border-line text-body hover:border-teal/30'}`
+      'bg-orange/10 border-orange text-ink' :
+      'bg-surface-alt border-line text-body hover:border-orange/30'}`
       }>
 
       <span className="flex items-center gap-3">
         <span className={`w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center ${
-        selected ? 'bg-teal border-teal' : 'border-line'}`
+        selected ? 'bg-orange border-orange' : 'border-line'}`
         }>
           {selected && <Check className="w-3.5 h-3.5 text-white" />}
         </span>
@@ -115,11 +115,11 @@ function PillOption({ label, selected, onClick }: {label: string;selected: boole
       onClick={onClick}
       className={`inline-flex items-center gap-2 px-5 py-3 rounded-full border-2 font-sans font-bold text-sm sm:text-base transition-colors ${
       selected ?
-      'bg-teal/10 border-teal text-ink' :
-      'bg-surface-alt border-line text-body hover:border-teal/30'}`
+      'bg-orange/10 border-orange text-ink' :
+      'bg-surface-alt border-line text-body hover:border-orange/30'}`
       }>
 
-      {selected && <Check className="w-4 h-4 text-teal" />}
+      {selected && <Check className="w-4 h-4 text-orange" />}
       {label}
     </button>);
 
@@ -132,7 +132,7 @@ function OtherInput({ value, onChange, onAdd, placeholder }: {
   placeholder: string;
 }) {
   return (
-    <div className="flex items-center gap-2 px-5 py-3 rounded-full border-2 border-line bg-surface-alt focus-within:border-teal/40 transition-colors">
+    <div className="flex items-center gap-2 px-5 py-3 rounded-full border-2 border-line bg-surface-alt focus-within:border-orange/40 transition-colors">
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -149,7 +149,7 @@ function OtherInput({ value, onChange, onAdd, placeholder }: {
         onClick={onAdd}
         disabled={!value.trim()}
         aria-label="Add"
-        className="w-7 h-7 shrink-0 rounded-full bg-teal text-white flex items-center justify-center disabled:opacity-30 transition-opacity">
+        className="w-7 h-7 shrink-0 rounded-full bg-orange text-white flex items-center justify-center disabled:opacity-30 transition-opacity">
 
         <Plus className="w-4 h-4" />
       </button>
@@ -273,12 +273,12 @@ export default function Onboarding() {
     }
   };
 
-  // Requires Google/Facebook configured as external providers in
+  // Requires Google configured as an external provider in
   // amplify/auth/resource.ts with your own OAuth app credentials — see the
   // comment in that file. Will error until that's set up.
-  const handleSocialAuth = (provider: 'Google' | 'Facebook') => {
-    signInWithRedirect({ provider }).catch((err) =>
-    setAuthError(err instanceof Error ? err.message : `${provider} sign-in isn't configured yet.`)
+  const handleGoogleAuth = () => {
+    signInWithRedirect({ provider: 'Google' }).catch((err) =>
+    setAuthError(err instanceof Error ? err.message : "Google sign-in isn't configured yet.")
     );
   };
 
@@ -341,14 +341,14 @@ export default function Onboarding() {
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   placeholder="Email"
-                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-teal transition-colors" />
+                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-orange transition-colors" />
 
                   <input
                   type="password"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   placeholder="Password"
-                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-teal transition-colors" />
+                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-orange transition-colors" />
 
                 </div>
 
@@ -370,20 +370,12 @@ export default function Onboarding() {
                   <div className="flex-1 h-px bg-line" />
                 </div>
 
-                <div className="flex flex-col gap-3 mb-6">
-                  <button
-                  onClick={() => handleSocialAuth('Google')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-line text-ink font-sans font-bold hover:bg-surface-alt transition-colors">
+                <button
+                onClick={handleGoogleAuth}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-line text-ink font-sans font-bold hover:bg-surface-alt transition-colors mb-6">
 
-                    <span className="text-[#4285F4] font-extrabold">G</span> Continue with Google
-                  </button>
-                  <button
-                  onClick={() => handleSocialAuth('Facebook')}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-line text-ink font-sans font-bold hover:bg-surface-alt transition-colors">
-
-                    <span className="text-[#1877F2] font-extrabold">f</span> Continue with Facebook
-                  </button>
-                </div>
+                  <span className="text-[#4285F4] font-extrabold">G</span> Continue with Google
+                </button>
 
                 <p className="text-center text-sm text-muted font-sans">
                   {authMode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}
@@ -392,7 +384,7 @@ export default function Onboarding() {
                     setAuthMode(authMode === 'signup' ? 'login' : 'signup');
                     setAuthError('');
                   }}
-                  className="text-teal font-bold hover:underline">
+                  className="text-orange font-bold hover:underline">
 
                     {authMode === 'signup' ? 'Log in' : 'Sign up'}
                   </button>
@@ -413,7 +405,7 @@ export default function Onboarding() {
                 value={confirmCode}
                 onChange={(e) => setConfirmCode(e.target.value)}
                 placeholder="Confirmation code"
-                className="w-full text-center tracking-widest px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans font-bold placeholder:text-muted placeholder:tracking-normal placeholder:font-normal focus:outline-none focus:border-teal transition-colors mb-3" />
+                className="w-full text-center tracking-widest px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans font-bold placeholder:text-muted placeholder:tracking-normal placeholder:font-normal focus:outline-none focus:border-orange transition-colors mb-3" />
 
                 {authError &&
               <p className="text-sm text-red-600 font-sans font-semibold mb-3">{authError}</p>
@@ -669,8 +661,8 @@ export default function Onboarding() {
                   onClick={() => setTimeId(id)}
                   className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl border-2 transition-colors ${
                   timeId === id ?
-                  'bg-teal/10 border-teal' :
-                  'bg-surface-alt border-line hover:border-teal/30'}`
+                  'bg-orange/10 border-orange' :
+                  'bg-surface-alt border-line hover:border-orange/30'}`
                   }>
 
                       <span className={`font-display font-extrabold text-lg ${timeId === id ? 'text-ink' : 'text-body'}`}>
@@ -763,9 +755,9 @@ export default function Onboarding() {
                 <button
                   key={course.title}
                   onClick={() => setIsWaitlistOpen(true)}
-                  className="flex items-center gap-4 p-3 rounded-2xl border border-line bg-surface hover:border-teal/30 transition-colors">
+                  className="flex items-center gap-4 p-3 rounded-2xl border border-line bg-surface hover:border-orange/30 transition-colors">
 
-                      <span className="shrink-0 w-16 h-16 rounded-xl bg-teal/10 flex items-center justify-center text-xs font-bold text-teal text-center px-1">
+                      <span className="shrink-0 w-16 h-16 rounded-xl bg-orange/10 flex items-center justify-center text-xs font-bold text-orange text-center px-1">
                         {course.tag}
                       </span>
                       <span>
@@ -783,6 +775,6 @@ export default function Onboarding() {
       </AnimatePresence>
 
       <WaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
-    </div>);
-
+    </div>
+    );
 }

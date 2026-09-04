@@ -155,7 +155,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     if (errors.firstName) setErrors({ ...errors, firstName: undefined });
                   }}
                   className={`w-full px-4 py-2.5 sm:py-3 bg-surface-alt border rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none transition-colors ${
-                  errors.firstName ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-teal'}`}
+                  errors.firstName ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-orange'}`}
                   placeholder="Your name" />
 
                       {errors.firstName &&
@@ -176,7 +176,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                     if (errors.email) setErrors({ ...errors, email: undefined });
                   }}
                   className={`w-full px-4 py-2.5 sm:py-3 bg-surface-alt border rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none transition-colors ${
-                  errors.email ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-teal'}`}
+                  errors.email ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-orange'}`}
                   placeholder="you@example.com" />
 
                       {errors.email &&
@@ -193,7 +193,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                   id="learnFirst"
                   value={formData.learnFirst}
                   onChange={(e) => setFormData({ ...formData, learnFirst: e.target.value })}
-                  className="w-full px-4 py-2.5 sm:py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-teal transition-colors"
+                  className="w-full px-4 py-2.5 sm:py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-orange transition-colors"
                   placeholder="e.g., Machine learning, startups, investing..." />
 
                     </div>
@@ -233,7 +233,7 @@ export function WaitlistModal({ isOpen, onClose }: WaitlistModalProps) {
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.2 }}
-                className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-teal to-teal-bright flex items-center justify-center">
+                className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-orange to-amber flex items-center justify-center">
 
                     <Check className="w-8 h-8 text-white" />
                   </motion.div>

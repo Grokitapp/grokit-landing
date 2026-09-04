@@ -40,7 +40,7 @@ export function FAQ() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}>
 
-          <span className="text-sm font-mono text-teal uppercase tracking-wider font-bold">FAQ</span>
+          <span className="text-sm font-mono text-orange uppercase tracking-wider font-bold">FAQ</span>
           <h2 className="font-display text-3xl sm:text-4xl md:text-5xl text-ink font-extrabold mt-3">
             Questions, answered.
           </h2>
