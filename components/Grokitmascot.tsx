@@ -24,8 +24,8 @@ export function GrokitMascot({ size = 140, className = '', pose = 'idle' }: Grok
   pose === 'thinking' ?
   { duration: 0.4 } :
   pose === 'celebrate' ?
-  { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } :
-  { duration: 3.5, repeat: Infinity, ease: 'easeInOut' };
+  { duration: 0.8, repeat: Infinity, ease: 'easeInOut' as const } :
+  { duration: 3.5, repeat: Infinity, ease: 'easeInOut' as const };
 
   const leftArmAnimate =
   pose === 'celebrate' ?
@@ -34,15 +34,15 @@ export function GrokitMascot({ size = 140, className = '', pose = 'idle' }: Grok
 
   const leftArmTransition =
   pose === 'celebrate' ?
-  { duration: 0.8, repeat: Infinity, ease: 'easeInOut' } :
-  { duration: 3.8, repeat: Infinity, ease: 'easeInOut' };
+  { duration: 0.8, repeat: Infinity, ease: 'easeInOut' as const } :
+  { duration: 3.8, repeat: Infinity, ease: 'easeInOut' as const };
 
   return (
     <motion.div
       className={className}
       style={{ width: size, height: size * 1.15 }}
       animate={{ y: pose === 'celebrate' ? [0, -8, 0] : [0, -6, 0] }}
-      transition={{ duration: pose === 'celebrate' ? 0.8 : 3.5, repeat: Infinity, ease: 'easeInOut' }}>
+      transition={{ duration: pose === 'celebrate' ? 0.8 : 3.5, repeat: Infinity, ease: 'easeInOut' as const }}>
 
       <svg viewBox="0 0 120 150" width={size} height={size * 1.15}>
         {/* Legs — continuous idle sway regardless of pose */}
@@ -60,7 +60,7 @@ export function GrokitMascot({ size = 140, className = '', pose = 'idle' }: Grok
           strokeLinecap="round"
           fill="none"
           animate={{ rotate: [0, i % 2 === 0 ? -6 : 6, 0] }}
-          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay: leg.delay }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' as const, delay: leg.delay }}
           style={{ transformBox: 'view-box', transformOrigin: '60px 90px' }} />
 
         )}
@@ -93,7 +93,7 @@ export function GrokitMascot({ size = 140, className = '', pose = 'idle' }: Grok
         {/* Eyes — blink via opacity */}
         <motion.g
           animate={{ opacity: [1, 1, 1, 0.15, 1, 1, 1, 1, 1] }}
-          transition={{ duration: 4.2, repeat: Infinity, ease: 'linear' }}>
+          transition={{ duration: 4.2, repeat: Infinity, ease: 'linear' as const }}>
 
           <circle cx="45" cy="50" r="9" fill="white" />
           <circle cx="45" cy="52" r="4.5" fill="var(--color-ink)" />
