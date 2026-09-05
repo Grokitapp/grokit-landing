@@ -3,7 +3,6 @@ backend:
   phases:
     build:
       commands:
-        - /usr/local/bin/dockerd-entrypoint.sh
         - npm install --cache .npm --prefer-offline
         - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
