@@ -42,7 +42,7 @@
 		border-radius: var(--radius-full);
 	}
 
-	/* Duolingo-style pill button with a "pressed 3D" shelf shadow */
+	/* Pill button with a "pressed 3D" shelf shadow */
 	.btn-duo {
 		display: inline-flex;
 		align-items: center;

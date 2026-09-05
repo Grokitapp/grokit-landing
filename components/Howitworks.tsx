@@ -134,7 +134,7 @@ export function HowItWorks() {
 
                       <div className="flex flex-col items-center">
                         <div className={`w-3 h-3 rounded-full ${
-                    idx === 0 ? 'bg-orange shadow-[0_0_10px_rgba(194,65,12,0.4)]' : 'bg-muted'}`
+                    idx === 0 ? 'bg-orange shadow-[0_0_10px_rgba(255,107,0,0.4)]' : 'bg-muted'}`
                     } />
                         {idx < (steps[1].topics?.length ?? 0) - 1 &&
                     <div className="w-0.5 h-8 bg-line" />

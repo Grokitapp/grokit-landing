@@ -23,13 +23,13 @@ export function HeroGraphic() {
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[85%] h-[85%] rounded-full"
         style={{
-          background: 'radial-gradient(circle, rgba(194,65,12,0.12) 0%, rgba(253,176,34,0.08) 55%, transparent 75%)',
+          background: 'radial-gradient(circle, rgba(255,107,0,0.12) 0%, rgba(253,176,34,0.08) 55%, transparent 75%)',
           filter: 'blur(20px)'
         }} />
 
       {/* Mascot, centered */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <GrokitMascot size={150} />
+        <GrokitMascot size={190} />
       </div>
 
       {/* Floating topic badges around the mascot */}

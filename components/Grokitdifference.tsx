@@ -39,7 +39,7 @@ export function GrokitDifference() {
       <div
       className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full opacity-10"
       style={{
-        background: 'radial-gradient(circle, rgba(194,65,12,0.3) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(255,107,0,0.3) 0%, transparent 70%)',
         filter: 'blur(80px)'
       }} />
 

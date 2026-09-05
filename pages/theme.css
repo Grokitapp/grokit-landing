@@ -1,23 +1,23 @@
 /**
  * THEME CONFIGURATION - Tailwind v4
- * Grokit Light Design System v4 — orange and gold
+ * Grokit Light Design System
  */
 @theme {
 	/* Core palette */
 	--color-surface: #FFFFFF;       /* page / section background */
-	--color-surface-alt: #FDF6F2;   /* cards, elevated panels, inputs (faint warm tint) */
-	--color-line: #F0E3DA;          /* borders, dividers */
+	--color-surface-alt: #FFF3EA;   /* cards, elevated panels, inputs (faint warm tint) */
+	--color-line: #F5E1D0;          /* borders, dividers */
 	--color-ink: #201510;           /* headings, primary text */
 	--color-body: #5D4F47;          /* paragraph / secondary text */
 	--color-muted: #8A796E;         /* tertiary text, inactive states */
 	--color-on-primary: #FFFFFF;    /* text on filled accent buttons */
 
-	/* Brand accent — orange */
-	--color-orange: #C2410C;
-	--color-orange-bright: #EA580C;
-	--color-orange-glow: #9A3412;
+	/* Brand accent — exact logo orange */
+	--color-orange: #FF6B00;
+	--color-orange-bright: #FF8A3D;
+	--color-orange-glow: #CC5500;
 
-	/* Warm secondary accent — gold, kept distinct from orange for contrast against it */
+	/* Warm secondary accent — gold, kept distinct from orange for contrast against it (e.g. badges, highlights) */
 	--color-amber: #FDB022;
 	--color-amber-glow: #DC8B0A;
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
-import { GrokitLogo } from './Grokitlogo';
+import logoLockup from '../assets/grokit-logo-lockup.png';
 
 interface NavigationProps {
   onOpenWaitlist: () => void;
@@ -47,12 +47,13 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
 
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          {/* Logo */}
-          <a href="/" className="flex items-center gap-3 group">
-            <GrokitLogo size={36} className="transition-transform duration-300 group-hover:scale-105" />
-            <span className="font-display text-xl text-ink font-extrabold tracking-tight">
-              Grokit
-            </span>
+          {/* Logo — single icon+wordmark lockup*/}
+          <a href="/" className="flex items-center group">
+            <img
+              src={logoLockup}
+              alt="Grokit"
+              className="h-9 md:h-10 w-auto transition-transform duration-300 group-hover:scale-105" />
+
           </a>
 
           {/* Center Nav - Desktop */}
@@ -100,10 +101,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
 
             <div className="p-6">
               <div className="flex justify-between items-center mb-12">
-                <div className="flex items-center gap-3">
-                  <GrokitLogo size={32} />
-                  <span className="font-display text-xl text-ink font-extrabold">Grokit</span>
-                </div>
+                <img src={logoLockup} alt="Grokit" className="h-8 w-auto" />
                 <button onClick={() => setMobileMenuOpen(false)}>
                   <X size={24} className="text-ink" />
                 </button>
