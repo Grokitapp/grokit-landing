@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import logoSrc from '../assets/grokit-logo.png';
+import logoSrc from '../assets/grokit-logo-lockup.png';
 
 interface GrokitLogoProps {
   size?: number;
