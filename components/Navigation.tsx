@@ -7,6 +7,23 @@ interface NavigationProps {
   onOpenWaitlist: () => void;
 }
 
+function Logo({ className }: { className: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return <span className={`font-display font-extrabold text-orange ${className}`}>grokit</span>;
+  }
+
+  return (
+    <img
+      src={logoLockup}
+      alt="Grokit"
+      onError={() => setFailed(true)}
+      className={`w-auto object-contain ${className}`} />
+
+    );
+}
+
 export function Navigation({ onOpenWaitlist }: NavigationProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -40,20 +57,16 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         scrolled ?
         'py-3 bg-surface/80 backdrop-blur-xl border-b border-line' :
-        'py-5 bg-transparent'}`
+        'py-4 bg-transparent'}`
         }
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
 
-        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-          {/* Logo — single icon+wordmark lockup*/}
+        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
+          {/* Logo — sized to match Duolingo's bold nav presence */}
           <a href="/" className="flex items-center group">
-            <img
-              src={logoLockup}
-              alt="Grokit"
-              className="h-9 md:h-10 w-auto transition-transform duration-300 group-hover:scale-105" />
-
+            <Logo className="h-14 md:h-16 transition-transform duration-300 group-hover:scale-105" />
           </a>
 
           {/* Center Nav - Desktop */}
@@ -101,7 +114,7 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
 
             <div className="p-6">
               <div className="flex justify-between items-center mb-12">
-                <img src={logoLockup} alt="Grokit" className="h-8 w-auto" />
+                <Logo className="h-12" />
                 <button onClick={() => setMobileMenuOpen(false)}>
                   <X size={24} className="text-ink" />
                 </button>

@@ -62,7 +62,6 @@ export function Footer() {
           <div>
             <div className="flex items-center gap-3 mb-3">
               <GrokitLogo size={28} />
-              <span className="font-display text-lg text-ink font-semibold">Grokit</span>
             </div>
             <p className="text-body text-sm max-w-xs">
               Generative learning, grounded in real knowledge.
