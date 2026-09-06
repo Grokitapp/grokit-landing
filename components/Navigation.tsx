@@ -42,7 +42,6 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
   { label: 'About', href: '#about' },
   { label: 'FAQ', href: '#faq' }];
 
-  // Smooth-scrolls to the target section without ever writing #hash into the URL bar.
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     e.preventDefault();
     const target = document.querySelector(href);
@@ -63,13 +62,11 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
         animate={{ y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}>
 
-        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-          {/* Logo — sized to match Duolingo's bold nav presence */}
+        <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between">
           <a href="/" className="flex items-center group">
             <Logo className="h-14 md:h-16 transition-transform duration-300 group-hover:scale-105" />
           </a>
 
-          {/* Center Nav - Desktop */}
           <div className="hidden md:flex items-center gap-8">
             {navLinks.map((link) =>
             <a
@@ -83,7 +80,6 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
             )}
           </div>
 
-          {/* CTA */}
           <div className="flex items-center gap-4">
             <button
               onClick={onOpenWaitlist}
@@ -92,7 +88,6 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
               Join Waitlist
             </button>
             
-            {/* Mobile Menu Button */}
             <button
             onClick={() => setMobileMenuOpen(true)}
             className="md:hidden p-2 text-ink">
@@ -103,7 +98,6 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
         </div>
       </motion.nav>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen &&
         <motion.div

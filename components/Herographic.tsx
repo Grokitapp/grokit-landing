@@ -1,9 +1,16 @@
 import { motion } from 'framer-motion';
 import { GrokitMascot } from './Grokitmascot';
 
-const ORBIT_SUBJECTS = ['Quant Trading', 'Machine Learning', 'Public Speaking', 'Startups', 'Philosophy', 'Design', 'Investing', 'Physics'];
-const ORBIT_RADIUS = 175;
-const ORBIT_DURATION = 34;
+const BADGES: { label: string; className: string; delay: number }[] = [
+{ label: 'Startups', className: 'top-0 left-1/2 -translate-x-1/2', delay: 0 },
+{ label: 'Philosophy', className: 'top-[12%] right-0', delay: 0.5 },
+{ label: 'Investing', className: 'top-1/2 -right-2 -translate-y-1/2', delay: 1.0 },
+{ label: 'Design', className: 'bottom-[15%] right-0', delay: 0.3 },
+{ label: 'Physics', className: 'bottom-0 left-1/2 -translate-x-1/2', delay: 0.8 },
+{ label: 'Quant Trading', className: 'bottom-[15%] left-0', delay: 1.3 },
+{ label: 'Machine Learning', className: 'top-1/2 -left-2 -translate-y-1/2', delay: 0.15 },
+{ label: 'Public Speaking', className: 'top-[12%] left-0', delay: 1.6 }];
+
 
 export function HeroGraphic() {
   return (
@@ -16,56 +23,44 @@ export function HeroGraphic() {
           filter: 'blur(20px)'
         }} />
 
-      {/* Ripple rings — a small nod to the octopus living in water, kept
-          subtle rather than a full ocean re-theme */}
+      {/* Ripple rings */}
       {[0, 1, 2].map((i) =>
       <motion.div
         key={i}
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange/20 pointer-events-none"
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange/25 pointer-events-none"
         style={{ width: 130, height: 130 }}
-        animate={{ scale: [1, 2.6], opacity: [0.5, 0] }}
+        animate={{ scale: [1, 2.6], opacity: [0.6, 0] }}
         transition={{ duration: 3.6, repeat: Infinity, ease: 'easeOut', delay: i * 1.2 }} />
 
       )}
 
-      {/* Mascot, centered and larger */}
+      {/* Mascot, centered */}
       <div className="absolute inset-0 flex items-center justify-center">
         <GrokitMascot size={230} />
       </div>
 
-      {/* Orbiting subject badges — desktop only, satellite/counter-rotate
-          technique: the ring rotates continuously, each badge counter-
-          rotates at the same rate so its position orbits while the label
-          itself stays upright and readable. */}
-      <motion.div
-        className="hidden md:block absolute inset-0"
-        animate={{ rotate: 360 }}
-        transition={{ duration: ORBIT_DURATION, repeat: Infinity, ease: 'linear' }}>
+      {/* Floating subject badges — desktop only, static positions + gentle bob */}
+      <div className="hidden md:block">
+        {BADGES.map(({ label, className, delay }) =>
+        <motion.div
+          key={label}
+          className={`absolute ${className} inline-flex items-center px-3.5 py-1.5 rounded-full bg-surface border border-line shadow-sm whitespace-nowrap`}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: [0, -8, 0] }}
+          transition={{
+            opacity: { duration: 0.6, delay },
+            y: { duration: 4, repeat: Infinity, ease: 'easeInOut', delay }
+          }}>
 
-        {ORBIT_SUBJECTS.map((label, i) => {
-          const angle = 360 / ORBIT_SUBJECTS.length * i;
-          return (
-            <div
-              key={label}
-              className="absolute top-1/2 left-1/2"
-              style={{ transform: `rotate(${angle}deg) translateX(${ORBIT_RADIUS}px)` }}>
+            <span className="text-xs font-sans font-bold text-body">{label}</span>
+          </motion.div>
+        )}
+      </div>
 
-              <motion.div
-                animate={{ rotate: -360 }}
-                transition={{ duration: ORBIT_DURATION, repeat: Infinity, ease: 'linear' }}
-                className="-translate-x-1/2 -translate-y-1/2 inline-flex items-center px-3.5 py-1.5 rounded-full bg-surface border border-line shadow-sm whitespace-nowrap">
-
-                <span className="text-xs font-sans font-bold text-body">{label}</span>
-              </motion.div>
-            </div>);
-
-        })}
-      </motion.div>
-
-      {/* Mobile fallback — orbit is too tight for small screens, so show a
-          simple static row instead of hiding the subjects entirely */}
+      {/* Mobile — small static row instead of scattering badges around a
+          cramped illustration */}
       <div className="md:hidden flex flex-wrap justify-center gap-2 mt-4">
-        {ORBIT_SUBJECTS.slice(0, 4).map((label) =>
+        {BADGES.slice(0, 4).map(({ label }) =>
         <div key={label} className="px-3 py-1.5 rounded-full bg-surface border border-line">
             <span className="text-xs font-sans font-bold text-body">{label}</span>
           </div>
