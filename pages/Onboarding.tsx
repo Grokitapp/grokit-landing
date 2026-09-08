@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, Link } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signUp, confirmSignUp, signIn, signInWithRedirect } from 'aws-amplify/auth';
-import { ArrowLeft, ArrowRight, Check, Plus, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Plus, Zap, AlertCircle } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
 import { GrokitMascot, type MascotPose } from '../components/Grokitmascot';
 import { WaitlistModal } from '../components/Waitlistmodal';
@@ -157,6 +157,35 @@ function OtherInput({ value, onChange, onAdd, placeholder }: {
 
 }
 
+function GoogleIcon({ className }: {className?: string;}) {
+  return (
+    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
+      <path
+        fill="#FFC107"
+        d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12
+        c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24
+        c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" />
+
+      <path
+        fill="#FF3D00"
+        d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039
+        l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
+
+      <path
+        fill="#4CAF50"
+        d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36
+        c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
+
+      <path
+        fill="#1976D2"
+        d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571
+        c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24
+        C44,22.659,43.862,21.35,43.611,20.083z" />
+
+    </svg>);
+
+}
+
 function TransitionScreen({ pose, heading, sub, note, onContinue }: {
   pose: MascotPose;
   heading: string;
@@ -200,6 +229,8 @@ export default function Onboarding() {
   const [confirmCode, setConfirmCode] = useState('');
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   // Question answers
   const [workTypes, setWorkTypes] = useState<string[]>([]);
@@ -237,8 +268,40 @@ export default function Onboarding() {
     }
   };
 
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Validates the auth form and populates per-field errors, Duolingo-style.
+  // Returns whether the form is valid so the caller can bail out early.
+  const validateAuthFields = () => {
+    let valid = true;
+    const email = authEmail.trim();
+
+    if (!email) {
+      setEmailError('Email or username is required');
+      valid = false;
+    } else if (!EMAIL_REGEX.test(email)) {
+      setEmailError('Invalid email address');
+      valid = false;
+    } else {
+      setEmailError('');
+    }
+
+    if (!authPassword) {
+      setPasswordError('Password is required');
+      valid = false;
+    } else if (authPassword.length < 8) {
+      setPasswordError('Password too short');
+      valid = false;
+    } else {
+      setPasswordError('');
+    }
+
+    return valid;
+  };
+
   const handleAuthSubmit = async () => {
     setAuthError('');
+    if (!validateAuthFields()) return;
     setAuthLoading(true);
     try {
       if (authMode === 'signup') {
@@ -324,7 +387,7 @@ export default function Onboarding() {
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
               <div className="w-full max-w-sm">
                 <div className="flex justify-center mb-6">
-                  <GrokitLogo size={40} className="text-ink" />
+                  <GrokitLogo size={72} className="text-ink" />
                 </div>
                 <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
                   {authMode === 'signup' ? 'Create your account' : 'Log in'}
@@ -336,29 +399,56 @@ export default function Onboarding() {
                 </p>
 
                 <div className="flex flex-col gap-3 mb-2">
-                  <input
-                  type="email"
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  placeholder="Email"
-                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-orange transition-colors" />
+                  <div>
+                    <input
+                    type="email"
+                    value={authEmail}
+                    onChange={(e) => {
+                      setAuthEmail(e.target.value);
+                      if (emailError) setEmailError('');
+                    }}
+                    placeholder="Email"
+                    className={`w-full px-4 py-3 bg-surface-alt border rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none transition-colors ${
+                    emailError ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-orange'}`
+                    } />
 
-                  <input
-                  type="password"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  placeholder="Password"
-                  className="w-full px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none focus:border-orange transition-colors" />
+                    {emailError &&
+                  <p className="flex items-center gap-1.5 text-sm text-red-600 font-sans font-semibold mt-1.5">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        {emailError}
+                      </p>
+                  }
+                  </div>
 
+                  <div>
+                    <input
+                    type="password"
+                    value={authPassword}
+                    onChange={(e) => {
+                      setAuthPassword(e.target.value);
+                      if (passwordError) setPasswordError('');
+                    }}
+                    placeholder="Password"
+                    className={`w-full px-4 py-3 bg-surface-alt border rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none transition-colors ${
+                    passwordError ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-orange'}`
+                    } />
+
+                    {passwordError &&
+                  <p className="flex items-center gap-1.5 text-sm text-red-600 font-sans font-semibold mt-1.5">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        {passwordError}
+                      </p>
+                  }
+                  </div>
                 </div>
 
                 {authError &&
-              <p className="text-sm text-red-600 font-sans font-semibold mb-3">{authError}</p>
+              <p className="text-sm text-red-600 font-sans font-semibold mb-3 mt-3">{authError}</p>
               }
 
                 <button
                 onClick={handleAuthSubmit}
-                disabled={!canContinue || authLoading}
+                disabled={authLoading}
                 className="btn-duo w-full px-6 py-3.5 text-base disabled:opacity-40 mb-5 mt-3">
 
                   {authLoading ? 'Please wait...' : authMode === 'signup' ? 'Sign up' : 'Log in'}
@@ -372,22 +462,32 @@ export default function Onboarding() {
 
                 <button
                 onClick={handleGoogleAuth}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-line text-ink font-sans font-bold hover:bg-surface-alt transition-colors mb-6">
+                className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-full border border-line bg-surface-alt text-ink font-sans font-bold hover:bg-surface transition-colors mb-6">
 
-                  <span className="text-[#4285F4] font-extrabold">G</span> Continue with Google
+                  <GoogleIcon className="w-5 h-5 shrink-0" />
+                  Continue with Google
                 </button>
 
-                <p className="text-center text-sm text-muted font-sans">
+                <p className="text-center text-sm text-muted font-sans mb-4">
                   {authMode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}
                   <button
                   onClick={() => {
                     setAuthMode(authMode === 'signup' ? 'login' : 'signup');
                     setAuthError('');
+                    setEmailError('');
+                    setPasswordError('');
                   }}
                   className="text-orange font-bold hover:underline">
 
                     {authMode === 'signup' ? 'Log in' : 'Sign up'}
                   </button>
+                </p>
+
+                <p className="text-center text-xs text-muted font-sans leading-relaxed">
+                  By {authMode === 'signup' ? 'signing up for' : 'signing in to'} Grokit, you agree to our{' '}
+                  <Link to="/terms" className="text-body font-bold hover:underline">Terms</Link>
+                  {' '}and{' '}
+                  <Link to="/privacy" className="text-body font-bold hover:underline">Privacy Policy</Link>.
                 </p>
               </div>
             </div>

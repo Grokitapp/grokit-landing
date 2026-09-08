@@ -8,12 +8,16 @@
 import { Routes, Route } from 'react-router';
 import Index from './Index';
 import Onboarding from './Onboarding';
+import Terms from './Terms';
+import PrivacyPolicy from './Privacypolicy';
 
 export default function App() {
 	return (
 		<Routes>
 			<Route path="/" element={<Index />} />
 			<Route path="/onboarding" element={<Onboarding />} />
+			<Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
 		</Routes>
 	);
 }
