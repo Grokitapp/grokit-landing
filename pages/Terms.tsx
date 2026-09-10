@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
 
@@ -22,12 +22,18 @@ function Section({ title, children }: {title: string;children: React.ReactNode;}
 }
 
 export default function Terms() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-[100dvh] bg-surface flex flex-col">
       <div className="w-full px-6 pt-6 pb-2 flex items-center gap-4">
-        <Link to="/" className="p-2 -ml-2 text-body hover:text-ink transition-colors shrink-0" aria-label="Back">
+        <button
+          onClick={() => navigate(-1)}
+          className="p-2 -ml-2 text-body hover:text-ink transition-colors shrink-0"
+          aria-label="Back">
+
           <ArrowLeft className="w-5 h-5" />
-        </Link>
+        </button>
         <GrokitLogo size={28} className="text-ink" />
       </div>
 

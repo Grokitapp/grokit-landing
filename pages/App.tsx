@@ -17,7 +17,7 @@ export default function App() {
 			<Route path="/" element={<Index />} />
 			<Route path="/onboarding" element={<Onboarding />} />
 			<Route path="/terms" element={<Terms />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
+			<Route path="/privacy" element={<PrivacyPolicy />} />
 		</Routes>
 	);
 }
