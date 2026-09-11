@@ -12,6 +12,7 @@ frontend:
   phases:
     build:
       commands:
+        - npm install --no-save @rolldown/binding-linux-x64-gnu@1.2.8
         - npm run build
 
   artifacts:
@@ -19,6 +20,6 @@ frontend:
     files:
       - '**/*'
 
-  cache:
-    paths:
-      - .npm/**/*
+cache:
+  paths:
+    - .npm/**/*
