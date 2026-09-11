@@ -12,9 +12,7 @@ frontend:
   phases:
     build:
       commands:
-        - npm install --no-save @rolldown/binding-linux-x64-gnu@1.2.8
-        - npm install --no-save lightningcss-linux-x64-gnu@1.32.0
-        - npm install --no-save lightningcss-linux-x64-gnu@1.33.0
+        - npm install --no-save @rolldown/binding-linux-x64-gnu@1.2.8 lightningcss-linux-x64-gnu@1.33.0
         - npm run build
 
   artifacts:
