@@ -1,12 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signUp, confirmSignUp, signIn, signInWithRedirect } from 'aws-amplify/auth';
-import { ArrowLeft, ArrowRight, Check, Plus, Zap, AlertCircle } from 'lucide-react';
-import { GrokitLogo } from '../components/Grokitlogo';
+import { ArrowLeft, ArrowRight, Check, Plus, Zap } from 'lucide-react';
 import { GrokitMascot, type MascotPose } from '../components/Grokitmascot';
 import { WaitlistModal } from '../components/Waitlistmodal';
 import { saveProfile } from '../lib/profile';
+import AuthScreen from './onboarding/auth/AuthScreen';
 
 // ---------------------------------------------------------------------------
 // Data
@@ -217,20 +215,7 @@ function TransitionScreen({ pose, heading, sub, note, onContinue }: {
 // ---------------------------------------------------------------------------
 
 export default function Onboarding() {
-  const navigate = useNavigate();
   const [step, setStep] = useState<number>(STEP.AUTH);
-
-  // Auth — real Cognito calls. Sign-up requires an email confirmation code,
-  // so there's a small 'form' -> 'confirm' sub-stage within this one step.
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('signup');
-  const [authStage, setAuthStage] = useState<'form' | 'confirm'>('form');
-  const [authEmail, setAuthEmail] = useState('');
-  const [authPassword, setAuthPassword] = useState('');
-  const [confirmCode, setConfirmCode] = useState('');
-  const [authError, setAuthError] = useState('');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
 
   // Question answers
   const [workTypes, setWorkTypes] = useState<string[]>([]);
@@ -261,92 +246,54 @@ export default function Onboarding() {
   }, [step]);
 
   const handleBack = () => {
-    if (step === STEP.AUTH) {
-      navigate('/');
-    } else {
-      setStep((s) => s - 1);
-    }
-  };
-
-  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-  // Validates the auth form and populates per-field errors, Duolingo-style.
-  // Returns whether the form is valid so the caller can bail out early.
-  const validateAuthFields = () => {
-    let valid = true;
-    const email = authEmail.trim();
-
-    if (!email) {
-      setEmailError('Email or username is required');
-      valid = false;
-    } else if (!EMAIL_REGEX.test(email)) {
-      setEmailError('Invalid email address');
-      valid = false;
-    } else {
-      setEmailError('');
-    }
-
-    if (!authPassword) {
-      setPasswordError('Password is required');
-      valid = false;
-    } else if (authPassword.length < 8) {
-      setPasswordError('Password too short');
-      valid = false;
-    } else {
-      setPasswordError('');
-    }
-
-    return valid;
-  };
-
-  const handleAuthSubmit = async () => {
-    setAuthError('');
-    if (!validateAuthFields()) return;
-    setAuthLoading(true);
-    try {
-      if (authMode === 'signup') {
-        await signUp({
-          username: authEmail,
-          password: authPassword,
-          options: { userAttributes: { email: authEmail } }
-        });
-        setAuthStage('confirm');
-      } else {
-        await signIn({ username: authEmail, password: authPassword });
-        setStep(STEP.WELCOME);
-      }
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleConfirmSubmit = async () => {
-    setAuthError('');
-    setAuthLoading(true);
-    try {
-      await confirmSignUp({ username: authEmail, confirmationCode: confirmCode });
-      await signIn({ username: authEmail, password: authPassword });
+    // Authentication owns its own back navigation. Once authenticated,
+    // never navigate backwards into the sign-up / login screen.
+    if (step === STEP.INTRO) {
       setStep(STEP.WELCOME);
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : 'Invalid code. Please try again.');
-    } finally {
-      setAuthLoading(false);
+      return;
     }
-  };
 
-  // Requires Google configured as an external provider in
-  // amplify/auth/resource.ts with your own OAuth app credentials — see the
-  // comment in that file. Will error until that's set up.
-  const handleGoogleAuth = () => {
-    signInWithRedirect({ provider: 'Google' }).catch((err) =>
-    setAuthError(err instanceof Error ? err.message : "Google sign-in isn't configured yet.")
-    );
+    if (step === STEP.WORK_TYPE) {
+      setStep(STEP.INTRO);
+      return;
+    }
+
+    if (step === STEP.T_PERSONALIZED) {
+      setStep(STEP.WORK_TYPE);
+      return;
+    }
+
+    if (step === STEP.TOPICS) {
+      setStep(STEP.T_PERSONALIZED);
+      return;
+    }
+
+    if (step === STEP.T_PERFECT) {
+      setStep(STEP.TOPICS);
+      return;
+    }
+
+    if (step === STEP.GOALS) {
+      setStep(STEP.T_PERFECT);
+      return;
+    }
+
+    if (step === STEP.T_GREAT) {
+      setStep(STEP.GOALS);
+      return;
+    }
+
+    if (step === STEP.TIME) {
+      setStep(STEP.T_GREAT);
+      return;
+    }
+
+    if (step === STEP.T_BOOKS) {
+      setStep(STEP.TIME);
+    }
   };
 
   const canContinue =
-  step === STEP.AUTH ? authEmail.trim().length > 0 && authPassword.trim().length > 0 :
   step === STEP.WORK_TYPE ? workTypes.length > 0 :
   step === STEP.TOPICS ? topics.length > 0 :
   step === STEP.GOALS ? goals.length > 0 :
@@ -357,25 +304,26 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-[100dvh] bg-surface flex flex-col">
-      {/* Top bar */}
-      <div className="w-full px-6 pt-6 pb-2 flex items-start">
-        <button
-          onClick={handleBack}
-          className="p-2 -ml-2 text-body hover:text-ink transition-colors shrink-0"
-          aria-label="Back">
-
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        {progress !== undefined &&
-        <div className="flex-1">
-            <ProgressBar value={progress / TOTAL_QUESTIONS} />
-          </div>
-        }
-      </div>
+      {/* Navigation / progress */}
+      {step !== STEP.AUTH && step !== STEP.WELCOME && step !== STEP.LOADING && step !== STEP.FINAL && (
+        <div className="w-full px-6 pt-6 pb-2 flex items-start">
+          <button
+            onClick={handleBack}
+            className="p-2 -ml-2 text-body hover:text-ink transition-colors shrink-0"
+            aria-label="Back">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          {progress !== undefined && (
+            <div className="flex-1">
+              <ProgressBar value={progress / TOTAL_QUESTIONS} />
+            </div>
+          )}
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={`${step}-${authStage}`}
+          key={step}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -20 }}
@@ -383,143 +331,9 @@ export default function Onboarding() {
           className="flex-1 flex flex-col">
 
           {/* --- AUTH ------------------------------------------------ */}
-          {step === STEP.AUTH && authStage === 'form' &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-              <div className="w-full max-w-sm">
-                <div className="flex justify-center mb-6">
-                  <GrokitLogo size={72} className="text-ink" />
-                </div>
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
-                  {authMode === 'signup' ? 'Create your account' : 'Log in'}
-                </h1>
-                <p className="text-body font-sans text-sm text-center mb-8">
-                  {authMode === 'signup' ?
-                'One step from a personalized learning path.' :
-                'Welcome back.'}
-                </p>
-
-                <div className="flex flex-col gap-3 mb-2">
-                  <div>
-                    <input
-                    type="email"
-                    value={authEmail}
-                    onChange={(e) => {
-                      setAuthEmail(e.target.value);
-                      if (emailError) setEmailError('');
-                    }}
-                    placeholder="Email"
-                    className={`w-full px-4 py-3 bg-surface-alt border rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none transition-colors ${
-                    emailError ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-orange'}`
-                    } />
-
-                    {emailError &&
-                  <p className="flex items-center gap-1.5 text-sm text-red-600 font-sans font-semibold mt-1.5">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        {emailError}
-                      </p>
-                  }
-                  </div>
-
-                  <div>
-                    <input
-                    type="password"
-                    value={authPassword}
-                    onChange={(e) => {
-                      setAuthPassword(e.target.value);
-                      if (passwordError) setPasswordError('');
-                    }}
-                    placeholder="Password"
-                    className={`w-full px-4 py-3 bg-surface-alt border rounded-xl text-ink font-sans placeholder:text-muted focus:outline-none transition-colors ${
-                    passwordError ? 'border-red-500 focus:border-red-500' : 'border-line focus:border-orange'}`
-                    } />
-
-                    {passwordError &&
-                  <p className="flex items-center gap-1.5 text-sm text-red-600 font-sans font-semibold mt-1.5">
-                        <AlertCircle className="w-4 h-4 shrink-0" />
-                        {passwordError}
-                      </p>
-                  }
-                  </div>
-                </div>
-
-                {authError &&
-              <p className="text-sm text-red-600 font-sans font-semibold mb-3 mt-3">{authError}</p>
-              }
-
-                <button
-                onClick={handleAuthSubmit}
-                disabled={authLoading}
-                className="btn-duo w-full px-6 py-3.5 text-base disabled:opacity-40 mb-5 mt-3">
-
-                  {authLoading ? 'Please wait...' : authMode === 'signup' ? 'Sign up' : 'Log in'}
-                </button>
-
-                <div className="flex items-center gap-3 mb-5">
-                  <div className="flex-1 h-px bg-line" />
-                  <span className="text-xs text-muted font-sans font-bold uppercase tracking-wider">or</span>
-                  <div className="flex-1 h-px bg-line" />
-                </div>
-
-                <button
-                onClick={handleGoogleAuth}
-                className="w-full flex items-center justify-center gap-2.5 px-4 py-3 rounded-full border border-line bg-surface-alt text-ink font-sans font-bold hover:bg-surface transition-colors mb-6">
-
-                  <GoogleIcon className="w-5 h-5 shrink-0" />
-                  Continue with Google
-                </button>
-
-                <p className="text-center text-sm text-muted font-sans mb-4">
-                  {authMode === 'signup' ? 'Already have an account? ' : "Don't have an account? "}
-                  <button
-                  onClick={() => {
-                    setAuthMode(authMode === 'signup' ? 'login' : 'signup');
-                    setAuthError('');
-                    setEmailError('');
-                    setPasswordError('');
-                  }}
-                  className="text-orange font-bold hover:underline">
-
-                    {authMode === 'signup' ? 'Log in' : 'Sign up'}
-                  </button>
-                </p>
-
-                <p className="text-center text-xs text-muted font-sans leading-relaxed">
-                  By {authMode === 'signup' ? 'signing up for' : 'signing in to'} Grokit, you agree to our{' '}
-                  <Link to="/terms" className="text-body font-bold hover:underline">Terms</Link>
-                  {' '}and{' '}
-                  <Link to="/privacy" className="text-body font-bold hover:underline">Privacy Policy</Link>.
-                </p>
-              </div>
-            </div>
-          }
-
-          {/* --- AUTH: email confirmation ----------------------------- */}
-          {step === STEP.AUTH && authStage === 'confirm' &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8">
-              <div className="w-full max-w-sm text-center">
-                <h1 className="font-display text-3xl text-ink font-extrabold mb-2">Check your email</h1>
-                <p className="text-body font-sans text-sm mb-8">
-                  We sent a code to <span className="font-bold text-ink">{authEmail}</span>. Enter it below.
-                </p>
-                <input
-                value={confirmCode}
-                onChange={(e) => setConfirmCode(e.target.value)}
-                placeholder="Confirmation code"
-                className="w-full text-center tracking-widest px-4 py-3 bg-surface-alt border border-line rounded-xl text-ink font-sans font-bold placeholder:text-muted placeholder:tracking-normal placeholder:font-normal focus:outline-none focus:border-orange transition-colors mb-3" />
-
-                {authError &&
-              <p className="text-sm text-red-600 font-sans font-semibold mb-3">{authError}</p>
-              }
-                <button
-                onClick={handleConfirmSubmit}
-                disabled={!confirmCode.trim() || authLoading}
-                className="btn-duo w-full px-6 py-3.5 text-base disabled:opacity-40">
-
-                  {authLoading ? 'Verifying...' : 'Verify'}
-                </button>
-              </div>
-            </div>
-          }
+          {step === STEP.AUTH && (
+            <AuthScreen onAuthenticated={() => setStep(STEP.WELCOME)} />
+          )}
 
           {/* --- WELCOME ---------------------------------------------- */}
           {step === STEP.WELCOME &&
