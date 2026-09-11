@@ -73,7 +73,7 @@ const PROGRESS_BY_STEP: Record<number, number> = {
 function ProgressBar({ value }: {value: number;}) {
   return (
     <div className="w-full px-6 pt-6 pb-2">
-      <div className="max-w-xl mx-auto h-2.5 rounded-full bg-surface-alt border border-line overflow-hidden">
+      <div className="max-w-3xl mx-auto h-2.5 rounded-full bg-surface-alt border border-line overflow-hidden">
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-orange to-amber"
           initial={false}
@@ -194,13 +194,13 @@ function TransitionScreen({ pose, heading, sub, note, onContinue }: {
   return (
     <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
       <GrokitMascot size={130} pose={pose} className="mb-8" />
-      <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-ink font-extrabold mb-3 max-w-lg">
+      <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-ink font-extrabold mb-4 max-w-3xl">
         {heading}
       </h1>
-      <p className="text-body font-sans font-medium max-w-md mb-2">{sub}</p>
-      {note && <p className="text-muted font-sans text-sm max-w-md">{note}</p>}
+      <p className="text-body font-sans font-medium max-w-2xl mb-2">{sub}</p>
+      {note && <p className="text-muted font-sans text-sm max-w-2xl">{note}</p>}
 
-      <div className="w-full max-w-xl mt-10">
+      <div className="w-full max-w-2xl mt-10">
         <button onClick={onContinue} className="btn-duo w-full px-8 py-4 text-lg">
           Continue
           <ArrowRight className="w-5 h-5" />
@@ -337,35 +337,42 @@ export default function Onboarding() {
 
           {/* --- WELCOME ---------------------------------------------- */}
           {step === STEP.WELCOME &&
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-              <div className="relative mb-8">
-                <div className="px-5 py-3 rounded-2xl bg-surface-alt border border-line font-sans font-bold text-ink mb-3">
-                  Thanks for being here!
+          <div className="flex-1 flex flex-col items-center justify-center px-5 sm:px-8 py-10 sm:py-14 text-center">
+              <div className="w-full max-w-4xl mx-auto">
+                <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-orange/10 border border-orange/20 text-orange font-sans font-bold text-sm mb-7">
+                  Welcome to Grokit
                 </div>
-                <GrokitMascot size={110} pose="wave" className="mx-auto" />
-              </div>
-              <h1 className="font-display text-2xl sm:text-3xl text-ink font-extrabold mb-2 max-w-md">
-                You're one of the first to explore Grokit
-              </h1>
-              <p className="text-body font-sans font-medium max-w-sm mb-10">
-                It's early — your input will help shape what's next.
-              </p>
 
-              <div className="w-full max-w-xl">
-                <p className="text-sm text-body font-sans font-semibold mb-2 text-left">
-                  Join our Discord for feedback and learning tips!
+                <div className="relative flex justify-center mb-8">
+                  <div className="absolute -inset-8 rounded-full bg-orange/5 blur-2xl" aria-hidden="true" />
+                  <GrokitMascot size={150} pose="wave" className="relative" />
+                </div>
+
+                <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight text-ink font-extrabold mb-4 max-w-3xl mx-auto">
+                  Let's make learning fit your life.
+                </h1>
+                <p className="text-body font-sans text-base sm:text-lg md:text-xl font-medium leading-relaxed max-w-2xl mx-auto mb-10">
+                  You're in. A few quick choices will help Grokit understand what you care about, what you want to achieve, and how much time you have to learn.
                 </p>
-                <a
-                href={DISCORD_INVITE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-duo-outline w-full px-6 py-3.5 text-base mb-3">
 
-                  Join our Discord
-                </a>
-                <button onClick={() => setStep(STEP.INTRO)} className="btn-duo w-full px-6 py-3.5 text-base">
-                  Let's go!
-                </button>
+                <div className="w-full max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button onClick={() => setStep(STEP.INTRO)} className="btn-duo w-full px-6 py-4 text-base sm:text-lg">
+                    Personalize my Grokit
+                    <ArrowRight className="w-5 h-5" />
+                  </button>
+                  <a
+                    href={DISCORD_INVITE_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-duo-outline w-full px-6 py-4 text-base sm:text-lg"
+                  >
+                    Join our Discord
+                  </a>
+                </div>
+
+                <p className="text-xs sm:text-sm text-muted font-sans mt-6">
+                  Your answers help us make Grokit more useful from day one.
+                </p>
               </div>
             </div>
           }
@@ -382,7 +389,7 @@ export default function Onboarding() {
               <p className="text-body font-sans font-medium mb-10">
                 to build a learning journey designed for you!
               </p>
-              <div className="w-full max-w-xl">
+              <div className="w-full max-w-2xl">
                 <button onClick={() => setStep(STEP.WORK_TYPE)} className="btn-duo w-full px-8 py-4 text-lg">
                   Continue
                   <ArrowRight className="w-5 h-5" />
@@ -394,7 +401,7 @@ export default function Onboarding() {
           {/* --- WORK TYPE ------------------------------------------- */}
           {step === STEP.WORK_TYPE &&
           <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-xl mx-auto flex-1">
+              <div className="w-full max-w-3xl mx-auto flex-1">
                 <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
                   What types of work do you do?
                 </h1>
@@ -410,7 +417,7 @@ export default function Onboarding() {
                 )}
                 </div>
               </div>
-              <div className="w-full max-w-xl mx-auto mt-8">
+              <div className="w-full max-w-3xl mx-auto mt-8">
                 <button
                 onClick={() => {
                   if (!canContinue) return;
@@ -440,7 +447,7 @@ export default function Onboarding() {
           {/* --- TOPICS ------------------------------------------------ */}
           {step === STEP.TOPICS &&
           <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-2xl mx-auto flex-1">
+              <div className="w-full max-w-4xl mx-auto flex-1">
                 <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
                   What topics interest you?
                 </h1>
@@ -474,7 +481,7 @@ export default function Onboarding() {
                 }} />
 
               </div>
-              <div className="w-full max-w-2xl mx-auto mt-8">
+              <div className="w-full max-w-4xl mx-auto mt-8">
                 <button
                 onClick={() => {
                   if (!canContinue) return;
@@ -503,7 +510,7 @@ export default function Onboarding() {
           {/* --- GOALS --------------------------------------------------- */}
           {step === STEP.GOALS &&
           <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-xl mx-auto flex-1">
+              <div className="w-full max-w-3xl mx-auto flex-1">
                 <h1 className="font-display text-3xl text-ink font-extrabold mb-1 text-center">
                   What do you want to achieve?
                 </h1>
@@ -535,7 +542,7 @@ export default function Onboarding() {
                 }} />
 
               </div>
-              <div className="w-full max-w-xl mx-auto mt-8">
+              <div className="w-full max-w-3xl mx-auto mt-8">
                 <button
                 onClick={() => {
                   if (!canContinue) return;
@@ -564,7 +571,7 @@ export default function Onboarding() {
           {/* --- TIME --------------------------------------------------- */}
           {step === STEP.TIME &&
           <div className="flex-1 flex flex-col px-6 py-8">
-              <div className="w-full max-w-xl mx-auto flex-1">
+              <div className="w-full max-w-3xl mx-auto flex-1">
                 <h1 className="font-display text-3xl text-ink font-extrabold mb-8 text-center">
                   How long do you want to learn every day?
                 </h1>
@@ -587,7 +594,7 @@ export default function Onboarding() {
                 )}
                 </div>
               </div>
-              <div className="w-full max-w-xl mx-auto mt-8">
+              <div className="w-full max-w-3xl mx-auto mt-8">
                 <button
                 onClick={() => {
                   if (!canContinue || !timeId) return;

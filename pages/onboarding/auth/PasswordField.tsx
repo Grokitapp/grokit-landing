@@ -8,8 +8,7 @@ interface PasswordFieldProps {
   autoComplete?: string;
   disabled?: boolean;
   error?: boolean;
-  onFocus?: () => void;
-  onBlur?: () => void;
+  name?: string;
 }
 
 export default function PasswordField({
@@ -19,32 +18,42 @@ export default function PasswordField({
   autoComplete = 'current-password',
   disabled = false,
   error = false,
-  onFocus,
-  onBlur,
+  name,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <div className={`relative rounded-xl border bg-surface-alt transition-colors ${
-      error ? 'border-red-500 focus-within:border-red-500' : 'border-line focus-within:border-orange'
-    }`}>
+    <div
+      className={`relative w-full rounded-2xl border-2 bg-surface-alt transition-colors ${
+        error
+          ? 'border-red-500 focus-within:border-red-500'
+          : 'border-line focus-within:border-orange'
+      }`}
+    >
       <input
         type={visible ? 'text' : 'password'}
+        name={name}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        data-lpignore="true"
+        data-1p-ignore="true"
+        data-bwignore="true"
         disabled={disabled}
-        onFocus={onFocus}
-        onBlur={onBlur}
-        className="w-full px-4 py-3 pr-12 bg-transparent outline-none text-ink font-sans placeholder:text-muted disabled:opacity-50"
+        aria-invalid={error}
+        className="w-full h-14 px-5 pr-14 bg-transparent outline-none text-ink font-sans text-base placeholder:text-muted disabled:opacity-50"
       />
+
       <button
         type="button"
         onClick={() => setVisible((current) => !current)}
         disabled={disabled}
         aria-label={visible ? 'Hide password' : 'Show password'}
-        className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-muted hover:text-body transition-colors disabled:opacity-40"
+        className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full flex items-center justify-center text-muted hover:text-ink hover:bg-black/5 transition-colors disabled:opacity-40"
       >
         {visible ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
       </button>

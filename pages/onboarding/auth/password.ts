@@ -10,3 +10,16 @@ export const getPasswordChecks = (password: string): PasswordCheck => ({
 
 export const isStrongPassword = (password: string) =>
   Object.values(getPasswordChecks(password)).every(Boolean);
+
+export const getMissingPasswordRequirements = (password: string) => {
+  const checks = getPasswordChecks(password);
+  const missing: string[] = [];
+
+  if (!checks.minLength) missing.push('at least 8 characters');
+  if (!checks.uppercase) missing.push('an uppercase letter');
+  if (!checks.lowercase) missing.push('a lowercase letter');
+  if (!checks.number) missing.push('a number');
+  if (!checks.special) missing.push('a special character');
+
+  return missing;
+};
