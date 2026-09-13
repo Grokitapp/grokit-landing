@@ -1,5 +1,13 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import {
+  useEffect,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
+import {
+  AnimatePresence,
+  motion,
+} from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { WaitlistModal } from '../components/Waitlistmodal';
 import { saveProfile } from '../lib/profile';
@@ -14,7 +22,10 @@ import {
   lessonsPerWeekFor,
   type Step,
 } from './onboarding/constants';
-import { ProgressBar, TransitionScreen } from './onboarding/shared';
+import {
+  ProgressBar,
+  TransitionScreen,
+} from './onboarding/shared';
 import {
   FinalStep,
   GoalsStep,
@@ -26,42 +37,104 @@ import {
 } from './onboarding/steps';
 
 export default function Onboarding() {
-  const [step, setStep] = useState<Step>(STEP.AUTH);
+  const [step, setStep] =
+    useState<Step>(STEP.AUTH);
 
-  const [workTypes, setWorkTypes] = useState<string[]>([]);
-  const [topics, setTopics] = useState<string[]>([]);
-  const [otherTopic, setOtherTopic] = useState('');
-  const [goals, setGoals] = useState<string[]>([]);
-  const [otherGoal, setOtherGoal] = useState('');
-  const [timeId, setTimeId] = useState<string | null>(null);
-  const [learnPrompt, setLearnPrompt] = useState('');
-  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+  /* ---------------------------------------------------------------------- */
+  /* QUESTION ANSWERS                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const [workTypes, setWorkTypes] =
+    useState<string[]>([]);
+
+  const [
+    otherProfessionSelected,
+    setOtherProfessionSelected,
+  ] = useState(false);
+
+  const [
+    otherProfession,
+    setOtherProfession,
+  ] = useState('');
+
+  const [topics, setTopics] =
+    useState<string[]>([]);
+
+  const [otherTopic, setOtherTopic] =
+    useState('');
+
+  const [goals, setGoals] =
+    useState<string[]>([]);
+
+  const [otherGoal, setOtherGoal] =
+    useState('');
+
+  const [timeId, setTimeId] =
+    useState<string | null>(null);
+
+  const [learnPrompt, setLearnPrompt] =
+    useState('');
+
+  const [isWaitlistOpen, setIsWaitlistOpen] =
+    useState(false);
+
+  /* ---------------------------------------------------------------------- */
+  /* HELPERS                                                                */
+  /* ---------------------------------------------------------------------- */
 
   const toggleItem = (
-    setList: Dispatch<SetStateAction<string[]>>,
+    setList: Dispatch<
+      SetStateAction<string[]>
+    >,
     item: string,
   ) =>
     setList((curr) =>
       curr.includes(item)
-        ? curr.filter((i) => i !== item)
+        ? curr.filter(
+            (i) => i !== item,
+          )
         : [...curr, item],
     );
 
-  const persist = (fields: Parameters<typeof saveProfile>[0]) => {
+  const persist = (
+    fields: Parameters<
+      typeof saveProfile
+    >[0],
+  ) => {
     saveProfile(fields).catch((err) =>
-      console.error('Failed to save profile:', err),
+      console.error(
+        'Failed to save profile:',
+        err,
+      ),
     );
   };
 
+  /* ---------------------------------------------------------------------- */
+  /* LOADING                                                                */
+  /* ---------------------------------------------------------------------- */
+
   useEffect(() => {
     if (step !== STEP.LOADING) return;
-    const t = setTimeout(() => setStep(STEP.FINAL), 1800);
+
+    const t = setTimeout(
+      () => setStep(STEP.FINAL),
+      1800,
+    );
+
     return () => clearTimeout(t);
   }, [step]);
 
+  /* ---------------------------------------------------------------------- */
+  /* CONTINUE STATE                                                         */
+  /* ---------------------------------------------------------------------- */
+
   const canContinue =
     step === STEP.WORK_TYPE
-      ? workTypes.length > 0
+      ? workTypes.length > 0 ||
+        (
+          otherProfessionSelected &&
+          otherProfession.trim().length > 0
+        )
       : step === STEP.TOPICS
         ? topics.length > 0
         : step === STEP.GOALS
@@ -71,44 +144,123 @@ export default function Onboarding() {
             : true;
 
   const prevStep = BACK_STEP[step];
-  const progress = PROGRESS_BY_STEP[step];
+
+  const progress =
+    PROGRESS_BY_STEP[step];
+
+  /* ---------------------------------------------------------------------- */
+  /* OTHER INPUTS                                                           */
+  /* ---------------------------------------------------------------------- */
 
   const addOther = (
     value: string,
-    setList: Dispatch<SetStateAction<string[]>>,
+    setList: Dispatch<
+      SetStateAction<string[]>
+    >,
     clear: () => void,
   ) => {
     if (!value.trim()) return;
-    setList((curr) => [...curr, value.trim()]);
+
+    setList((curr) => [
+      ...curr,
+      value.trim(),
+    ]);
+
     clear();
   };
+
+  /* ---------------------------------------------------------------------- */
+  /* WORK TYPE SUBMIT                                                       */
+  /* ---------------------------------------------------------------------- */
+
+  const handleWorkTypeContinue = () => {
+    const profession =
+      otherProfession.trim();
+
+    const finalWorkTypes = [
+      ...workTypes,
+      ...(
+        otherProfessionSelected &&
+        profession
+          ? [profession]
+          : []
+      ),
+    ];
+
+    persist({
+      workTypes: finalWorkTypes,
+    });
+
+    setWorkTypes(finalWorkTypes);
+
+    setOtherProfessionSelected(false);
+    setOtherProfession('');
+
+    setStep(STEP.T_PERSONALIZED);
+  };
+
+  /* ---------------------------------------------------------------------- */
+  /* RENDER STEP                                                            */
+  /* ---------------------------------------------------------------------- */
 
   const renderStep = () => {
     switch (step) {
       case STEP.AUTH:
-        return <AuthScreen onAuthenticated={() => setStep(STEP.WELCOME)} />;
+        return (
+          <AuthScreen
+            onAuthenticated={() =>
+              setStep(STEP.WELCOME)
+            }
+          />
+        );
 
       case STEP.WELCOME:
         return (
           <Welcome
-            onContinue={() => setStep(STEP.INTRO)}
-            discordInviteUrl={DISCORD_INVITE_URL}
+            onContinue={() =>
+              setStep(STEP.INTRO)
+            }
+            discordInviteUrl={
+              DISCORD_INVITE_URL
+            }
           />
         );
 
       case STEP.INTRO:
-        return <IntroStep onContinue={() => setStep(STEP.WORK_TYPE)} />;
+        return (
+          <IntroStep
+            onContinue={() =>
+              setStep(STEP.WORK_TYPE)
+            }
+          />
+        );
 
       case STEP.WORK_TYPE:
         return (
           <WorkTypeStep
             selected={workTypes}
-            onToggle={(t) => toggleItem(setWorkTypes, t)}
+            onToggle={(type) =>
+              toggleItem(
+                setWorkTypes,
+                type,
+              )
+            }
+            otherSelected={
+              otherProfessionSelected
+            }
+            otherValue={otherProfession}
+            onToggleOther={() =>
+              setOtherProfessionSelected(
+                (current) => !current,
+              )
+            }
+            onOtherChange={
+              setOtherProfession
+            }
             canContinue={canContinue}
-            onContinue={() => {
-              persist({ workTypes });
-              setStep(STEP.T_PERSONALIZED);
-            }}
+            onContinue={
+              handleWorkTypeContinue
+            }
           />
         );
 
@@ -119,7 +271,9 @@ export default function Onboarding() {
             heading="Personalized learning for you"
             sub="We'll use examples relevant to your role and expertise when it's helpful."
             note="You can update this anytime in your settings."
-            onContinue={() => setStep(STEP.TOPICS)}
+            onContinue={() =>
+              setStep(STEP.TOPICS)
+            }
           />
         );
 
@@ -127,16 +281,29 @@ export default function Onboarding() {
         return (
           <TopicsStep
             selected={topics}
-            onToggle={(t) => toggleItem(setTopics, t)}
+            onToggle={(topic) =>
+              toggleItem(
+                setTopics,
+                topic,
+              )
+            }
             otherValue={otherTopic}
-            onOtherChange={setOtherTopic}
+            onOtherChange={
+              setOtherTopic
+            }
             onAddOther={() =>
-              addOther(otherTopic, setTopics, () => setOtherTopic(''))
+              addOther(
+                otherTopic,
+                setTopics,
+                () => setOtherTopic(''),
+              )
             }
             canContinue={canContinue}
             onContinue={() => {
               persist({ topics });
-              setStep(STEP.T_PERFECT);
+              setStep(
+                STEP.T_PERFECT,
+              );
             }}
           />
         );
@@ -147,7 +314,9 @@ export default function Onboarding() {
             pose="celebrate"
             heading="Perfect choice! We'll use this to find the best courses for you"
             sub="You can also build your own course for any topic you want to learn."
-            onContinue={() => setStep(STEP.GOALS)}
+            onContinue={() =>
+              setStep(STEP.GOALS)
+            }
           />
         );
 
@@ -155,11 +324,22 @@ export default function Onboarding() {
         return (
           <GoalsStep
             selected={goals}
-            onToggle={(g) => toggleItem(setGoals, g)}
+            onToggle={(goal) =>
+              toggleItem(
+                setGoals,
+                goal,
+              )
+            }
             otherValue={otherGoal}
-            onOtherChange={setOtherGoal}
+            onOtherChange={
+              setOtherGoal
+            }
             onAddOther={() =>
-              addOther(otherGoal, setGoals, () => setOtherGoal(''))
+              addOther(
+                otherGoal,
+                setGoals,
+                () => setOtherGoal(''),
+              )
             }
             canContinue={canContinue}
             onContinue={() => {
@@ -175,7 +355,9 @@ export default function Onboarding() {
             pose="wave"
             heading="Great! We'll help you learn what you thought you didn't have time for"
             sub="Finally learn the things you've always wanted to learn."
-            onContinue={() => setStep(STEP.TIME)}
+            onContinue={() =>
+              setStep(STEP.TIME)
+            }
           />
         );
 
@@ -187,8 +369,14 @@ export default function Onboarding() {
             canContinue={canContinue}
             onContinue={() => {
               if (!timeId) return;
-              persist({ timeCommitment: timeId });
-              setStep(STEP.T_BOOKS);
+
+              persist({
+                timeCommitment: timeId,
+              });
+
+              setStep(
+                STEP.T_BOOKS,
+              );
             }}
           />
         );
@@ -197,9 +385,13 @@ export default function Onboarding() {
         return (
           <TransitionScreen
             pose="celebrate"
-            heading={`${lessonsPerWeekFor(timeId)} lessons in your first week`}
+            heading={`${lessonsPerWeekFor(
+              timeId,
+            )} lessons in your first week`}
             sub="You're on your way to building a lasting learning habit!"
-            onContinue={() => setStep(STEP.LOADING)}
+            onContinue={() =>
+              setStep(STEP.LOADING)
+            }
           />
         );
 
@@ -210,42 +402,96 @@ export default function Onboarding() {
         return (
           <FinalStep
             learnPrompt={learnPrompt}
-            onPromptChange={setLearnPrompt}
+            onPromptChange={
+              setLearnPrompt
+            }
             onCreate={() => {
-              if (!learnPrompt.trim()) return;
-              persist({ learnPrompt, onboardingCompleted: true });
+              if (
+                !learnPrompt.trim()
+              ) {
+                return;
+              }
+
+              persist({
+                learnPrompt,
+                onboardingCompleted:
+                  true,
+              });
+
               setIsWaitlistOpen(true);
             }}
-            onExampleClick={() => setIsWaitlistOpen(true)}
+            onExampleClick={() =>
+              setIsWaitlistOpen(true)
+            }
           />
         );
     }
   };
 
-  // The intro gets its own Duolingo-inspired dark canvas. Other onboarding
-  // steps keep the existing light Grokit surface so this is a visual upgrade
-  // without unexpectedly changing every question screen.
-  const isDarkIntro = step === STEP.INTRO;
+  /* ---------------------------------------------------------------------- */
+  /* DARK QUESTION SCREEN                                                   */
+  /* ---------------------------------------------------------------------- */
+
+  const isDarkQuestion =
+    step === STEP.WORK_TYPE;
+
+  /* ---------------------------------------------------------------------- */
+  /* PAGE                                                                   */
+  /* ---------------------------------------------------------------------- */
 
   return (
     <div
-      className={`min-h-[100dvh] flex flex-col ${
-        isDarkIntro ? 'bg-[#131F24]' : 'bg-surface'
-      }`}
+      className={`
+        h-[100dvh]
+        overflow-hidden
+        flex
+        flex-col
+        ${
+          isDarkQuestion
+            ? 'bg-[#131F24]'
+            : 'bg-surface'
+        }
+      `}
     >
+      {/* -------------------------------------------------------------- */}
+      {/* TOP NAVIGATION / PROGRESS                                      */}
+      {/* -------------------------------------------------------------- */}
+
       {prevStep !== undefined && (
         <div
-          className={`w-full px-5 sm:px-6 pt-5 sm:pt-6 pb-2 flex items-start ${
-            isDarkIntro ? 'bg-[#131F24]' : ''
-          }`}
+          className={`
+            shrink-0
+            w-full
+            px-5
+            sm:px-6
+            pt-4
+            sm:pt-5
+            pb-1
+            flex
+            items-start
+            ${
+              isDarkQuestion
+                ? 'bg-[#131F24]'
+                : 'bg-surface'
+            }
+          `}
         >
           <button
-            onClick={() => setStep(prevStep)}
-            className={`p-2 -ml-2 transition-colors shrink-0 ${
-              isDarkIntro
-                ? 'text-[#91A4AC] hover:text-white'
-                : 'text-body hover:text-ink'
-            }`}
+            type="button"
+            onClick={() =>
+              setStep(prevStep)
+            }
+            className={`
+              p-2
+              -ml-2
+              transition-colors
+              shrink-0
+              ${
+                isDarkQuestion
+                  ? 'text-[#91A4AC] hover:text-white'
+                  : 'text-body hover:text-ink'
+              }
+            `}
             aria-label="Back"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -253,28 +499,62 @@ export default function Onboarding() {
 
           {progress !== undefined && (
             <div className="flex-1">
-              <ProgressBar value={progress / TOTAL_QUESTIONS} />
+              <ProgressBar
+                value={
+                  progress /
+                  TOTAL_QUESTIONS
+                }
+                dark={
+                  isDarkQuestion
+                }
+              />
             </div>
           )}
         </div>
       )}
 
+      {/* -------------------------------------------------------------- */}
+      {/* STEP CONTENT                                                    */}
+      {/* -------------------------------------------------------------- */}
+
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-          className="flex-1 flex flex-col"
+          initial={{
+            opacity: 0,
+            x: 20,
+          }}
+          animate={{
+            opacity: 1,
+            x: 0,
+          }}
+          exit={{
+            opacity: 0,
+            x: -20,
+          }}
+          transition={{
+            duration: 0.3,
+          }}
+          className="
+            flex-1
+            min-h-0
+            flex
+            flex-col
+          "
         >
           {renderStep()}
         </motion.div>
       </AnimatePresence>
 
+      {/* -------------------------------------------------------------- */}
+      {/* WAITLIST                                                        */}
+      {/* -------------------------------------------------------------- */}
+
       <WaitlistModal
         isOpen={isWaitlistOpen}
-        onClose={() => setIsWaitlistOpen(false)}
+        onClose={() =>
+          setIsWaitlistOpen(false)
+        }
       />
     </div>
   );
