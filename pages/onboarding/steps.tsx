@@ -13,11 +13,20 @@ import {
   PillOption,
 } from './shared';
 
+/* -------------------------------------------------------------------------- */
+/* GENERIC STEP PROPS                                                        */
+/* -------------------------------------------------------------------------- */
+
 interface StepProps {
   onContinue: () => void;
 }
 
-interface ContinueButtonProps extends StepProps {
+/* -------------------------------------------------------------------------- */
+/* CONTINUE BUTTON                                                           */
+/* -------------------------------------------------------------------------- */
+
+interface ContinueButtonProps
+  extends StepProps {
   disabled?: boolean;
   className?: string;
 }
@@ -75,6 +84,10 @@ export function ContinueButton({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* QUESTION SHELL                                                            */
+/* -------------------------------------------------------------------------- */
+
 interface QuestionShellProps {
   title: string;
   subtitle?: string;
@@ -108,7 +121,10 @@ function QuestionShell({
         }
       `}
     >
-      {/* Question heading */}
+      {/* -------------------------------------------------------------- */}
+      {/* QUESTION HEADER                                                */}
+      {/* -------------------------------------------------------------- */}
+
       <div
         className={`
           shrink-0
@@ -166,7 +182,10 @@ function QuestionShell({
         )}
       </div>
 
-      {/* ONLY THIS AREA SCROLLS */}
+      {/* -------------------------------------------------------------- */}
+      {/* SCROLLABLE ANSWERS AREA                                       */}
+      {/* -------------------------------------------------------------- */}
+
       <div
         className={`
           flex-1
@@ -176,7 +195,7 @@ function QuestionShell({
           ${
             dark
               ? 'bg-[#131F24]'
-              : ''
+              : 'bg-surface'
           }
         `}
       >
@@ -194,7 +213,10 @@ function QuestionShell({
         </div>
       </div>
 
-      {/* FIXED BOTTOM ACTION AREA */}
+      {/* -------------------------------------------------------------- */}
+      {/* FIXED CONTINUE AREA                                            */}
+      {/* -------------------------------------------------------------- */}
+
       <div
         className={`
           shrink-0
@@ -227,6 +249,10 @@ function QuestionShell({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* SELECTION TYPES                                                           */
+/* -------------------------------------------------------------------------- */
+
 interface SelectionStepProps {
   selected: string[];
   onToggle: (item: string) => void;
@@ -248,6 +274,10 @@ interface TopicsStepProps
   onOtherChange: (v: string) => void;
   onAddOther: () => void;
 }
+
+/* -------------------------------------------------------------------------- */
+/* INTRO                                                                      */
+/* -------------------------------------------------------------------------- */
 
 export function IntroStep({
   onContinue,
@@ -272,6 +302,7 @@ export function IntroStep({
         text-center
       "
     >
+      {/* Background glow */}
       <div
         className="
           pointer-events-none
@@ -327,6 +358,7 @@ export function IntroStep({
           items-center
         "
       >
+        {/* Small sparkle */}
         <div className="relative mb-4 sm:mb-5">
           <div
             className="
@@ -360,6 +392,7 @@ export function IntroStep({
           </div>
         </div>
 
+        {/* Mascot */}
         <div className="relative mb-4 sm:mb-5">
           <div
             className="
@@ -380,10 +413,15 @@ export function IntroStep({
           <GrokitMascot
             size={148}
             pose="celebrate"
-            className="relative hidden sm:block"
+            className="
+              relative
+              hidden
+              sm:block
+            "
           />
         </div>
 
+        {/* Heading */}
         <h1
           className="
             font-display
@@ -400,6 +438,7 @@ export function IntroStep({
           Just 4 short questions
         </h1>
 
+        {/* Subtitle */}
         <p
           className="
             font-sans
@@ -412,15 +451,18 @@ export function IntroStep({
             sm:mb-8
           "
         >
-          To build a learning journey designed for you.
+          To build a learning journey designed
+          for you.
         </p>
 
+        {/* CTA */}
         <div className="w-full max-w-[680px]">
           <ContinueButton
             onContinue={onContinue}
           />
         </div>
 
+        {/* Small helper */}
         <p
           className="
             mt-4
@@ -459,17 +501,25 @@ export function WorkTypeStep({
       {...rest}
     >
       <div className="flex flex-col gap-2.5">
+        {/* Existing professions */}
         {WORK_TYPES.map((type) => (
           <OptionRow
             key={type}
             label={type}
-            selected={selected.includes(type)}
-            onClick={() => onToggle(type)}
+            selected={selected.includes(
+              type,
+            )}
+            onClick={() =>
+              onToggle(type)
+            }
             dark
           />
         ))}
 
-        {/* OTHER */}
+        {/* ---------------------------------------------------------- */}
+        {/* OTHER                                                       */}
+        {/* ---------------------------------------------------------- */}
+
         <div
           className={`
             rounded-2xl
@@ -480,15 +530,21 @@ export function WorkTypeStep({
             ${
               otherSelected
                 ? 'bg-[#2A2927] border-orange'
-                : 'bg-[#202F35] border-[#37464F] hover:border-orange/60'
+                : `
+                  bg-[#202F35]
+                  border-[#37464F]
+                  hover:border-orange/60
+                `
             }
           `}
         >
-          {/* Other row */}
+          {/* Other selection row */}
           <button
             type="button"
             onClick={onToggleOther}
-            aria-pressed={otherSelected}
+            aria-pressed={
+              otherSelected
+            }
             className="
               w-full
               min-h-[58px]
@@ -523,7 +579,11 @@ export function WorkTypeStep({
                 {otherSelected && (
                   <svg
                     viewBox="0 0 20 20"
-                    className="w-4 h-4 text-white"
+                    className="
+                      w-4
+                      h-4
+                      text-white
+                    "
                     fill="none"
                     aria-hidden="true"
                   >
@@ -564,9 +624,12 @@ export function WorkTypeStep({
                   autoFocus
                   value={otherValue}
                   onChange={(e) =>
-                    onOtherChange(e.target.value)
+                    onOtherChange(
+                      e.target.value,
+                    )
                   }
                   placeholder="What do you do?"
+                  aria-label="Other profession"
                   className="
                     min-w-0
                     flex-1
@@ -577,7 +640,6 @@ export function WorkTypeStep({
                     text-[15px]
                     placeholder:text-[#60757E]
                   "
-                  aria-label="Other profession"
                 />
 
                 {otherValue && (
@@ -625,9 +687,13 @@ export function TopicsStep({
   onAddOther,
   ...rest
 }: TopicsStepProps) {
-  const customTopics = selected.filter(
-    (t) => !TOPIC_OPTIONS.includes(t),
-  );
+  const customTopics =
+    selected.filter(
+      (topic) =>
+        !TOPIC_OPTIONS.includes(
+          topic,
+        ),
+    );
 
   return (
     <QuestionShell
@@ -637,23 +703,33 @@ export function TopicsStep({
       {...rest}
     >
       <div className="flex flex-wrap justify-center gap-3 mb-6">
-        {TOPIC_OPTIONS.map((topic) => (
-          <PillOption
-            key={topic}
-            label={topic}
-            selected={selected.includes(topic)}
-            onClick={() => onToggle(topic)}
-          />
-        ))}
+        {TOPIC_OPTIONS.map(
+          (topic) => (
+            <PillOption
+              key={topic}
+              label={topic}
+              selected={selected.includes(
+                topic,
+              )}
+              onClick={() =>
+                onToggle(topic)
+              }
+            />
+          ),
+        )}
 
-        {customTopics.map((topic) => (
-          <PillOption
-            key={topic}
-            label={topic}
-            selected
-            onClick={() => onToggle(topic)}
-          />
-        ))}
+        {customTopics.map(
+          (topic) => (
+            <PillOption
+              key={topic}
+              label={topic}
+              selected
+              onClick={() =>
+                onToggle(topic)
+              }
+            />
+          ),
+        )}
       </div>
 
       <OtherInput
@@ -678,9 +754,13 @@ export function GoalsStep({
   onAddOther,
   ...rest
 }: TopicsStepProps) {
-  const customGoals = selected.filter(
-    (g) => !GOAL_OPTIONS.includes(g),
-  );
+  const customGoals =
+    selected.filter(
+      (goal) =>
+        !GOAL_OPTIONS.includes(
+          goal,
+        ),
+    );
 
   return (
     <QuestionShell
@@ -689,23 +769,33 @@ export function GoalsStep({
       {...rest}
     >
       <div className="flex flex-col gap-3 mb-4">
-        {GOAL_OPTIONS.map((goal) => (
-          <OptionRow
-            key={goal}
-            label={goal}
-            selected={selected.includes(goal)}
-            onClick={() => onToggle(goal)}
-          />
-        ))}
+        {GOAL_OPTIONS.map(
+          (goal) => (
+            <OptionRow
+              key={goal}
+              label={goal}
+              selected={selected.includes(
+                goal,
+              )}
+              onClick={() =>
+                onToggle(goal)
+              }
+            />
+          ),
+        )}
 
-        {customGoals.map((goal) => (
-          <OptionRow
-            key={goal}
-            label={goal}
-            selected
-            onClick={() => onToggle(goal)}
-          />
-        ))}
+        {customGoals.map(
+          (goal) => (
+            <OptionRow
+              key={goal}
+              label={goal}
+              selected
+              onClick={() =>
+                onToggle(goal)
+              }
+            />
+          ),
+        )}
       </div>
 
       <OtherInput
@@ -738,7 +828,9 @@ export function TimeStep({
   return (
     <QuestionShell
       title="How long do you want to learn every day?"
-      canContinue={canContinue}
+      canContinue={
+        canContinue
+      }
       onContinue={onContinue}
     >
       <div className="flex flex-col gap-3">
@@ -751,7 +843,9 @@ export function TimeStep({
             <button
               type="button"
               key={id}
-              onClick={() => onSelect(id)}
+              onClick={() =>
+                onSelect(id)
+              }
               className={`
                 w-full
                 flex
@@ -859,7 +953,9 @@ export function FinalStep({
           <textarea
             value={learnPrompt}
             onChange={(e) =>
-              onPromptChange(e.target.value)
+              onPromptChange(
+                e.target.value,
+              )
             }
             placeholder="I want to learn about..."
             className="
@@ -879,9 +975,16 @@ export function FinalStep({
               type="button"
               onClick={onCreate}
               disabled={!hasPrompt}
-              className="btn-duo px-6 py-3 text-base disabled:opacity-40"
+              className="
+                btn-duo
+                px-6
+                py-3
+                text-base
+                disabled:opacity-40
+              "
             >
               Create my learning path
+
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -892,43 +995,63 @@ export function FinalStep({
         </p>
 
         <div className="flex flex-col gap-3 text-left">
-          {EXAMPLE_COURSES.map((course) => (
-            <button
-              type="button"
-              key={course.title}
-              onClick={onExampleClick}
-              className="
-                flex
-                items-center
-                gap-4
-                p-3
-                rounded-2xl
-                border
-                border-line
-                bg-surface
-                hover:border-orange/30
-                transition-colors
-              "
-            >
-              <span className="shrink-0 w-16 h-16 rounded-xl bg-orange/10 flex items-center justify-center text-xs font-bold text-orange text-center px-1">
-                {course.tag}
-              </span>
-
-              <span>
-                <span className="block font-display font-bold text-ink">
-                  {course.title}
+          {EXAMPLE_COURSES.map(
+            (course) => (
+              <button
+                type="button"
+                key={course.title}
+                onClick={
+                  onExampleClick
+                }
+                className="
+                  flex
+                  items-center
+                  gap-4
+                  p-3
+                  rounded-2xl
+                  border
+                  border-line
+                  bg-surface
+                  hover:border-orange/30
+                  transition-colors
+                "
+              >
+                <span
+                  className="
+                    shrink-0
+                    w-16
+                    h-16
+                    rounded-xl
+                    bg-orange/10
+                    flex
+                    items-center
+                    justify-center
+                    text-xs
+                    font-bold
+                    text-orange
+                    text-center
+                    px-1
+                  "
+                >
+                  {course.tag}
                 </span>
 
-                <span className="block text-xs text-muted font-sans font-semibold mb-1">
-                  {course.author}
-                </span>
+                <span>
+                  <span className="block font-display font-bold text-ink">
+                    {course.title}
+                  </span>
 
-                <span className="block text-sm text-body font-sans">
-                  {course.blurb}
+                  <span className="block text-xs text-muted font-sans font-semibold mb-1">
+                    {course.author}
+                  </span>
+
+                  <span className="block text-sm text-body font-sans">
+                    {course.blurb}
+                  </span>
                 </span>
-              </span>
-            </button>
-          ))}
+              </button>
+            ),
+          )}
         </div>
       </div>
     </div>

@@ -1,32 +1,55 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Plus } from 'lucide-react';
-import { GrokitMascot, type MascotPose } from '../../components/Grokitmascot';
+import {
+  GrokitMascot,
+  type MascotPose,
+} from '../../components/Grokitmascot';
 
 interface ProgressBarProps {
   value: number;
   dark?: boolean;
 }
 
-export function ProgressBar({ value, dark = false }: ProgressBarProps) {
+export function ProgressBar({
+  value,
+  dark = false,
+}: ProgressBarProps) {
   return (
     <div className="w-full px-3 sm:px-6 pt-1 pb-2">
       <div
-        className={`max-w-3xl mx-auto h-2.5 rounded-full overflow-hidden border ${
-          dark
-            ? 'bg-[#202F35] border-[#30464E]'
-            : 'bg-surface-alt border-line'
-        }`}
+        className={`
+          max-w-3xl
+          mx-auto
+          h-2.5
+          rounded-full
+          overflow-hidden
+          border
+          ${
+            dark
+              ? 'bg-[#202F35] border-[#30464E]'
+              : 'bg-surface-alt border-line'
+          }
+        `}
       >
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-orange to-amber"
           initial={false}
-          animate={{ width: `${value * 100}%` }}
-          transition={{ duration: 0.4, ease: 'easeInOut' }}
+          animate={{
+            width: `${value * 100}%`,
+          }}
+          transition={{
+            duration: 0.4,
+            ease: 'easeInOut',
+          }}
         />
       </div>
     </div>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* OPTION ROW                                                                 */
+/* -------------------------------------------------------------------------- */
 
 interface SelectableProps {
   label: string;
@@ -46,27 +69,66 @@ export function OptionRow({
     : 'bg-orange/10 border-orange text-ink';
 
   const unselectedClasses = dark
-    ? 'bg-[#202F35] border-[#37464F] text-white hover:border-orange/60 hover:bg-[#24363C]'
-    : 'bg-surface-alt border-line text-body hover:border-orange/30';
+    ? `
+      bg-[#202F35]
+      border-[#37464F]
+      text-white
+      hover:border-orange/60
+      hover:bg-[#24363C]
+    `
+    : `
+      bg-surface-alt
+      border-line
+      text-body
+      hover:border-orange/30
+    `;
 
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`w-full min-h-[58px] text-left px-5 py-3 rounded-2xl border-2 font-sans font-bold text-[15px] sm:text-base transition-all duration-150 ${
-        selected ? selectedClasses : unselectedClasses
-      }`}
+      className={`
+        w-full
+        min-h-[58px]
+        text-left
+        px-5
+        py-3
+        rounded-2xl
+        border-2
+        font-sans
+        font-bold
+        text-[15px]
+        sm:text-base
+        transition-all
+        duration-150
+        ${
+          selected
+            ? selectedClasses
+            : unselectedClasses
+        }
+      `}
     >
       <span className="flex items-center gap-3.5">
         <span
-          className={`w-6 h-6 shrink-0 rounded-[7px] border-2 flex items-center justify-center transition-colors ${
-            selected
-              ? 'bg-orange border-orange'
-              : dark
-                ? 'border-[#60757E] bg-transparent'
-                : 'border-line'
-          }`}
+          className={`
+            w-6
+            h-6
+            shrink-0
+            rounded-[7px]
+            border-2
+            flex
+            items-center
+            justify-center
+            transition-colors
+            ${
+              selected
+                ? 'bg-orange border-orange'
+                : dark
+                  ? 'border-[#60757E] bg-transparent'
+                  : 'border-line'
+            }
+          `}
         >
           {selected && (
             <Check
@@ -82,12 +144,18 @@ export function OptionRow({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* PILL OPTION                                                                */
+/* -------------------------------------------------------------------------- */
+
 export function PillOption({
   label,
   selected,
   onClick,
 }: SelectableProps) {
-  const selectedClasses = 'bg-orange/10 border-orange text-ink';
+  const selectedClasses =
+    'bg-orange/10 border-orange text-ink';
+
   const unselectedClasses =
     'bg-surface-alt border-line text-body hover:border-orange/30';
 
@@ -96,15 +164,38 @@ export function PillOption({
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`inline-flex items-center gap-2 px-5 py-3 rounded-full border-2 font-sans font-bold text-sm sm:text-base transition-colors ${
-        selected ? selectedClasses : unselectedClasses
-      }`}
+      className={`
+        inline-flex
+        items-center
+        gap-2
+        px-5
+        py-3
+        rounded-full
+        border-2
+        font-sans
+        font-bold
+        text-sm
+        sm:text-base
+        transition-colors
+        ${
+          selected
+            ? selectedClasses
+            : unselectedClasses
+        }
+      `}
     >
-      {selected && <Check className="w-4 h-4 text-orange" />}
+      {selected && (
+        <Check className="w-4 h-4 text-orange" />
+      )}
+
       {label}
     </button>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* OTHER INPUT                                                                */
+/* -------------------------------------------------------------------------- */
 
 interface OtherInputProps {
   value: string;
@@ -119,7 +210,9 @@ export function OtherInput({
   onAdd,
   placeholder,
 }: OtherInputProps) {
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
     if (e.key === 'Enter' && value.trim()) {
       e.preventDefault();
       onAdd();
@@ -127,13 +220,36 @@ export function OtherInput({
   };
 
   return (
-    <div className="flex items-center gap-2 px-5 py-3 rounded-full border-2 border-line bg-surface-alt focus-within:border-orange/40 transition-colors">
+    <div
+      className="
+        flex
+        items-center
+        gap-2
+        px-5
+        py-3
+        rounded-full
+        border-2
+        border-line
+        bg-surface-alt
+        focus-within:border-orange/40
+        transition-colors
+      "
+    >
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) =>
+          onChange(e.target.value)
+        }
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="flex-1 bg-transparent outline-none text-ink font-sans placeholder:text-muted"
+        className="
+          flex-1
+          bg-transparent
+          outline-none
+          text-ink
+          font-sans
+          placeholder:text-muted
+        "
       />
 
       <button
@@ -141,7 +257,19 @@ export function OtherInput({
         onClick={onAdd}
         disabled={!value.trim()}
         aria-label="Add"
-        className="w-7 h-7 shrink-0 rounded-full bg-orange text-white flex items-center justify-center disabled:opacity-30 transition-opacity"
+        className="
+          w-7
+          h-7
+          shrink-0
+          rounded-full
+          bg-orange
+          text-white
+          flex
+          items-center
+          justify-center
+          disabled:opacity-30
+          transition-opacity
+        "
       >
         <Plus className="w-4 h-4" />
       </button>
@@ -149,7 +277,15 @@ export function OtherInput({
   );
 }
 
-export function GoogleIcon({ className }: { className?: string }) {
+/* -------------------------------------------------------------------------- */
+/* GOOGLE ICON                                                                */
+/* -------------------------------------------------------------------------- */
+
+export function GoogleIcon({
+  className,
+}: {
+  className?: string;
+}) {
   return (
     <svg
       viewBox="0 0 48 48"
@@ -160,14 +296,17 @@ export function GoogleIcon({ className }: { className?: string }) {
         fill="#FFC107"
         d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
       />
+
       <path
         fill="#FF3D00"
         d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039 l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
       />
+
       <path
         fill="#4CAF50"
         d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
       />
+
       <path
         fill="#1976D2"
         d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24 C44,22.659,43.862,21.35,43.611,20.083z"
@@ -175,6 +314,10 @@ export function GoogleIcon({ className }: { className?: string }) {
     </svg>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/* TRANSITION SCREEN                                                          */
+/* -------------------------------------------------------------------------- */
 
 interface TransitionScreenProps {
   pose: MascotPose;
@@ -199,7 +342,18 @@ export function TransitionScreen({
         className="mb-8"
       />
 
-      <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-ink font-extrabold mb-4 max-w-3xl">
+      <h1
+        className="
+          font-display
+          text-2xl
+          sm:text-3xl
+          md:text-4xl
+          text-ink
+          font-extrabold
+          mb-4
+          max-w-3xl
+        "
+      >
         {heading}
       </h1>
 
@@ -220,6 +374,7 @@ export function TransitionScreen({
           className="btn-duo w-full px-8 py-4 text-lg"
         >
           Continue
+
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>
