@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, type Transition } from 'framer-motion';
+import { motion, type TargetAndTransition, type Transition, } from 'framer-motion';
 import octoPng from '../assets/grokit-octo.png';
 import octopusSvg from '../assets/grokit-octopus.svg';
 
@@ -11,7 +11,13 @@ interface GrokitMascotProps {
   pose?: MascotPose;
 }
 
-const poseConfig: Record<MascotPose, { animate: object; transition: Transition }> = {
+const poseConfig: Record<
+  MascotPose,
+  {
+    animate: TargetAndTransition;
+    transition: Transition;
+  }
+> = {
   idle: {
     animate: { y: [0, -6, 0], rotate: [0, -2, 2, 0] },
     transition: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' },
