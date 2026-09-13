@@ -2,9 +2,20 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
+const viewport = { once: true };
+
+const fadeUp = (delay = 0) => ({
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport,
+  transition: { duration: 0.5, delay },
+});
+
+const mockupCardClasses = 'bg-surface-alt border border-line rounded-3xl p-6 md:p-7 w-full max-w-md';
+
 function StepInputMockup({ cursorVisible }: { cursorVisible: boolean }) {
   return (
-    <div className="bg-surface-alt border border-line rounded-3xl p-6 md:p-7 w-full max-w-md">
+    <div className={mockupCardClasses}>
       <div className="flex items-start gap-3">
         <div className="w-9 h-9 rounded-full bg-orange flex items-center justify-center shrink-0">
           <Sparkles className="w-5 h-5 text-white" />
@@ -33,36 +44,22 @@ function StepPathMockup() {
   ];
 
   return (
-    <div className="bg-surface-alt border border-line rounded-3xl p-6 md:p-7 w-full max-w-md">
+    <div className={mockupCardClasses}>
       {topics.map((topic, idx) => (
         <motion.div
           key={topic}
           className="flex items-center gap-4"
           initial={{ opacity: 0, x: -16 }}
           whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }}
-          transition={{
-            delay: idx * 0.1,
-            duration: 0.4,
-          }}
+          viewport={viewport}
+          transition={{ delay: idx * 0.1, duration: 0.4 }}
         >
           <div className="flex flex-col items-center">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                idx === 0 ? 'bg-orange' : 'bg-muted/50'
-              }`}
-            />
-
-            {idx < topics.length - 1 && (
-              <div className="w-0.5 h-7 bg-line" />
-            )}
+            <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-orange' : 'bg-muted/50'}`} />
+            {idx < topics.length - 1 && <div className="w-0.5 h-7 bg-line" />}
           </div>
 
-          <span
-            className={`font-sans font-bold text-sm md:text-base ${
-              idx === 0 ? 'text-ink' : 'text-muted'
-            }`}
-          >
+          <span className={`font-sans font-bold text-sm md:text-base ${idx === 0 ? 'text-ink' : 'text-muted'}`}>
             {topic}
           </span>
         </motion.div>
@@ -73,10 +70,8 @@ function StepPathMockup() {
 
 function StepLessonMockup() {
   return (
-    <div className="bg-surface-alt border border-line rounded-3xl p-6 md:p-7 w-full max-w-md">
-      <span className="eyebrow block mb-2">
-        Lesson 3 of 12
-      </span>
+    <div className={mockupCardClasses}>
+      <span className="eyebrow block mb-2">Lesson 3 of 12</span>
 
       <p className="font-display font-extrabold text-ink text-lg md:text-xl mb-5">
         Order types and market microstructure
@@ -87,17 +82,12 @@ function StepLessonMockup() {
           className="h-full rounded-full bg-orange"
           initial={{ width: 0 }}
           whileInView={{ width: '65%' }}
-          viewport={{ once: true }}
-          transition={{
-            duration: 0.9,
-            ease: 'easeOut',
-          }}
+          viewport={viewport}
+          transition={{ duration: 0.9, ease: 'easeOut' }}
         />
       </div>
 
-      <p className="text-xs font-sans font-bold text-muted mb-5">
-        65% complete
-      </p>
+      <p className="text-xs font-sans font-bold text-muted mb-5">65% complete</p>
 
       <span className="inline-flex items-center gap-2 rounded-full bg-orange text-white font-display font-bold text-sm px-5 py-2.5">
         Continue
@@ -107,151 +97,73 @@ function StepLessonMockup() {
   );
 }
 
+const MOCKUPS = {
+  input: StepInputMockup,
+  path: StepPathMockup,
+  lesson: StepLessonMockup,
+} as const;
+
 const steps = [
-  {
-    title: 'Say what you want to learn',
-    mockup: 'input' as const,
-  },
-  {
-    title: 'Grokit builds your path',
-    mockup: 'path' as const,
-  },
-  {
-    title: 'Learn a little, every day',
-    mockup: 'lesson' as const,
-  },
+  { title: 'Say what you want to learn', mockup: 'input' as const },
+  { title: 'Grokit builds your path', mockup: 'path' as const },
+  { title: 'Learn a little, every day', mockup: 'lesson' as const },
 ];
 
 export function HowItWorks() {
   const [cursorVisible, setCursorVisible] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(
-      () => setCursorVisible((v) => !v),
-      530
-    );
-
+    const interval = setInterval(() => setCursorVisible((v) => !v), 530);
     return () => clearInterval(interval);
   }, []);
 
   return (
-    <section
-      id="how-it-works"
-      className="bg-surface py-12 sm:py-14 md:py-16 overflow-hidden"
-    >
+    <section id="how-it-works" className="bg-surface py-12 sm:py-14 md:py-16 overflow-hidden">
       <div className="max-w-[1140px] mx-auto px-5 md:px-16">
 
         {/* Section label */}
         <motion.span
           className="eyebrow block mb-10 md:mb-12"
-          initial={{
-            opacity: 0,
-            y: 12,
-          }}
-          whileInView={{
-            opacity: 1,
-            y: 0,
-          }}
-          viewport={{
-            once: true,
-          }}
+          {...fadeUp()}
+          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0, y: 12 }}
         >
           How it works
         </motion.span>
 
         {/* Steps */}
         <div className="flex flex-col gap-12 md:gap-16">
-          {steps.map((step, idx) => {
+          {steps.map(({ title, mockup }, idx) => {
             const reversed = idx % 2 === 1;
+            const Mockup = MOCKUPS[mockup];
 
             return (
               <div
-                key={step.title}
+                key={title}
                 className={`
-                  flex
-                  flex-col
-                  ${
-                    reversed
-                      ? 'md:flex-row-reverse'
-                      : 'md:flex-row'
-                  }
-                  items-center
-                  gap-7
-                  md:gap-12
-                  lg:gap-16
+                  flex flex-col items-center gap-7 md:gap-12 lg:gap-16
+                  ${reversed ? 'md:flex-row-reverse' : 'md:flex-row'}
                 `}
               >
                 {/* Step title */}
                 <motion.div
                   className="flex-1 w-full text-center md:text-left"
-                  initial={{
-                    opacity: 0,
-                    y: 20,
-                  }}
-                  whileInView={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  viewport={{
-                    once: true,
-                  }}
-                  transition={{
-                    duration: 0.5,
-                  }}
+                  {...fadeUp()}
                 >
                   <span className="font-mono text-sm font-bold text-muted block mb-3">
                     0{idx + 1}
                   </span>
-
-                  <h3
-                    className="
-                      font-display
-                      text-[22px]
-                      md:text-[28px]
-                      text-ink
-                      font-extrabold
-                      leading-snug
-                      max-w-sm
-                      mx-auto
-                      md:mx-0
-                    "
-                  >
-                    {step.title}
+                  <h3 className="font-display text-[22px] md:text-[28px] text-ink font-extrabold leading-snug max-w-sm mx-auto md:mx-0">
+                    {title}
                   </h3>
                 </motion.div>
 
                 {/* Step mockup */}
                 <motion.div
                   className="flex-1 flex justify-center w-full"
-                  initial={{
-                    opacity: 0,
-                    y: 20,
-                  }}
-                  whileInView={{
-                    opacity: 1,
-                    y: 0,
-                  }}
-                  viewport={{
-                    once: true,
-                  }}
-                  transition={{
-                    duration: 0.5,
-                    delay: 0.08,
-                  }}
+                  {...fadeUp(0.08)}
                 >
-                  {step.mockup === 'input' && (
-                    <StepInputMockup
-                      cursorVisible={cursorVisible}
-                    />
-                  )}
-
-                  {step.mockup === 'path' && (
-                    <StepPathMockup />
-                  )}
-
-                  {step.mockup === 'lesson' && (
-                    <StepLessonMockup />
-                  )}
+                  <Mockup cursorVisible={cursorVisible} />
                 </motion.div>
               </div>
             );

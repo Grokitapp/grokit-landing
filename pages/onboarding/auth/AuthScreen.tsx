@@ -849,8 +849,6 @@ export default function AuthScreen({
 
       {/* =====================================================
           Auth content
-
-          Deliberately top-weighted like Duolingo.
          ===================================================== */}
       <main
         className="
