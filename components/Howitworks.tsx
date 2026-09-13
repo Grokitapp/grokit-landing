@@ -4,15 +4,15 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 
 function StepInputMockup({ cursorVisible }: { cursorVisible: boolean }) {
   return (
-    <div className="bg-surface-alt border border-line rounded-3xl p-6 md:p-8 w-full max-w-md">
+    <div className="bg-surface-alt border border-line rounded-3xl p-7 md:p-9 w-full max-w-md">
       <div className="flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full bg-orange flex items-center justify-center shrink-0">
-          <Sparkles className="w-4 h-4 text-white" />
+        <div className="w-9 h-9 rounded-full bg-orange flex items-center justify-center shrink-0">
+          <Sparkles className="w-5 h-5 text-white" />
         </div>
-        <p className="text-body font-sans font-medium text-base md:text-lg leading-relaxed">
+        <p className="text-body font-sans font-medium text-lg md:text-xl leading-relaxed">
           I want to understand quantitative trading from the ground up.
           <span
-            className={`inline-block w-0.5 h-5 bg-orange ml-1 align-middle transition-opacity ${
+            className={`inline-block w-0.5 h-6 bg-orange ml-1 align-middle transition-opacity ${
               cursorVisible ? 'opacity-100' : 'opacity-0'
             }`}
           />
@@ -25,7 +25,7 @@ function StepInputMockup({ cursorVisible }: { cursorVisible: boolean }) {
 function StepPathMockup() {
   const topics = ['Market Basics', 'Statistics', 'Probability', 'Market Microstructure', 'Strategy Research'];
   return (
-    <div className="bg-surface-alt border border-line rounded-3xl p-6 md:p-8 w-full max-w-md">
+    <div className="bg-surface-alt border border-line rounded-3xl p-7 md:p-9 w-full max-w-md">
       {topics.map((topic, idx) => (
         <motion.div
           key={topic}
@@ -36,18 +36,10 @@ function StepPathMockup() {
           transition={{ delay: idx * 0.12, duration: 0.4 }}
         >
           <div className="flex flex-col items-center">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                idx === 0 ? 'bg-orange' : 'bg-muted/50'
-              }`}
-            />
-            {idx < topics.length - 1 && <div className="w-0.5 h-7 bg-line" />}
+            <div className={`w-3 h-3 rounded-full ${idx === 0 ? 'bg-orange' : 'bg-muted/50'}`} />
+            {idx < topics.length - 1 && <div className="w-0.5 h-8 bg-line" />}
           </div>
-          <span
-            className={`font-sans font-bold text-sm md:text-base ${
-              idx === 0 ? 'text-ink' : 'text-muted'
-            }`}
-          >
+          <span className={`font-sans font-bold text-base md:text-lg ${idx === 0 ? 'text-ink' : 'text-muted'}`}>
             {topic}
           </span>
         </motion.div>
@@ -58,12 +50,12 @@ function StepPathMockup() {
 
 function StepLessonMockup() {
   return (
-    <div className="bg-surface-alt border border-line rounded-3xl p-6 md:p-8 w-full max-w-md">
+    <div className="bg-surface-alt border border-line rounded-3xl p-7 md:p-9 w-full max-w-md">
       <span className="eyebrow block mb-3">Lesson 3 of 12</span>
-      <p className="font-display font-extrabold text-ink text-lg md:text-xl mb-5">
+      <p className="font-display font-extrabold text-ink text-xl md:text-2xl mb-6">
         Order types and market microstructure
       </p>
-      <div className="h-3 rounded-full bg-line overflow-hidden mb-2">
+      <div className="h-3.5 rounded-full bg-line overflow-hidden mb-3">
         <motion.div
           className="h-full rounded-full bg-orange"
           initial={{ width: 0 }}
@@ -72,8 +64,8 @@ function StepLessonMockup() {
           transition={{ duration: 0.9, ease: 'easeOut' }}
         />
       </div>
-      <p className="text-xs font-sans font-bold text-muted mb-5">65% complete</p>
-      <span className="inline-flex items-center gap-2 rounded-full bg-orange text-white font-display font-bold text-sm px-5 py-2.5">
+      <p className="text-sm font-sans font-bold text-muted mb-6">65% complete</p>
+      <span className="inline-flex items-center gap-2 rounded-full bg-orange text-white font-display font-bold text-base px-6 py-3">
         Continue
         <ArrowRight className="w-4 h-4" />
       </span>
@@ -82,18 +74,9 @@ function StepLessonMockup() {
 }
 
 const steps = [
-  {
-    title: 'Say what you want to learn',
-    mockup: 'input' as const,
-  },
-  {
-    title: 'Grokit builds your path',
-    mockup: 'path' as const,
-  },
-  {
-    title: 'Learn a little, every day',
-    mockup: 'lesson' as const,
-  },
+  { title: 'Say what you want to learn', mockup: 'input' as const },
+  { title: 'Grokit builds your path', mockup: 'path' as const },
+  { title: 'Learn a little, every day', mockup: 'lesson' as const },
 ];
 
 export function HowItWorks() {
@@ -122,9 +105,7 @@ export function HowItWorks() {
             return (
               <div
                 key={step.title}
-                className={`flex flex-col ${
-                  reversed ? 'md:flex-row-reverse' : 'md:flex-row'
-                } items-center gap-10 md:gap-20`}
+                className={`flex flex-col ${reversed ? 'md:flex-row-reverse' : 'md:flex-row'} items-center gap-10 md:gap-20`}
               >
                 <motion.div
                   className="flex-1 w-full text-center md:text-left"
@@ -133,10 +114,10 @@ export function HowItWorks() {
                   viewport={{ once: true }}
                   transition={{ duration: 0.6 }}
                 >
-                  <span className="font-mono text-sm font-bold text-muted block mb-4">
+                  <span className="font-mono text-base font-bold text-muted block mb-4">
                     0{idx + 1}
                   </span>
-                  <h3 className="font-display text-[19px] md:text-xl text-ink font-extrabold leading-snug max-w-sm mx-auto md:mx-0">
+                  <h3 className="font-display text-[22px] md:text-[28px] text-ink font-extrabold leading-snug max-w-sm mx-auto md:mx-0">
                     {step.title}
                   </h3>
                 </motion.div>

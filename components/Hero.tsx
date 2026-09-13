@@ -22,18 +22,18 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
           >
             <span className="eyebrow block mb-6">Now building</span>
 
-            <h1 className="font-display text-[36px] sm:text-5xl lg:text-[56px] text-ink font-extrabold leading-[1.08] tracking-tight mb-6">
+            <h1 className="font-display text-[40px] sm:text-6xl lg:text-[64px] text-ink font-extrabold leading-[1.05] tracking-tight mb-6">
               The smartest way to learn <span className="text-orange">anything</span>
             </h1>
 
-            <p className="text-base md:text-lg text-body font-sans font-medium leading-relaxed max-w-md mx-auto md:mx-0 mb-8">
+            <p className="text-lg md:text-xl text-body font-sans font-medium leading-relaxed max-w-md mx-auto md:mx-0 mb-10">
               Grounded in real knowledge. Built around you.
             </p>
 
             <div className="flex flex-col sm:flex-row items-center md:items-start justify-center md:justify-start gap-3 sm:gap-4">
               <motion.button
                 onClick={() => navigate('/onboarding')}
-                className="btn-duo px-8 py-4 text-base sm:text-lg"
+                className="btn-duo px-9 py-4 text-lg"
                 whileTap={{ scale: 0.98 }}
               >
                 Start learning
@@ -42,7 +42,7 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
 
               <motion.button
                 onClick={onOpenWaitlist}
-                className="btn-duo-outline px-8 py-4 text-base sm:text-lg"
+                className="btn-duo-outline px-9 py-4 text-lg"
                 whileTap={{ scale: 0.98 }}
               >
                 Join the waitlist

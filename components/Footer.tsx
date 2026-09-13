@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { Mail } from 'lucide-react';
-import { GrokitLogo } from './Grokitlogo';
+import logoLockup from '../assets/grokit-logo-lockup.png';
 
 const InstagramIcon = ({ className = 'w-5 h-5' }: { className?: string }) => (
   <svg
@@ -47,7 +48,9 @@ const LinkedinIcon = ({ className = 'w-5 h-5' }: { className?: string }) => (
 );
 
 export function Footer() {
-  const socialLinks = [
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  const socials = [
     { icon: InstagramIcon, href: 'https://www.instagram.com/grokitapp', label: 'Instagram' },
     { icon: XIcon, href: 'https://x.com/GrokitApp', label: 'X' },
     { icon: LinkedinIcon, href: 'https://linkedin.com/company/grokit-app', label: 'LinkedIn' },
@@ -55,42 +58,39 @@ export function Footer() {
   ];
 
   return (
-    <footer className="bg-surface border-t border-line py-12">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-          {/* Left */}
-          <div>
-            <div className="flex items-center gap-3 mb-3">
-              <GrokitLogo size={28} />
-            </div>
-            <p className="text-body text-sm max-w-xs">
-              Generative learning, grounded in real knowledge.
-            </p>
-          </div>
+    <footer className="bg-surface border-t border-line py-16">
+      <div className="max-w-[1140px] mx-auto px-5 md:px-16 flex flex-col items-center text-center gap-7">
+        {logoFailed ? (
+          <span className="font-display font-extrabold text-orange text-5xl">grokit</span>
+        ) : (
+          <img
+            src={logoLockup}
+            alt="Grokit"
+            onError={() => setLogoFailed(true)}
+            className="h-20 md:h-28 w-auto object-contain"
+          />
+        )}
 
-          {/* Right - Social */}
-          <div className="flex items-center gap-4">
-            {socialLinks.map(({ icon: Icon, href, label }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 text-body hover:text-orange transition-colors"
-                aria-label={label}
-              >
-                <Icon className="w-5 h-5" />
-              </a>
-            ))}
-          </div>
+        <p className="text-lg md:text-xl font-sans font-bold text-body">
+          Generative learning, grounded in real knowledge.
+        </p>
+
+        <div className="flex items-center gap-5">
+          {socials.map(({ icon: Icon, href, label }) => (
+            <a
+              key={label}
+              href={href}
+              aria-label={label}
+              className="w-11 h-11 rounded-full bg-peach flex items-center justify-center text-link hover:bg-orange hover:text-white transition-colors duration-300"
+            >
+              <Icon className="w-5 h-5" />
+            </a>
+          ))}
         </div>
 
-        {/* Bottom */}
-        <div className="mt-12 pt-8 border-t border-line">
-          <p className="text-muted text-sm">
-            © {new Date().getFullYear()} Grokit. All rights reserved.
-          </p>
-        </div>
+        <p className="text-[15px] font-sans font-medium text-muted">
+          © 2026 Grokit. All rights reserved.
+        </p>
       </div>
     </footer>
   );

@@ -9,10 +9,10 @@ const items = [
 
 export function BenefitBand() {
   return (
-    <section className="bg-surface py-20 md:py-28">
+    <section className="bg-surface py-24 md:py-32">
       <div className="max-w-[1140px] mx-auto px-5 md:px-16 text-center">
         <motion.h2
-          className="font-display text-[26px] sm:text-3xl md:text-[34px] leading-tight mb-6"
+          className="font-display text-[32px] sm:text-4xl md:text-[48px] leading-[1.1] mb-6"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -24,7 +24,7 @@ export function BenefitBand() {
         </motion.h2>
 
         <motion.p
-          className="text-base md:text-lg text-body font-sans font-medium max-w-xl mx-auto mb-12"
+          className="text-lg md:text-xl text-body font-sans font-medium max-w-xl mx-auto mb-14"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -33,20 +33,20 @@ export function BenefitBand() {
           Real knowledge, shaped around how you learn.
         </motion.p>
 
-        <div className="flex justify-center gap-12 md:gap-20">
+        <div className="flex justify-center gap-14 md:gap-24">
           {items.map(({ word, icon: Icon }, idx) => (
             <motion.div
               key={word}
-              className="flex flex-col items-center gap-3"
+              className="flex flex-col items-center gap-4"
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 + idx * 0.1 }}
             >
-              <div className="w-14 h-14 rounded-full bg-peach flex items-center justify-center">
-                <Icon className="w-6 h-6 text-orange" />
+              <div className="w-16 h-16 rounded-full bg-peach flex items-center justify-center">
+                <Icon className="w-7 h-7 text-orange" />
               </div>
-              <span className="text-sm font-sans font-bold text-muted">{word}</span>
+              <span className="text-base font-sans font-bold text-muted">{word}</span>
             </motion.div>
           ))}
         </div>

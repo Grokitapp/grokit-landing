@@ -45,13 +45,12 @@ export function Navigation({ onOpenWaitlist }: NavigationProps) {
     >
       <div className="max-w-[1140px] mx-auto px-5 md:px-16 flex items-center justify-between">
         <a href="/" className="flex items-center group">
-          <Logo className="h-12 md:h-14 transition-transform duration-300 group-hover:scale-105" />
+          <Logo className="h-14 md:h-16 transition-transform duration-300 group-hover:scale-105" />
         </a>
 
-        {/* One action only — Duolingo nav discipline */}
         <button
           onClick={onOpenWaitlist}
-          className="btn-duo px-5 py-2.5 text-sm"
+          className="btn-duo px-6 py-3 text-base"
         >
           Join Waitlist
         </button>
