@@ -1,6 +1,20 @@
 import { motion } from 'framer-motion';
 import groundedIllustration from '../assets/grokit-grounded.png';
 
+const viewport = { once: true };
+
+const fadeLeft = {
+  initial: { opacity: 0, x: -24 },
+  whileInView: { opacity: 1, x: 0 },
+  viewport,
+};
+
+const fadeRight = {
+  initial: { opacity: 0, x: 24, scale: 0.96 },
+  whileInView: { opacity: 1, x: 0, scale: 1 },
+  viewport,
+};
+
 export function Credibility() {
   return (
     <section className="bg-peach py-14 md:py-20 overflow-hidden">
@@ -10,29 +24,25 @@ export function Credibility() {
           {/* Left — Text */}
           <motion.div
             className="flex-1 w-full text-center md:text-left"
-            initial={{ opacity: 0, x: -24 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
+            {...fadeLeft}
             transition={{ duration: 0.6 }}
           >
-            <h2 className="font-display text-[32px] sm:text-4xl md:text-[48px]  text-ink font-extrabold leading-[1.1] tracking-[-0.02em] mb-6">
+            <h2 className="font-display text-[32px] sm:text-4xl md:text-[48px] text-ink font-extrabold leading-[1.1] tracking-[-0.02em] mb-6">
               Grounded in real
               <br className="hidden sm:block" />
               knowledge
             </h2>
-
-            <p className="text-lg md:text-xl  text-body font-sans font-medium leading-relaxed max-w-[560px] mx-auto md:mx-0">
+            <p className="text-lg md:text-xl text-body font-sans font-medium leading-relaxed max-w-[560px] mx-auto md:mx-0">
               Every course in our core domains is built from verified public
               sources, not just plausible-sounding AI text.
             </p>
           </motion.div>
 
           {/* Right — Complete illustration */}
-          <motion.div className="flex-1 w-full flex justify-center md:justify-end"
-            initial={{ opacity: 0, x: 24, scale: 0.96 }}
-            whileInView={{ opacity: 1, x: 0, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1],}}
+          <motion.div
+            className="flex-1 w-full flex justify-center md:justify-end"
+            {...fadeRight}
+            transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1],}}
           >
             <motion.img
               src={groundedIllustration}

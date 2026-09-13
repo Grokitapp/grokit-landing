@@ -5,6 +5,7 @@ import { GrokitMascot, type MascotPose } from '../components/Grokitmascot';
 import { WaitlistModal } from '../components/Waitlistmodal';
 import { saveProfile } from '../lib/profile';
 import AuthScreen from './onboarding/auth/AuthScreen';
+import Welcome from './onboarding/Welcome';
 
 // ---------------------------------------------------------------------------
 // Data
@@ -336,46 +337,12 @@ export default function Onboarding() {
           )}
 
           {/* --- WELCOME ---------------------------------------------- */}
-          {step === STEP.WELCOME &&
-          <div className="flex-1 flex flex-col items-center justify-center px-5 sm:px-8 py-10 sm:py-14 text-center">
-              <div className="w-full max-w-4xl mx-auto">
-                <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-orange/10 border border-orange/20 text-orange font-sans font-bold text-sm mb-7">
-                  Welcome to Grokit
-                </div>
-
-                <div className="relative flex justify-center mb-8">
-                  <div className="absolute -inset-8 rounded-full bg-orange/5 blur-2xl" aria-hidden="true" />
-                  <GrokitMascot size={150} pose="wave" className="relative" />
-                </div>
-
-                <h1 className="font-display text-4xl sm:text-5xl md:text-6xl leading-tight text-ink font-extrabold mb-4 max-w-3xl mx-auto">
-                  Let's make learning fit your life.
-                </h1>
-                <p className="text-body font-sans text-base sm:text-lg md:text-xl font-medium leading-relaxed max-w-2xl mx-auto mb-10">
-                  You're in. A few quick choices will help Grokit understand what you care about, what you want to achieve, and how much time you have to learn.
-                </p>
-
-                <div className="w-full max-w-2xl mx-auto grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <button onClick={() => setStep(STEP.INTRO)} className="btn-duo w-full px-6 py-4 text-base sm:text-lg">
-                    Personalize my Grokit
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
-                  <a
-                    href={DISCORD_INVITE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn-duo-outline w-full px-6 py-4 text-base sm:text-lg"
-                  >
-                    Join our Discord
-                  </a>
-                </div>
-
-                <p className="text-xs sm:text-sm text-muted font-sans mt-6">
-                  Your answers help us make Grokit more useful from day one.
-                </p>
-              </div>
-            </div>
-          }
+          {step === STEP.WELCOME && (
+            <Welcome
+              onContinue={() => setStep(STEP.INTRO)}
+              discordInviteUrl={DISCORD_INVITE_URL}
+            />
+          )}
 
           {/* --- INTRO -------------------------------------------------- */}
           {step === STEP.INTRO &&
