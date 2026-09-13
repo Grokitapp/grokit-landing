@@ -55,7 +55,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="bg-surface-alt border-t border-line py-12 md:py-16">
+    <footer className="bg-surface border-t border-line py-12">
       <div className="max-w-6xl mx-auto px-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
           {/* Left */}

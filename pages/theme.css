@@ -4,22 +4,27 @@
  */
 @theme {
 	/* Core palette */
-	--color-surface: #FFFFFF;       /* page / section background */
-	--color-surface-alt: #FFF3EA;   /* cards, elevated panels, inputs (faint warm tint) */
-	--color-line: #F5E1D0;          /* borders, dividers */
-	--color-ink: #201510;           /* headings, primary text */
-	--color-body: #5D4F47;          /* paragraph / secondary text */
-	--color-muted: #8A796E;         /* tertiary text, inactive states */
+	--color-surface: #FFFFFF;       /* page / section background (~80% of the page) */
+	--color-surface-alt: #FFFDF9;   /* cream cards, mockups, inputs */
+	--color-peach: #FDEDE1;         /* chip backgrounds, credibility band — the only tinted-light surface */
+	--color-line: #F1E4D8;          /* borders, dividers */
+	--color-ink: #12142B;           /* headings, primary text */
+	--color-body: #4B4B57;          /* paragraph / secondary text */
+	--color-muted: #6B6B6B;         /* tertiary text, inactive states */
 	--color-on-primary: #FFFFFF;    /* text on filled accent buttons */
 
-	/* Brand accent — exact logo orange */
-	--color-orange: #FF6B00;
-	--color-orange-bright: #FF8A3D;
-	--color-orange-glow: #CC5500;
+	/* Brand accent — spec primary orange */
+	--color-orange: #F4611F;        /* mascot, buttons, one emphasis word per headline */
+	--color-orange-bright: #FF8A3D; /* glows only */
+	--color-orange-glow: #E0501A;   /* deep shade: button press layer, CTA gradient end */
 
-	/* Warm secondary accent — gold, kept distinct from orange for contrast against it (e.g. badges, highlights) */
+	/* Warm secondary accent (kept for onboarding compatibility) */
 	--color-amber: #FDB022;
 	--color-amber-glow: #DC8B0A;
+
+	/* Reserved roles */
+	--color-ink-deep: #12142B;      /* Pro teaser band background — the page's one dark moment */
+	--color-link: #C1531E;          /* links only */
 
 	/* Typography - bold, rounded, friendly */
 	--font-display: 'Baloo 2', system-ui, sans-serif;

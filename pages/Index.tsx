@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { Navigation } from '../components/Navigation';
 import { Hero } from '../components/Hero';
 import { HighlightStrip } from '../components/Highlightstrip';
-import { TrustStrip } from '../components/Truststrip';
+import { BenefitBand } from '../components/Benefitband';
 import { HowItWorks } from '../components/Howitworks';
 import { InteractivePrompt } from '../components/Interactiveprompt';
-import { GrokitDifference } from '../components/Grokitdifference';
+import { Credibility } from '../components/Credibility';
+import { ProTeaser } from '../components/Proteaser';
 import { FAQ } from '../components/Faq';
 import { FinalCTA } from '../components/Finalcta';
 import { Footer } from '../components/Footer';
@@ -22,10 +23,11 @@ export default function Index() {
       <Navigation onOpenWaitlist={openWaitlist} />
       <Hero onOpenWaitlist={openWaitlist} />
       <HighlightStrip />
-      <TrustStrip />
+      <BenefitBand />
       <HowItWorks />
       <InteractivePrompt onOpenWaitlist={openWaitlist} />
-      <GrokitDifference />
+      <Credibility />
+      <ProTeaser onOpenWaitlist={openWaitlist} />
       <FAQ />
       <FinalCTA onOpenWaitlist={openWaitlist} />
       <Footer />

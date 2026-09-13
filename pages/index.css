@@ -94,4 +94,37 @@
 		transform: translateY(4px);
 		box-shadow: 0 1px 0 var(--color-line);
 	}
+		/* White 3D pill — for use on the orange gradient CTA band */
+	.btn-duo-white {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		border-radius: var(--radius-full);
+		font-family: var(--font-display);
+		font-weight: 700;
+		letter-spacing: 0.02em;
+		color: var(--color-ink);
+		background: #ffffff;
+		box-shadow: 0 5px 0 rgba(18, 20, 43, 0.22);
+		transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+	}
+	.btn-duo-white:hover {
+		filter: brightness(0.97);
+		transform: translateY(-2px);
+	}
+	.btn-duo-white:active {
+		transform: translateY(4px);
+		box-shadow: 0 1px 0 rgba(18, 20, 43, 0.22);
+	}
+
+	/* Eyebrow label — 13px, uppercase, tracked, link color */
+	.eyebrow {
+		font-family: var(--font-sans);
+		font-size: 13px;
+		font-weight: 800;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--color-link);
+	}
 }
