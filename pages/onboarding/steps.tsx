@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { ArrowRight, X } from 'lucide-react';
 import { GrokitMascot } from '../../components/Grokitmascot';
 import {
-  EXAMPLE_COURSES,
   GOAL_OPTIONS,
   TIME_OPTIONS,
   TOPIC_OPTIONS,
@@ -11,7 +10,7 @@ import {
 import { OptionRow, OtherInput, PillOption } from './shared';
 
 /* -------------------------------------------------------------------------- */
-/* GENERIC STEP PROPS                                                         */
+/* GENERIC STEP PROPS                                                        */
 /* -------------------------------------------------------------------------- */
 
 interface StepProps {
@@ -19,7 +18,7 @@ interface StepProps {
 }
 
 /* -------------------------------------------------------------------------- */
-/* CONTINUE BUTTON                                                            */
+/* CONTINUE BUTTON                                                           */
 /* -------------------------------------------------------------------------- */
 
 interface ContinueButtonProps extends StepProps {
@@ -65,23 +64,15 @@ export function ContinueButton({
         ${className}
       `}
     >
-      <span>Continue</span>
+      Continue
 
-      <ArrowRight
-        className="
-          w-5
-          h-5
-          transition-transform
-          duration-150
-          group-hover:translate-x-0.5
-        "
-      />
+      <ArrowRight className="w-5 h-5 transition-transform duration-150 group-hover:translate-x-0.5" />
     </button>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/* QUESTION SHELL                                                             */
+/* QUESTION SHELL                                                            */
 /* -------------------------------------------------------------------------- */
 
 interface QuestionShellProps {
@@ -101,7 +92,7 @@ function QuestionShell({
   canContinue = true,
   onContinue,
   children,
-  dark = true,
+  dark = false,
 }: QuestionShellProps) {
   const shellBg = dark
     ? 'bg-[#131F24] text-white'
@@ -120,15 +111,7 @@ function QuestionShell({
     : 'border-transparent bg-surface';
 
   return (
-    <div
-      className={`
-        flex-1
-        min-h-0
-        flex
-        flex-col
-        ${shellBg}
-      `}
-    >
+    <div className={`flex-1 min-h-0 flex flex-col ${shellBg}`}>
       {/* Header */}
       <div
         className={`
@@ -138,9 +121,9 @@ function QuestionShell({
           mx-auto
           px-5
           sm:px-6
-          pt-6
-          sm:pt-7
-          pb-3
+          pt-4
+          sm:pt-5
+          pb-4
         `}
       >
         <h1
@@ -152,12 +135,7 @@ function QuestionShell({
             leading-tight
             font-extrabold
             text-center
-            tracking-[-0.015em]
-            ${
-              subtitle
-                ? 'mb-1.5'
-                : 'mb-0'
-            }
+            ${subtitle ? 'mb-1.5' : 'mb-0'}
             ${titleColor}
           `}
         >
@@ -197,7 +175,7 @@ function QuestionShell({
             mx-auto
             px-5
             sm:px-6
-            pb-8
+            pb-5
           `}
         >
           {children}
@@ -216,13 +194,7 @@ function QuestionShell({
           ${footerTheme}
         `}
       >
-        <div
-          className={`
-            w-full
-            ${maxWidth}
-            mx-auto
-          `}
-        >
+        <div className={`w-full ${maxWidth} mx-auto`}>
           <ContinueButton
             onContinue={onContinue}
             disabled={!canContinue}
@@ -234,7 +206,7 @@ function QuestionShell({
 }
 
 /* -------------------------------------------------------------------------- */
-/* SELECTION TYPES                                                            */
+/* SELECTION TYPES                                                           */
 /* -------------------------------------------------------------------------- */
 
 interface SelectionStepProps {
@@ -244,40 +216,34 @@ interface SelectionStepProps {
   onContinue: () => void;
 }
 
-interface WorkTypeStepProps
-  extends SelectionStepProps {
+interface WorkTypeStepProps extends SelectionStepProps {
   otherSelected?: boolean;
   otherValue?: string;
   onToggleOther?: () => void;
   onOtherChange?: (value: string) => void;
 }
 
-interface TopicsStepProps
-  extends SelectionStepProps {
+interface TopicsStepProps extends SelectionStepProps {
   otherValue: string;
   onOtherChange: (v: string) => void;
   onAddOther: () => void;
 }
 
 /* -------------------------------------------------------------------------- */
-/* HELPERS                                                                    */
+/* HELPERS                                                                   */
 /* -------------------------------------------------------------------------- */
 
 const customItems = (
   selected: string[],
   options: string[],
 ) =>
-  selected.filter(
-    (item) => !options.includes(item),
-  );
+  selected.filter((item) => !options.includes(item));
 
 /* -------------------------------------------------------------------------- */
 /* INTRO                                                                      */
 /* -------------------------------------------------------------------------- */
 
-export function IntroStep({
-  onContinue,
-}: StepProps) {
+export function IntroStep({ onContinue }: StepProps) {
   return (
     <div
       className="
@@ -298,19 +264,14 @@ export function IntroStep({
         text-center
       "
     >
-      <div
-        className="
-          relative
-          z-10
-          w-full
-          max-w-[680px]
-          mx-auto
-          flex
-          flex-col
-          items-center
-        "
-      >
-        <div className="relative mb-5">
+      <div className="relative z-10 w-full max-w-[680px] mx-auto flex flex-col items-center">
+        <div className="relative mb-4 sm:mb-5">
+          <div className="relative w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-[#1C3037] border border-[#30464E] flex items-center justify-center">
+            <span className="text-amber text-xl">✦</span>
+          </div>
+        </div>
+
+        <div className="relative mb-4 sm:mb-5">
           <GrokitMascot
             size={130}
             pose="celebrate"
@@ -355,9 +316,7 @@ export function IntroStep({
         </p>
 
         <div className="w-full max-w-[680px]">
-          <ContinueButton
-            onContinue={onContinue}
-          />
+          <ContinueButton onContinue={onContinue} />
         </div>
 
         <p
@@ -404,8 +363,8 @@ function OtherOption({
         duration-150
         ${
           selected
-            ? 'bg-orange/10 border-orange'
-            : 'bg-[#202F35] border-[#37464F] hover:border-[#52656D]'
+            ? 'bg-[#2A2927] border-orange'
+            : 'bg-[#202F35] border-[#37464F] hover:border-orange/60'
         }
       `}
     >
@@ -486,9 +445,7 @@ function OtherOption({
             <input
               autoFocus
               value={value}
-              onChange={(e) =>
-                onChange(e.target.value)
-              }
+              onChange={(e) => onChange(e.target.value)}
               placeholder="What do you do?"
               aria-label="Other profession"
               className="
@@ -546,30 +503,21 @@ export function WorkTypeStep({
   onToggleOther,
   onOtherChange,
 }: WorkTypeStepProps) {
-  const [
-    otherSelectedInternal,
-    setOtherSelectedInternal,
-  ] = useState(false);
+  const [otherSelectedInternal, setOtherSelectedInternal] =
+    useState(false);
 
-  const [
-    otherValueInternal,
-    setOtherValueInternal,
-  ] = useState('');
+  const [otherValueInternal, setOtherValueInternal] =
+    useState('');
 
   const otherSelected =
-    otherSelectedProp ??
-    otherSelectedInternal;
+    otherSelectedProp ?? otherSelectedInternal;
 
   const otherValue =
-    otherValueProp ??
-    otherValueInternal;
+    otherValueProp ?? otherValueInternal;
 
   const toggleOther =
     onToggleOther ??
-    (() =>
-      setOtherSelectedInternal(
-        (v) => !v,
-      ));
+    (() => setOtherSelectedInternal((v) => !v));
 
   const changeOther =
     onOtherChange ??
@@ -623,22 +571,11 @@ export function TopicsStep({
       title="What topics interest you?"
       subtitle="Don't worry, this won't limit your experience"
       maxWidth="max-w-4xl"
-      dark
       canContinue={canContinue}
       onContinue={onContinue}
+      dark
     >
-      {/* Topic pills */}
-      <div
-        className="
-          flex
-          flex-wrap
-          justify-center
-          gap-2.5
-          sm:gap-3
-          mb-6
-          sm:mb-7
-        "
-      >
+      <div className="flex flex-wrap justify-center gap-3 mb-6">
         {TOPIC_OPTIONS.map((topic) => (
           <PillOption
             key={topic}
@@ -649,10 +586,7 @@ export function TopicsStep({
           />
         ))}
 
-        {customItems(
-          selected,
-          TOPIC_OPTIONS,
-        ).map((topic) => (
+        {customItems(selected, TOPIC_OPTIONS).map((topic) => (
           <PillOption
             key={topic}
             label={topic}
@@ -663,28 +597,12 @@ export function TopicsStep({
         ))}
       </div>
 
-      {/* Other topics */}
       <OtherInput
         value={otherValue}
         onChange={onOtherChange}
         placeholder="Other topics (optional)"
         onAdd={onAddOther}
       />
-
-      {/* Small helper */}
-      <p
-        className="
-          mt-4
-          text-center
-          text-xs
-          sm:text-sm
-          font-sans
-          font-medium
-          text-[#60757E]
-        "
-      >
-        You can select multiple topics
-      </p>
     </QuestionShell>
   );
 }
@@ -710,7 +628,7 @@ export function GoalsStep({
       canContinue={canContinue}
       onContinue={onContinue}
     >
-      <div className="flex flex-col gap-2.5 mb-4">
+      <div className="flex flex-col gap-3 mb-4">
         {GOAL_OPTIONS.map((goal) => (
           <OptionRow
             key={goal}
@@ -721,10 +639,7 @@ export function GoalsStep({
           />
         ))}
 
-        {customItems(
-          selected,
-          GOAL_OPTIONS,
-        ).map((goal) => (
+        {customItems(selected, GOAL_OPTIONS).map((goal) => (
           <OptionRow
             key={goal}
             label={goal}
@@ -765,73 +680,54 @@ export function TimeStep({
   return (
     <QuestionShell
       title="How long do you want to learn every day?"
-      dark
       canContinue={canContinue}
       onContinue={onContinue}
+      dark
     >
-      <div className="flex flex-col gap-2.5">
-        {TIME_OPTIONS.map(
-          ({
-            id,
-            label,
-            description,
-          }) => (
-            <button
-              type="button"
-              key={id}
-              onClick={() => onSelect(id)}
-              aria-pressed={timeId === id}
+      <div className="flex flex-col gap-3">
+        {TIME_OPTIONS.map(({ id, label, description }) => (
+          <button
+            type="button"
+            key={id}
+            onClick={() => onSelect(id)}
+            className={`
+              w-full
+              flex
+              items-center
+              justify-between
+              gap-4
+              px-5
+              py-4
+              rounded-2xl
+              border-2
+              transition-colors
+              ${
+                timeId === id
+                  ? 'bg-orange/10 border-orange'
+                  : 'bg-[#202F35] border-[#37464F] hover:border-orange/30'
+              }
+            `}
+          >
+            <span
               className={`
-                w-full
-                min-h-[62px]
-                flex
-                items-center
-                justify-between
-                gap-4
-                px-5
-                py-4
-                rounded-2xl
-                border-2
-                transition-all
-                duration-150
+                font-display
+                font-extrabold
+                text-lg
                 ${
                   timeId === id
-                    ? 'bg-orange/10 border-orange'
-                    : 'bg-[#202F35] border-[#37464F] hover:border-[#52656D]'
+                    ? 'text-white'
+                    : 'text-white'
                 }
               `}
             >
-              <span
-                className={`
-                  font-display
-                  font-extrabold
-                  text-base
-                  sm:text-lg
-                  text-left
-                  ${
-                    timeId === id
-                      ? 'text-white'
-                      : 'text-white'
-                  }
-                `}
-              >
-                {label}
-              </span>
+              {label}
+            </span>
 
-              <span
-                className="
-                  shrink-0
-                  text-[#91A4AC]
-                  font-sans
-                  text-xs
-                  sm:text-sm
-                "
-              >
-                {description}
-              </span>
-            </button>
-          ),
-        )}
+            <span className="text-[#91A4AC] font-sans text-sm text-right">
+              {description}
+            </span>
+          </button>
+        ))}
       </div>
     </QuestionShell>
   );
@@ -841,11 +737,20 @@ export function TimeStep({
 /* LOADING                                                                    */
 /* -------------------------------------------------------------------------- */
 
-export function LoadingStep() {
+interface LoadingStepProps {
+  error?: string | null;
+  onRetry?: () => void;
+}
+
+export function LoadingStep({
+  error = null,
+  onRetry,
+}: LoadingStepProps) {
   return (
     <div
       className="
         flex-1
+        min-h-0
         flex
         flex-col
         items-center
@@ -862,255 +767,60 @@ export function LoadingStep() {
         className="mb-6"
       />
 
-      <p
-        className="
-          text-[#91A4AC]
-          font-sans
-          font-semibold
-        "
-      >
-        Picking courses based on your role,
-        goals, and interests...
-      </p>
-    </div>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* FINAL                                                                      */
-/* -------------------------------------------------------------------------- */
-
-interface FinalStepProps {
-  learnPrompt: string;
-  onPromptChange: (v: string) => void;
-  onCreate: () => void;
-  onExampleClick: () => void;
-}
-
-export function FinalStep({
-  learnPrompt,
-  onPromptChange,
-  onCreate,
-  onExampleClick,
-}: FinalStepProps) {
-  const hasPrompt =
-    learnPrompt.trim().length > 0;
-
-  return (
-    <div
-      className="
-        flex-1
-        flex
-        flex-col
-        items-center
-        justify-center
-        px-6
-        py-8
-        bg-[#131F24]
-        overflow-y-auto
-      "
-    >
-      <div className="w-full max-w-2xl mx-auto text-center">
-        <GrokitMascot
-          size={90}
-          pose="idle"
-          className="mx-auto mb-6"
-        />
-
-        <h1
-          className="
-            font-display
-            text-3xl
-            sm:text-4xl
-            text-white
-            font-extrabold
-            mb-2
-          "
-        >
-          What do you want to learn?
-        </h1>
-
+      {!error ? (
         <p
           className="
             text-[#91A4AC]
             font-sans
-            font-medium
-            mb-8
+            font-semibold
+            text-[15px]
+            sm:text-base
           "
         >
-          Tell me what you're curious about,
-          and I'll build a personalized course
-          for you.
+          Picking courses based on your role, goals, and interests...
         </p>
-
-        <div
-          className="
-            bg-[#202F35]
-            border
-            border-[#37464F]
-            rounded-3xl
-            p-5
-            mb-3
-            text-left
-          "
-        >
-          <textarea
-            value={learnPrompt}
-            onChange={(e) =>
-              onPromptChange(e.target.value)
-            }
-            placeholder="I want to learn about..."
+      ) : (
+        <>
+          <p
             className="
-              w-full
-              min-h-[80px]
-              bg-transparent
-              outline-none
-              resize-none
               text-white
               font-sans
-              placeholder:text-[#60757E]
-            "
-          />
-
-          <div
-            className="
-              flex
-              justify-end
-              pt-3
-              border-t
-              border-[#37464F]
-              mt-3
+              font-semibold
+              text-[15px]
+              sm:text-base
+              max-w-md
             "
           >
+            We couldn't finish setting up your profile.
+          </p>
+
+          <p className="mt-2 text-[#91A4AC] text-sm max-w-md">
+            Please try again. Your answers are still here.
+          </p>
+
+          {onRetry && (
             <button
               type="button"
-              onClick={onCreate}
-              disabled={!hasPrompt}
+              onClick={onRetry}
               className="
-                group
-                inline-flex
-                items-center
-                justify-center
-                gap-2
+                mt-6
+                px-7
+                py-3
                 rounded-full
                 bg-orange
                 text-white
                 font-sans
                 font-extrabold
-                px-6
-                py-3
-                text-base
                 shadow-[0_3px_0_#C94713]
-                hover:brightness-105
                 active:translate-y-[2px]
                 active:shadow-none
-                transition-all
-                disabled:opacity-40
               "
             >
-              Create my learning path
-
-              <ArrowRight className="w-4 h-4" />
+              Try again
             </button>
-          </div>
-        </div>
-
-        <p
-          className="
-            text-sm
-            text-[#60757E]
-            font-sans
-            font-semibold
-            text-left
-            mb-4
-            mt-8
-          "
-        >
-          Or, see what people like you are
-          learning
-        </p>
-
-        <div className="flex flex-col gap-3 text-left">
-          {EXAMPLE_COURSES.map(
-            (course) => (
-              <button
-                type="button"
-                key={course.title}
-                onClick={onExampleClick}
-                className="
-                  flex
-                  items-center
-                  gap-4
-                  p-3
-                  rounded-2xl
-                  border
-                  border-[#37464F]
-                  bg-[#202F35]
-                  hover:border-[#52656D]
-                  transition-colors
-                "
-              >
-                <span
-                  className="
-                    shrink-0
-                    w-16
-                    h-16
-                    rounded-xl
-                    bg-orange/10
-                    flex
-                    items-center
-                    justify-center
-                    text-xs
-                    font-bold
-                    text-orange
-                    text-center
-                    px-1
-                  "
-                >
-                  {course.tag}
-                </span>
-
-                <span>
-                  <span
-                    className="
-                      block
-                      font-display
-                      font-bold
-                      text-white
-                    "
-                  >
-                    {course.title}
-                  </span>
-
-                  <span
-                    className="
-                      block
-                      text-xs
-                      text-[#60757E]
-                      font-sans
-                      font-semibold
-                      mb-1
-                    "
-                  >
-                    {course.author}
-                  </span>
-
-                  <span
-                    className="
-                      block
-                      text-sm
-                      text-[#91A4AC]
-                      font-sans
-                    "
-                  >
-                    {course.blurb}
-                  </span>
-                </span>
-              </button>
-            ),
           )}
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

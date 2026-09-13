@@ -19,9 +19,15 @@ export async function saveProfile(fields: ProfileFields): Promise<void> {
   const { data: existing } = await client.models.UserProfile.get({ id: userId });
 
   if (existing) {
-    await client.models.UserProfile.update({ id: userId, ...fields });
+    await client.models.UserProfile.update({
+      id: userId,
+      ...fields,
+    });
   } else {
-    await client.models.UserProfile.create({ id: userId, ...fields });
+    await client.models.UserProfile.create({
+      id: userId,
+      ...fields,
+    });
   }
 }
 

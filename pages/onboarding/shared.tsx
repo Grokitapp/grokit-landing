@@ -1,43 +1,38 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Plus } from 'lucide-react';
 import type { KeyboardEvent } from 'react';
-import { GrokitMascot, type MascotPose } from '../../components/Grokitmascot';
+import {
+  GrokitMascot,
+  type MascotPose,
+} from '../../components/Grokitmascot';
 
 /* -------------------------------------------------------------------------- */
-/* COLORS                                                                     */
+/* PROGRESS BAR                                                              */
 /* -------------------------------------------------------------------------- */
 
-const DARK_BG = '#131F24';
-const DARK_SURFACE = '#202F35';
-const DARK_BORDER = '#37464F';
-const DARK_BORDER_STRONG = '#405761';
-const MUTED = '#91A4AC';
-const MUTED_DARK = '#60757E';
-
-/* -------------------------------------------------------------------------- */
-/* PROGRESS BAR                                                               */
-/* -------------------------------------------------------------------------- */
-
-export function ProgressBar({ value }: { value: number }) {
+export function ProgressBar({
+  value,
+}: {
+  value: number;
+}) {
   return (
-    <div className="w-full">
+    <div className="w-full px-4 sm:px-6 pt-5 sm:pt-6 pb-2">
       <div
         className="
-          w-full
+          max-w-3xl
+          mx-auto
           h-2.5
           rounded-full
-          overflow-hidden
           bg-[#202F35]
           border
           border-[#37464F]
+          overflow-hidden
         "
       >
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-orange to-amber"
           initial={false}
-          animate={{
-            width: `${Math.min(Math.max(value, 0), 1) * 100}%`,
-          }}
+          animate={{ width: `${value * 100}%` }}
           transition={{
             duration: 0.4,
             ease: 'easeInOut',
@@ -49,7 +44,7 @@ export function ProgressBar({ value }: { value: number }) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* SELECTABLE OPTIONS                                                         */
+/* SELECTABLE OPTIONS                                                        */
 /* -------------------------------------------------------------------------- */
 
 interface SelectableProps {
@@ -60,13 +55,13 @@ interface SelectableProps {
 }
 
 const selectedDarkClasses =
-  'bg-orange/10 border-orange text-white';
+  'bg-orange/15 border-orange text-white';
 
 const selectedLightClasses =
   'bg-orange/10 border-orange text-ink';
 
 const unselectedDarkClasses =
-  'bg-[#202F35] border-[#37464F] text-white hover:border-[#52656D] hover:bg-[#26383F]';
+  'bg-[#202F35] border-[#37464F] text-white hover:border-orange/50 hover:bg-[#26383F]';
 
 const unselectedLightClasses =
   'bg-surface-alt border-line text-ink hover:border-orange/30';
@@ -83,10 +78,6 @@ const selectableClasses = (
       ? unselectedDarkClasses
       : unselectedLightClasses;
 
-/* -------------------------------------------------------------------------- */
-/* OPTION ROW                                                                 */
-/* -------------------------------------------------------------------------- */
-
 export function OptionRow({
   label,
   selected,
@@ -97,20 +88,16 @@ export function OptionRow({
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={selected}
       className={`
         w-full
-        min-h-[58px]
         text-left
         px-4
         sm:px-5
-        py-3.5
+        py-4
         rounded-2xl
         border-2
         font-sans
         font-bold
-        text-[15px]
-        sm:text-base
         transition-all
         duration-150
         ${selectableClasses(selected, dark)}
@@ -138,10 +125,7 @@ export function OptionRow({
           `}
         >
           {selected && (
-            <Check
-              className="w-3.5 h-3.5 text-white"
-              strokeWidth={3}
-            />
+            <Check className="w-3.5 h-3.5 text-white" />
           )}
         </span>
 
@@ -152,7 +136,7 @@ export function OptionRow({
 }
 
 /* -------------------------------------------------------------------------- */
-/* PILL OPTION                                                                */
+/* PILL OPTIONS                                                              */
 /* -------------------------------------------------------------------------- */
 
 export function PillOption({
@@ -165,41 +149,25 @@ export function PillOption({
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={selected}
       className={`
         inline-flex
         items-center
-        justify-center
         gap-2
-        min-h-[52px]
         px-5
-        sm:px-6
-        py-2.5
+        py-3
         rounded-full
         border-2
         font-sans
         font-bold
-        text-[14px]
-        sm:text-[15px]
-        whitespace-nowrap
+        text-sm
+        sm:text-base
         transition-all
         duration-150
-        ${
-          selected
-            ? dark
-              ? 'bg-orange/10 border-orange text-white'
-              : 'bg-orange/10 border-orange text-ink'
-            : dark
-              ? 'bg-[#202F35] border-[#37464F] text-white hover:border-[#52656D] hover:bg-[#26383F]'
-              : 'bg-surface-alt border-line text-ink hover:border-orange/30'
-        }
+        ${selectableClasses(selected, dark)}
       `}
     >
       {selected && (
-        <Check
-          className="w-4 h-4 text-orange shrink-0"
-          strokeWidth={2.5}
-        />
+        <Check className="w-4 h-4 text-orange shrink-0" />
       )}
 
       {label}
@@ -208,7 +176,7 @@ export function PillOption({
 }
 
 /* -------------------------------------------------------------------------- */
-/* OTHER INPUT                                                                */
+/* OTHER INPUT                                                               */
 /* -------------------------------------------------------------------------- */
 
 interface OtherInputProps {
@@ -238,17 +206,15 @@ export function OtherInput({
       className="
         flex
         items-center
-        gap-3
-        w-full
-        min-h-[58px]
+        gap-2
         px-4
         sm:px-5
-        py-2.5
+        py-3
         rounded-full
         border-2
         border-[#37464F]
         bg-[#202F35]
-        focus-within:border-orange/70
+        focus-within:border-orange/60
         transition-colors
       "
     >
@@ -264,7 +230,6 @@ export function OtherInput({
           outline-none
           text-white
           font-sans
-          text-[15px]
           placeholder:text-[#60757E]
         "
       />
@@ -275,8 +240,8 @@ export function OtherInput({
         disabled={!value.trim()}
         aria-label="Add"
         className="
-          w-9
-          h-9
+          w-8
+          h-8
           shrink-0
           rounded-full
           bg-orange
@@ -290,55 +255,14 @@ export function OtherInput({
           transition-all
         "
       >
-        <Plus
-          className="w-[18px] h-[18px]"
-          strokeWidth={2.5}
-        />
+        <Plus className="w-4 h-4" />
       </button>
     </div>
   );
 }
 
 /* -------------------------------------------------------------------------- */
-/* GOOGLE ICON                                                                */
-/* -------------------------------------------------------------------------- */
-
-export function GoogleIcon({
-  className,
-}: {
-  className?: string;
-}) {
-  return (
-    <svg
-      viewBox="0 0 48 48"
-      className={className}
-      aria-hidden="true"
-    >
-      <path
-        fill="#FFC107"
-        d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12 12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24 c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
-      />
-
-      <path
-        fill="#FF3D00"
-        d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039 l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
-      />
-
-      <path
-        fill="#4CAF50"
-        d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36 c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
-      />
-
-      <path
-        fill="#1976D2"
-        d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.002,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24 C44,22.659,43.862,21.35,43.611,20.083z"
-      />
-    </svg>
-  );
-}
-
-/* -------------------------------------------------------------------------- */
-/* TRANSITION SCREEN                                                          */
+/* TRANSITION SCREEN                                                         */
 /* -------------------------------------------------------------------------- */
 
 const fadeUp = (delay = 0) => ({
@@ -393,7 +317,6 @@ export function TransitionScreen({
       "
     >
       <div className="relative z-10 w-full max-w-[820px] flex flex-col items-center">
-        {/* Mascot is retained only for transition screens */}
         <motion.div
           initial={{
             opacity: 0,
@@ -406,17 +329,13 @@ export function TransitionScreen({
             scale: 1,
           }}
           transition={{
-            opacity: {
-              duration: 0.35,
-            },
+            opacity: { duration: 0.35 },
             y: {
               duration: 3.5,
               repeat: Infinity,
               ease: 'easeInOut',
             },
-            scale: {
-              duration: 0.35,
-            },
+            scale: { duration: 0.35 },
           }}
           className="mb-5 sm:mb-6"
         >
@@ -462,12 +381,8 @@ export function TransitionScreen({
 
         {note && (
           <motion.p
-            initial={{
-              opacity: 0,
-            }}
-            animate={{
-              opacity: 1,
-            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{
               delay: 0.2,
               duration: 0.35,
@@ -486,12 +401,7 @@ export function TransitionScreen({
 
         <motion.div
           {...fadeUp(0.22)}
-          className="
-            w-full
-            max-w-[800px]
-            mt-8
-            sm:mt-9
-          "
+          className="w-full max-w-[800px] mt-8 sm:mt-9"
         >
           <button
             type="button"
