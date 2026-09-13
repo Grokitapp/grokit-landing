@@ -7,7 +7,7 @@ function GoogleIcon() {
   return (
     <svg
       viewBox="0 0 48 48"
-      className="w-[18px] h-[18px] shrink-0"
+      className="w-[19px] h-[19px] shrink-0"
       aria-hidden="true"
     >
       <path
@@ -43,24 +43,42 @@ export default function GoogleButton({
       onClick={onClick}
       disabled={disabled}
       className="
+        group
+
         w-full
-        h-[58px]
+        h-[56px]
+
         flex
         items-center
         justify-center
         gap-2.5
-        px-4
-        rounded-[14px]
+
+        px-5
+
+        rounded-full
+
         border
-        border-line
-        bg-surface-alt
-        text-ink
+        border-[#3A4D55]
+
+        bg-[#202F35]
+
+        text-white
+
         font-sans
-        font-bold
-        text-base
-        hover:bg-black/[0.02]
-        active:translate-y-[1px]
+        font-extrabold
+        text-[15px]
+
+        shadow-[0_3px_0_#0B1519]
+
+        hover:bg-[#26383F]
+        hover:border-[#4A5F68]
+
+        active:translate-y-[2px]
+        active:shadow-none
+
         transition-all
+        duration-150
+
         disabled:opacity-40
         disabled:pointer-events-none
       "

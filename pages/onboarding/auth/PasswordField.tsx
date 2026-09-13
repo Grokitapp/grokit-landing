@@ -26,16 +26,22 @@ export default function PasswordField({
     <div
       className={`
         relative
+
         w-full
-        h-[58px]
-        rounded-[14px]
+        h-[56px]
+
+        rounded-full
+
         border
-        bg-surface-alt
+
+        bg-[#202F35]
+
         transition-colors
+
         ${
           error
             ? 'border-red-500 focus-within:border-red-500'
-            : 'border-line focus-within:border-orange'
+            : 'border-[#3A4D55] focus-within:border-orange'
         }
       `}
     >
@@ -59,14 +65,21 @@ export default function PasswordField({
         className="
           w-full
           h-full
-          px-[18px]
+
+          px-5
           pr-14
+
           bg-transparent
+
           outline-none
-          text-ink
+
+          text-white
+
           font-sans
-          text-base
-          placeholder:text-muted
+          text-[15px]
+
+          placeholder:text-[#91A4AC]
+
           disabled:opacity-50
         "
       />
@@ -84,19 +97,27 @@ export default function PasswordField({
         }
         className="
           absolute
+
           right-2
           top-1/2
           -translate-y-1/2
+
           w-10
           h-10
+
           rounded-full
+
           flex
           items-center
           justify-center
-          text-muted
-          hover:text-ink
-          hover:bg-black/[0.04]
+
+          text-[#71858E]
+
+          hover:text-white
+          hover:bg-white/[0.05]
+
           transition-colors
+
           disabled:opacity-40
         "
       >

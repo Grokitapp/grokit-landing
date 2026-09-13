@@ -5,43 +5,35 @@ import { ChevronDown } from 'lucide-react';
 const faqs = [
   {
     question: 'How is Grokit different from ChatGPT?',
-    answer:
-      'Grokit builds a structured, trackable learning path around what you want to understand — not just a conversation.',
+    answer: 'Grokit builds a structured, trackable learning path around what you want to understand — not just a conversation.',
   },
   {
     question: 'What can I learn with Grokit?',
-    answer:
-      'You can explore almost any subject, from machine learning and startups to finance, science, design, and public speaking.',
+    answer: 'You can explore almost any subject, from machine learning and startups to finance, science, design, and public speaking.',
   },
   {
     question: 'How does Grokit build my learning path?',
-    answer:
-      'Tell Grokit what you want to understand, and it turns your goal into a structured sequence of concepts and lessons.',
+    answer: 'Tell Grokit what you want to understand, and it turns your goal into a structured sequence of concepts and lessons.',
   },
   {
     question: 'Does Grokit adapt to my level?',
-    answer:
-      'Yes. Tell Grokit what you already know, and it adjusts the depth and starting point of your learning path.',
+    answer: 'Yes. Tell Grokit what you already know, and it adjusts the depth and starting point of your learning path.',
   },
   {
     question: 'Is the content based on real sources?',
-    answer:
-      'Yes. Courses in Grokit’s core domains are built from verified public sources rather than relying only on plausible-sounding AI-generated text.',
+    answer: 'Yes. Courses in Grokit’s core domains are built from verified public sources rather than relying only on plausible-sounding AI-generated text.',
   },
   {
     question: 'Do I need background knowledge?',
-    answer:
-      'No. Grokit can start from the fundamentals and build your understanding step by step.',
+    answer: 'No. Grokit can start from the fundamentals and build your understanding step by step.',
   },
   {
     question: 'Is Grokit free?',
-    answer:
-      'Yes — core learning stays free, with additional capabilities planned for Grokit Pro.',
+    answer: 'Yes — core learning stays free, with additional capabilities planned for Grokit Pro.',
   },
   {
     question: 'When do I get access?',
-    answer:
-      "We're opening spots gradually, and people on the waitlist will get access as new spots become available.",
+    answer: "We're opening spots gradually, and people on the waitlist will get access as new spots become available.",
   },
 ];
 

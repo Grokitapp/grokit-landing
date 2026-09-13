@@ -20,7 +20,7 @@ export function InteractivePrompt({
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
 
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const handleExampleClick = (example: string) => {
     setInputValue('');
@@ -52,11 +52,13 @@ export function InteractivePrompt({
         bg-surface
         py-14
         sm:py-16
-        md:py-24
+        md:py-20
         overflow-hidden
       "
     >
-      {/* Soft background glow */}
+      {/* --------------------------------------------------
+          Soft background glow
+         -------------------------------------------------- */}
       <div
         className="
           absolute
@@ -66,8 +68,8 @@ export function InteractivePrompt({
           -translate-y-1/2
           w-[650px]
           h-[650px]
-          sm:w-[700px]
-          sm:h-[700px]
+          sm:w-[750px]
+          sm:h-[750px]
           rounded-full
           pointer-events-none
         "
@@ -81,7 +83,7 @@ export function InteractivePrompt({
         className="
           relative
           w-full
-          max-w-[900px]
+          max-w-[960px]
           mx-auto
           px-5
           sm:px-8
@@ -89,9 +91,9 @@ export function InteractivePrompt({
           text-center
         "
       >
-        {/* ------------------------------------------------
-            Heading
-           ------------------------------------------------ */}
+        {/* ==================================================
+            HEADING
+           ================================================== */}
         <motion.h2
           className="
             font-display
@@ -124,15 +126,9 @@ export function InteractivePrompt({
           </span>
         </motion.h2>
 
-        {/* ------------------------------------------------
-            Prompt + CTA
-           
-            Desktop:
-            input and CTA share one row.
-
-            Mobile:
-            input and CTA become two separate controls.
-           ------------------------------------------------ */}
+        {/* ==================================================
+            LEARNING PROMPT
+           ================================================== */}
         <motion.div
           initial={{
             opacity: 0,
@@ -147,144 +143,197 @@ export function InteractivePrompt({
           }}
           transition={{
             delay: 0.1,
+            duration: 0.5,
           }}
-          className="w-full"
         >
           <div
             className="
-              flex
-              flex-col
-              sm:flex-row
-              gap-2.5
-              sm:gap-0
+              relative
               w-full
+
+              h-[175px]
+              sm:h-[185px]
+              md:h-[190px]
+
+              rounded-[24px]
+              sm:rounded-[26px]
+              md:rounded-[28px]
+
+              bg-surface-alt
+
+              border
+              border-line
+
+              transition-all
+              duration-200
+
+              focus-within:border-orange/40
+              focus-within:shadow-[0_0_0_4px_rgba(244,97,31,0.05)]
             "
           >
-            {/* Input */}
-            <div
+            {/* ------------------------------------------------
+                Sparkle
+               ------------------------------------------------ */}
+            <Sparkles
               className="
-                relative
-                w-full
-                sm:flex-1
+                absolute
+                left-5
+                top-5
+
+                sm:left-6
+                sm:top-6
+
+                w-[22px]
+                h-[22px]
+
+                sm:w-6
+                sm:h-6
+
+                text-orange
+
+                pointer-events-none
               "
-            >
-              <Sparkles
-                className="
-                  absolute
-                  left-5
-                  sm:left-6
-                  top-1/2
-                  -translate-y-1/2
-                  w-[21px]
-                  h-[21px]
-                  sm:w-[22px]
-                  sm:h-[22px]
-                  text-orange
-                  pointer-events-none
-                  z-[1]
-                "
-              />
+            />
 
-              <input
-                ref={inputRef}
-                type="text"
-                value={inputValue}
-                onChange={(e) =>
-                  setInputValue(e.target.value)
+            {/* ------------------------------------------------
+                Textarea
+
+                Large internal padding gives the user plenty
+                of room to write without touching the CTA.
+               ------------------------------------------------ */}
+            <textarea
+              ref={inputRef}
+              value={inputValue}
+              onChange={(event) =>
+                setInputValue(event.target.value)
+              }
+              onKeyDown={(event) => {
+                if (
+                  event.key === 'Enter' &&
+                  (event.metaKey || event.ctrlKey)
+                ) {
+                  event.preventDefault();
+                  handleSubmit();
                 }
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSubmit();
-                  }
-                }}
-                placeholder="Ask anything…"
-                disabled={isTyping}
-                className="
-                  w-full
-                  h-[60px]
-                  sm:h-[68px]
-                  md:h-[72px]
+              }}
+              placeholder="Ask anything..."
+              disabled={isTyping}
+              rows={4}
+              aria-label="What do you want to understand?"
+              className="
+                w-full
+                h-full
 
-                  rounded-full
+                resize-none
 
-                  bg-surface-alt
-                  border
-                  border-line
+                bg-transparent
 
-                  pl-[54px]
-                  sm:pl-[58px]
+                border-none
+                outline-none
 
-                  pr-5
-                  sm:pr-6
+                rounded-[24px]
+                sm:rounded-[26px]
+                md:rounded-[28px]
 
-                  text-ink
-                  font-sans
-                  font-medium
+                pt-[18px]
+                sm:pt-5
 
-                  text-base
-                  sm:text-lg
+                pl-[58px]
+                sm:pl-[66px]
 
-                  placeholder:text-muted
+                pr-5
+                sm:pr-6
 
-                  outline-none
+                pb-[76px]
+                sm:pb-[80px]
 
-                  focus:border-orange/40
+                text-ink
 
-                  transition-colors
+                font-sans
+                font-medium
 
-                  disabled:opacity-70
-                "
-              />
-            </div>
+                text-base
+                sm:text-lg
 
-            {/* CTA */}
+                leading-relaxed
+
+                placeholder:text-muted
+
+                disabled:opacity-70
+              "
+            />
+
+            {/* ------------------------------------------------
+                CTA — bottom right INSIDE the prompt box
+               ------------------------------------------------ */}
             <button
               type="button"
               onClick={handleSubmit}
+              disabled={isTyping}
               className="
                 btn-duo
 
-                w-full
-                sm:w-auto
+                absolute
 
-                h-[60px]
-                sm:h-[68px]
-                md:h-[72px]
+                right-3
+                bottom-3
 
-                sm:-ml-[170px]
+                sm:right-4
+                sm:bottom-4
 
-                px-6
+                h-[48px]
+                sm:h-[52px]
+                md:h-[56px]
+
+                px-5
                 sm:px-6
                 md:px-7
 
-                justify-center
-
-                text-base
+                text-sm
                 sm:text-base
                 md:text-lg
 
                 whitespace-nowrap
 
-                z-[2]
+                justify-center
+
+                disabled:opacity-40
+                disabled:pointer-events-none
               "
             >
               Create your path
 
               <ArrowRight
                 className="
-                  w-[19px]
-                  h-[19px]
+                  w-[18px]
+                  h-[18px]
                   sm:w-5
                   sm:h-5
                 "
               />
             </button>
           </div>
+
+          {/* Small keyboard hint — desktop only */}
+          <p
+            className="
+              hidden
+              md:block
+              text-[11px]
+              text-muted
+              font-sans
+              text-right
+              mt-2
+              mr-2
+            "
+          >
+            Press ⌘ Enter to continue
+          </p>
         </motion.div>
 
-        {/* ------------------------------------------------
-            Example prompts
-           ------------------------------------------------ */}
+        {/* ==================================================
+            EXAMPLE PROMPTS
+           ================================================== */}
         <motion.div
           initial={{
             opacity: 0,
@@ -297,6 +346,7 @@ export function InteractivePrompt({
           }}
           transition={{
             delay: 0.25,
+            duration: 0.5,
           }}
           className="
             mt-6
@@ -304,15 +354,15 @@ export function InteractivePrompt({
             md:mt-8
 
             flex
-            flex-col
-            sm:flex-row
-            sm:flex-wrap
+            flex-wrap
 
             items-center
             justify-center
 
             gap-2.5
             sm:gap-3
+
+            px-1
           "
         >
           {examplePrompts.map((prompt) => (
@@ -324,16 +374,13 @@ export function InteractivePrompt({
               }
               disabled={isTyping}
               className="
-                w-fit
-                max-w-full
-
                 px-4
-                sm:px-4.5
+                sm:px-[18px]
 
                 py-2.5
-                sm:py-2
+                sm:py-2.5
 
-                text-[14px]
+                text-[13px]
                 sm:text-sm
 
                 leading-tight
