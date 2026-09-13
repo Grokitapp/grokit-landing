@@ -4,15 +4,21 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react';
+
 import {
   AnimatePresence,
   motion,
 } from 'framer-motion';
+
 import { ArrowLeft } from 'lucide-react';
+
 import { WaitlistModal } from '../components/Waitlistmodal';
+
 import { saveProfile } from '../lib/profile';
+
 import AuthScreen from './onboarding/auth/AuthScreen';
 import Welcome from './onboarding/Welcome';
+
 import {
   BACK_STEP,
   DISCORD_INVITE_URL,
@@ -22,10 +28,12 @@ import {
   lessonsPerWeekFor,
   type Step,
 } from './onboarding/constants';
+
 import {
   ProgressBar,
   TransitionScreen,
 } from './onboarding/shared';
+
 import {
   FinalStep,
   GoalsStep,
@@ -36,53 +44,37 @@ import {
   WorkTypeStep,
 } from './onboarding/steps';
 
+const DUO_BACKGROUND = '#131F24';
+
 export default function Onboarding() {
-  const [step, setStep] =
-    useState<Step>(STEP.AUTH);
+  const [step, setStep] = useState<Step>(
+    STEP.AUTH,
+  );
 
-  /* ---------------------------------------------------------------------- */
-  /* QUESTION ANSWERS                                                       */
-  /* ---------------------------------------------------------------------- */
+  const [workTypes, setWorkTypes] = useState<string[]>(
+    [],
+  );
 
-  const [workTypes, setWorkTypes] =
-    useState<string[]>([]);
+  const [topics, setTopics] = useState<string[]>(
+    [],
+  );
 
-  const [
-    otherProfessionSelected,
-    setOtherProfessionSelected,
-  ] = useState(false);
+  const [otherTopic, setOtherTopic] = useState('');
 
-  const [
-    otherProfession,
-    setOtherProfession,
-  ] = useState('');
+  const [goals, setGoals] = useState<string[]>(
+    [],
+  );
 
-  const [topics, setTopics] =
-    useState<string[]>([]);
+  const [otherGoal, setOtherGoal] = useState('');
 
-  const [otherTopic, setOtherTopic] =
-    useState('');
+  const [timeId, setTimeId] = useState<string | null>(
+    null,
+  );
 
-  const [goals, setGoals] =
-    useState<string[]>([]);
+  const [learnPrompt, setLearnPrompt] = useState('');
 
-  const [otherGoal, setOtherGoal] =
-    useState('');
-
-  const [timeId, setTimeId] =
-    useState<string | null>(null);
-
-  const [learnPrompt, setLearnPrompt] =
-    useState('');
-
-  const [
-    isWaitlistOpen,
-    setIsWaitlistOpen,
-  ] = useState(false);
-
-  /* ---------------------------------------------------------------------- */
-  /* HELPERS                                                                */
-  /* ---------------------------------------------------------------------- */
+  const [isWaitlistOpen, setIsWaitlistOpen] =
+    useState(false);
 
   const toggleItem = (
     setList: Dispatch<
@@ -90,66 +82,37 @@ export default function Onboarding() {
     >,
     item: string,
   ) =>
-    setList((current) =>
-      current.includes(item)
-        ? current.filter(
-            (i) => i !== item,
-          )
-        : [
-            ...current,
-            item,
-          ],
+    setList((curr) =>
+      curr.includes(item)
+        ? curr.filter((i) => i !== item)
+        : [...curr, item],
     );
 
   const persist = (
-    fields: Parameters<
-      typeof saveProfile
-    >[0],
+    fields: Parameters<typeof saveProfile>[0],
   ) => {
-    saveProfile(fields).catch(
-      (err) =>
-        console.error(
-          'Failed to save profile:',
-          err,
-        ),
+    saveProfile(fields).catch((err) =>
+      console.error(
+        'Failed to save profile:',
+        err,
+      ),
     );
   };
 
-  /* ---------------------------------------------------------------------- */
-  /* LOADING                                                                */
-  /* ---------------------------------------------------------------------- */
-
   useEffect(() => {
-    if (
-      step !== STEP.LOADING
-    ) {
-      return;
-    }
+    if (step !== STEP.LOADING) return;
 
-    const timer = setTimeout(
-      () =>
-        setStep(
-          STEP.FINAL,
-        ),
+    const t = setTimeout(
+      () => setStep(STEP.FINAL),
       1800,
     );
 
-    return () =>
-      clearTimeout(timer);
+    return () => clearTimeout(t);
   }, [step]);
-
-  /* ---------------------------------------------------------------------- */
-  /* CONTINUE STATE                                                         */
-  /* ---------------------------------------------------------------------- */
 
   const canContinue =
     step === STEP.WORK_TYPE
-      ? workTypes.length > 0 ||
-        (
-          otherProfessionSelected &&
-          otherProfession.trim()
-            .length > 0
-        )
+      ? workTypes.length > 0
       : step === STEP.TOPICS
         ? topics.length > 0
         : step === STEP.GOALS
@@ -158,15 +121,10 @@ export default function Onboarding() {
             ? timeId !== null
             : true;
 
-  const prevStep =
-    BACK_STEP[step];
+  const prevStep = BACK_STEP[step];
 
   const progress =
     PROGRESS_BY_STEP[step];
-
-  /* ---------------------------------------------------------------------- */
-  /* ADD OTHER                                                              */
-  /* ---------------------------------------------------------------------- */
 
   const addOther = (
     value: string,
@@ -175,91 +133,37 @@ export default function Onboarding() {
     >,
     clear: () => void,
   ) => {
-    if (!value.trim()) {
-      return;
-    }
+    const trimmed = value.trim();
 
-    setList((current) => [
-      ...current,
-      value.trim(),
-    ]);
+    if (!trimmed) return;
+
+    setList((curr) => {
+      if (curr.includes(trimmed)) {
+        return curr;
+      }
+
+      return [...curr, trimmed];
+    });
 
     clear();
   };
 
-  /* ---------------------------------------------------------------------- */
-  /* WORK TYPE CONTINUE                                                     */
-  /* ---------------------------------------------------------------------- */
-
-  const handleWorkTypeContinue =
-    () => {
-      const customProfession =
-        otherProfession.trim();
-
-      const finalWorkTypes = [
-        ...workTypes,
-        ...(
-          otherProfessionSelected &&
-          customProfession
-            ? [
-                customProfession,
-              ]
-            : []
-        ),
-      ];
-
-      persist({
-        workTypes:
-          finalWorkTypes,
-      });
-
-      setWorkTypes(
-        finalWorkTypes,
-      );
-
-      setOtherProfessionSelected(
-        false,
-      );
-
-      setOtherProfession('');
-
-      setStep(
-        STEP.T_PERSONALIZED,
-      );
-    };
-
-  /* ---------------------------------------------------------------------- */
-  /* RENDER STEP                                                            */
-  /* ---------------------------------------------------------------------- */
-
   const renderStep = () => {
     switch (step) {
-      /* ------------------------------------------------------------------ */
-      /* AUTH                                                               */
-      /* ------------------------------------------------------------------ */
-
       case STEP.AUTH:
         return (
           <AuthScreen
             onAuthenticated={() =>
-              setStep(
-                STEP.WELCOME,
-              )
+              setStep(STEP.WELCOME)
             }
           />
         );
-
-      /* ------------------------------------------------------------------ */
-      /* WELCOME                                                            */
-      /* ------------------------------------------------------------------ */
 
       case STEP.WELCOME:
         return (
           <Welcome
             onContinue={() =>
-              setStep(
-                STEP.INTRO,
-              )
+              setStep(STEP.INTRO)
             }
             discordInviteUrl={
               DISCORD_INVITE_URL
@@ -267,64 +171,37 @@ export default function Onboarding() {
           />
         );
 
-      /* ------------------------------------------------------------------ */
-      /* INTRO                                                              */
-      /* ------------------------------------------------------------------ */
-
       case STEP.INTRO:
         return (
           <IntroStep
             onContinue={() =>
-              setStep(
-                STEP.WORK_TYPE,
-              )
+              setStep(STEP.WORK_TYPE)
             }
           />
         );
-
-      /* ------------------------------------------------------------------ */
-      /* WORK TYPE                                                          */
-      /* ------------------------------------------------------------------ */
 
       case STEP.WORK_TYPE:
         return (
           <WorkTypeStep
-            selected={
-              workTypes
-            }
-            onToggle={(type) =>
+            selected={workTypes}
+            onToggle={(t) =>
               toggleItem(
                 setWorkTypes,
-                type,
+                t,
               )
             }
-            otherSelected={
-              otherProfessionSelected
-            }
-            otherValue={
-              otherProfession
-            }
-            onToggleOther={() =>
-              setOtherProfessionSelected(
-                (current) =>
-                  !current,
-              )
-            }
-            onOtherChange={
-              setOtherProfession
-            }
-            canContinue={
-              canContinue
-            }
-            onContinue={
-              handleWorkTypeContinue
-            }
+            canContinue={canContinue}
+            onContinue={() => {
+              persist({
+                workTypes,
+              });
+
+              setStep(
+                STEP.T_PERSONALIZED,
+              );
+            }}
           />
         );
-
-      /* ------------------------------------------------------------------ */
-      /* PERSONALIZED                                                       */
-      /* ------------------------------------------------------------------ */
 
       case STEP.T_PERSONALIZED:
         return (
@@ -334,46 +211,32 @@ export default function Onboarding() {
             sub="We'll use examples relevant to your role and expertise when it's helpful."
             note="You can update this anytime in your settings."
             onContinue={() =>
-              setStep(
-                STEP.TOPICS,
-              )
+              setStep(STEP.TOPICS)
             }
           />
         );
-
-      /* ------------------------------------------------------------------ */
-      /* TOPICS                                                             */
-      /* ------------------------------------------------------------------ */
 
       case STEP.TOPICS:
         return (
           <TopicsStep
             selected={topics}
-            onToggle={(topic) =>
+            onToggle={(t) =>
               toggleItem(
                 setTopics,
-                topic,
+                t,
               )
             }
-            otherValue={
-              otherTopic
-            }
-            onOtherChange={
-              setOtherTopic
-            }
+            otherValue={otherTopic}
+            onOtherChange={setOtherTopic}
             onAddOther={() =>
               addOther(
                 otherTopic,
                 setTopics,
                 () =>
-                  setOtherTopic(
-                    '',
-                  ),
+                  setOtherTopic(''),
               )
             }
-            canContinue={
-              canContinue
-            }
+            canContinue={canContinue}
             onContinue={() => {
               persist({
                 topics,
@@ -386,10 +249,6 @@ export default function Onboarding() {
           />
         );
 
-      /* ------------------------------------------------------------------ */
-      /* PERFECT                                                            */
-      /* ------------------------------------------------------------------ */
-
       case STEP.T_PERFECT:
         return (
           <TransitionScreen
@@ -397,46 +256,32 @@ export default function Onboarding() {
             heading="Perfect choice! We'll use this to find the best courses for you"
             sub="You can also build your own course for any topic you want to learn."
             onContinue={() =>
-              setStep(
-                STEP.GOALS,
-              )
+              setStep(STEP.GOALS)
             }
           />
         );
-
-      /* ------------------------------------------------------------------ */
-      /* GOALS                                                              */
-      /* ------------------------------------------------------------------ */
 
       case STEP.GOALS:
         return (
           <GoalsStep
             selected={goals}
-            onToggle={(goal) =>
+            onToggle={(g) =>
               toggleItem(
                 setGoals,
-                goal,
+                g,
               )
             }
-            otherValue={
-              otherGoal
-            }
-            onOtherChange={
-              setOtherGoal
-            }
+            otherValue={otherGoal}
+            onOtherChange={setOtherGoal}
             onAddOther={() =>
               addOther(
                 otherGoal,
                 setGoals,
                 () =>
-                  setOtherGoal(
-                    '',
-                  ),
+                  setOtherGoal(''),
               )
             }
-            canContinue={
-              canContinue
-            }
+            canContinue={canContinue}
             onContinue={() => {
               persist({
                 goals,
@@ -449,10 +294,6 @@ export default function Onboarding() {
           />
         );
 
-      /* ------------------------------------------------------------------ */
-      /* GREAT                                                              */
-      /* ------------------------------------------------------------------ */
-
       case STEP.T_GREAT:
         return (
           <TransitionScreen
@@ -460,31 +301,19 @@ export default function Onboarding() {
             heading="Great! We'll help you learn what you thought you didn't have time for"
             sub="Finally learn the things you've always wanted to learn."
             onContinue={() =>
-              setStep(
-                STEP.TIME,
-              )
+              setStep(STEP.TIME)
             }
           />
         );
-
-      /* ------------------------------------------------------------------ */
-      /* TIME                                                               */
-      /* ------------------------------------------------------------------ */
 
       case STEP.TIME:
         return (
           <TimeStep
             timeId={timeId}
-            onSelect={
-              setTimeId
-            }
-            canContinue={
-              canContinue
-            }
+            onSelect={setTimeId}
+            canContinue={canContinue}
             onContinue={() => {
-              if (!timeId) {
-                return;
-              }
+              if (!timeId) return;
 
               persist({
                 timeCommitment:
@@ -498,54 +327,31 @@ export default function Onboarding() {
           />
         );
 
-      /* ------------------------------------------------------------------ */
-      /* BOOKS                                                              */
-      /* ------------------------------------------------------------------ */
-
       case STEP.T_BOOKS:
         return (
           <TransitionScreen
             pose="celebrate"
-            heading={`${lessonsPerWeekFor(
-              timeId,
-            )} lessons in your first week`}
+            heading={`${lessonsPerWeekFor(timeId)} lessons in your first week`}
             sub="You're on your way to building a lasting learning habit!"
             onContinue={() =>
-              setStep(
-                STEP.LOADING,
-              )
+              setStep(STEP.LOADING)
             }
           />
         );
 
-      /* ------------------------------------------------------------------ */
-      /* LOADING                                                            */
-      /* ------------------------------------------------------------------ */
-
       case STEP.LOADING:
-        return (
-          <LoadingStep />
-        );
-
-      /* ------------------------------------------------------------------ */
-      /* FINAL                                                              */
-      /* ------------------------------------------------------------------ */
+        return <LoadingStep />;
 
       case STEP.FINAL:
         return (
           <FinalStep
-            learnPrompt={
-              learnPrompt
-            }
+            learnPrompt={learnPrompt}
             onPromptChange={
               setLearnPrompt
             }
             onCreate={() => {
-              if (
-                !learnPrompt.trim()
-              ) {
+              if (!learnPrompt.trim())
                 return;
-              }
 
               persist({
                 learnPrompt,
@@ -567,50 +373,47 @@ export default function Onboarding() {
     }
   };
 
-  /* ---------------------------------------------------------------------- */
-  /* DARK STEPS                                                            */
-  /* ---------------------------------------------------------------------- */
-
   /*
-   * IMPORTANT:
+   * Duolingo-style dark onboarding canvas.
    *
-   * INTRO must be included here.
-   *
-   * The navigation/header lives outside IntroStep.
-   * If INTRO isn't included, that header gets bg-surface,
-   * which creates the white strip visible above the dark screen.
+   * The question screens and transition screens now share
+   * the same visual environment instead of switching between
+   * white and dark backgrounds.
    */
-  const isDarkStep =
+  const isDarkOnboarding =
     step === STEP.INTRO ||
-    step === STEP.WORK_TYPE;
-
-  /* ---------------------------------------------------------------------- */
-  /* PAGE                                                                   */
-  /* ---------------------------------------------------------------------- */
+    step === STEP.WORK_TYPE ||
+    step === STEP.T_PERSONALIZED ||
+    step === STEP.TOPICS ||
+    step === STEP.T_PERFECT ||
+    step === STEP.GOALS ||
+    step === STEP.T_GREAT ||
+    step === STEP.TIME ||
+    step === STEP.T_BOOKS;
 
   return (
     <div
       className={`
+        min-h-[100dvh]
         h-[100dvh]
-        overflow-hidden
         flex
         flex-col
+        overflow-hidden
         ${
-          isDarkStep
+          isDarkOnboarding
             ? 'bg-[#131F24]'
             : 'bg-surface'
         }
       `}
     >
-      {/* ---------------------------------------------------------------- */}
-      {/* TOP NAVIGATION / PROGRESS                                        */}
-      {/* ---------------------------------------------------------------- */}
-
+      {/* Navigation + progress */}
       {prevStep !== undefined && (
         <div
           className={`
-            shrink-0
+            relative
+            z-30
             w-full
+            shrink-0
             px-5
             sm:px-6
             pt-4
@@ -619,7 +422,7 @@ export default function Onboarding() {
             flex
             items-start
             ${
-              isDarkStep
+              isDarkOnboarding
                 ? 'bg-[#131F24]'
                 : 'bg-surface'
             }
@@ -629,25 +432,18 @@ export default function Onboarding() {
           <button
             type="button"
             onClick={() =>
-              setStep(
-                prevStep,
-              )
+              setStep(prevStep)
             }
             className={`
               p-2
               -ml-2
-              transition-colors
               shrink-0
+              rounded-full
+              transition-colors
               ${
-                isDarkStep
-                  ? `
-                    text-[#91A4AC]
-                    hover:text-white
-                  `
-                  : `
-                    text-body
-                    hover:text-ink
-                  `
+                isDarkOnboarding
+                  ? 'text-[#91A4AC] hover:text-white hover:bg-white/5'
+                  : 'text-body hover:text-ink'
               }
             `}
             aria-label="Back"
@@ -657,14 +453,11 @@ export default function Onboarding() {
 
           {/* Progress */}
           {progress !== undefined && (
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <ProgressBar
                 value={
                   progress /
                   TOTAL_QUESTIONS
-                }
-                dark={
-                  isDarkStep
                 }
               />
             </div>
@@ -672,10 +465,7 @@ export default function Onboarding() {
         </div>
       )}
 
-      {/* ---------------------------------------------------------------- */}
-      {/* STEP CONTENT                                                      */}
-      {/* ---------------------------------------------------------------- */}
-
+      {/* Step content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
@@ -694,29 +484,26 @@ export default function Onboarding() {
           transition={{
             duration: 0.3,
           }}
-          className="
+          className={`
             flex-1
             min-h-0
             flex
             flex-col
-          "
+            ${
+              isDarkOnboarding
+                ? 'bg-[#131F24]'
+                : ''
+            }
+          `}
         >
           {renderStep()}
         </motion.div>
       </AnimatePresence>
 
-      {/* ---------------------------------------------------------------- */}
-      {/* WAITLIST MODAL                                                   */}
-      {/* ---------------------------------------------------------------- */}
-
       <WaitlistModal
-        isOpen={
-          isWaitlistOpen
-        }
+        isOpen={isWaitlistOpen}
         onClose={() =>
-          setIsWaitlistOpen(
-            false,
-          )
+          setIsWaitlistOpen(false)
         }
       />
     </div>

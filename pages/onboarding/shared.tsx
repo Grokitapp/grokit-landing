@@ -1,42 +1,22 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, Check, Plus } from 'lucide-react';
-import {
-  GrokitMascot,
-  type MascotPose,
-} from '../../components/Grokitmascot';
+import { GrokitMascot, type MascotPose } from '../../components/Grokitmascot';
 
-interface ProgressBarProps {
-  value: number;
-  dark?: boolean;
-}
+const DUO_BG = '#131F24';
+const DUO_SURFACE = '#202F35';
+const DUO_BORDER = '#37464F';
+const DUO_MUTED = '#91A4AC';
+const DUO_MUTED_DARK = '#60757E';
+const DUO_ORANGE_SHADOW = '#C94713';
 
-export function ProgressBar({
-  value,
-  dark = false,
-}: ProgressBarProps) {
+export function ProgressBar({ value }: { value: number }) {
   return (
-    <div className="w-full px-3 sm:px-6 pt-1 pb-2">
-      <div
-        className={`
-          max-w-3xl
-          mx-auto
-          h-2.5
-          rounded-full
-          overflow-hidden
-          border
-          ${
-            dark
-              ? 'bg-[#202F35] border-[#30464E]'
-              : 'bg-surface-alt border-line'
-          }
-        `}
-      >
+    <div className="w-full px-4 sm:px-6 pt-5 sm:pt-6 pb-2">
+      <div className="max-w-3xl mx-auto h-2.5 rounded-full bg-[#202F35] border border-[#37464F] overflow-hidden">
         <motion.div
           className="h-full rounded-full bg-gradient-to-r from-orange to-amber"
           initial={false}
-          animate={{
-            width: `${value * 100}%`,
-          }}
+          animate={{ width: `${value * 100}%` }}
           transition={{
             duration: 0.4,
             ease: 'easeInOut',
@@ -47,59 +27,37 @@ export function ProgressBar({
   );
 }
 
-/* -------------------------------------------------------------------------- */
-/* OPTION ROW                                                                 */
-/* -------------------------------------------------------------------------- */
-
 interface SelectableProps {
   label: string;
   selected: boolean;
   onClick: () => void;
-  dark?: boolean;
 }
+
+const selectedClasses =
+  'bg-orange/15 border-orange text-white';
+
+const unselectedClasses =
+  'bg-[#202F35] border-[#37464F] text-white hover:border-orange/50 hover:bg-[#26383F]';
 
 export function OptionRow({
   label,
   selected,
   onClick,
-  dark = false,
 }: SelectableProps) {
-  const selectedClasses = dark
-    ? 'bg-[#2A2927] border-orange text-white'
-    : 'bg-orange/10 border-orange text-ink';
-
-  const unselectedClasses = dark
-    ? `
-      bg-[#202F35]
-      border-[#37464F]
-      text-white
-      hover:border-orange/60
-      hover:bg-[#24363C]
-    `
-    : `
-      bg-surface-alt
-      border-line
-      text-body
-      hover:border-orange/30
-    `;
-
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={selected}
       className={`
         w-full
-        min-h-[58px]
         text-left
-        px-5
-        py-3
+        px-4
+        sm:px-5
+        py-4
         rounded-2xl
         border-2
         font-sans
         font-bold
-        text-[15px]
-        sm:text-base
         transition-all
         duration-150
         ${
@@ -109,61 +67,45 @@ export function OptionRow({
         }
       `}
     >
-      <span className="flex items-center gap-3.5">
+      <span className="flex items-center gap-3">
         <span
           className={`
-            w-6
-            h-6
+            w-5
+            h-5
             shrink-0
-            rounded-[7px]
+            rounded-md
             border-2
             flex
             items-center
             justify-center
-            transition-colors
+            transition-all
             ${
               selected
                 ? 'bg-orange border-orange'
-                : dark
-                  ? 'border-[#60757E] bg-transparent'
-                  : 'border-line'
+                : 'border-[#52656D]'
             }
           `}
         >
           {selected && (
-            <Check
-              className="w-4 h-4 text-white"
-              strokeWidth={3}
-            />
+            <Check className="w-3.5 h-3.5 text-white" />
           )}
         </span>
 
-        {label}
+        <span>{label}</span>
       </span>
     </button>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* PILL OPTION                                                                */
-/* -------------------------------------------------------------------------- */
 
 export function PillOption({
   label,
   selected,
   onClick,
 }: SelectableProps) {
-  const selectedClasses =
-    'bg-orange/10 border-orange text-ink';
-
-  const unselectedClasses =
-    'bg-surface-alt border-line text-body hover:border-orange/30';
-
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-pressed={selected}
       className={`
         inline-flex
         items-center
@@ -176,7 +118,8 @@ export function PillOption({
         font-bold
         text-sm
         sm:text-base
-        transition-colors
+        transition-all
+        duration-150
         ${
           selected
             ? selectedClasses
@@ -185,17 +128,13 @@ export function PillOption({
       `}
     >
       {selected && (
-        <Check className="w-4 h-4 text-orange" />
+        <Check className="w-4 h-4 text-orange shrink-0" />
       )}
 
       {label}
     </button>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* OTHER INPUT                                                                */
-/* -------------------------------------------------------------------------- */
 
 interface OtherInputProps {
   value: string;
@@ -225,30 +164,30 @@ export function OtherInput({
         flex
         items-center
         gap-2
-        px-5
+        px-4
+        sm:px-5
         py-3
         rounded-full
         border-2
-        border-line
-        bg-surface-alt
-        focus-within:border-orange/40
+        border-[#37464F]
+        bg-[#202F35]
+        focus-within:border-orange/60
         transition-colors
       "
     >
       <input
         value={value}
-        onChange={(e) =>
-          onChange(e.target.value)
-        }
+        onChange={(e) => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         className="
           flex-1
+          min-w-0
           bg-transparent
           outline-none
-          text-ink
+          text-white
           font-sans
-          placeholder:text-muted
+          placeholder:text-[#60757E]
         "
       />
 
@@ -258,8 +197,8 @@ export function OtherInput({
         disabled={!value.trim()}
         aria-label="Add"
         className="
-          w-7
-          h-7
+          w-8
+          h-8
           shrink-0
           rounded-full
           bg-orange
@@ -268,7 +207,9 @@ export function OtherInput({
           items-center
           justify-center
           disabled:opacity-30
-          transition-opacity
+          hover:brightness-105
+          active:scale-95
+          transition-all
         "
       >
         <Plus className="w-4 h-4" />
@@ -276,10 +217,6 @@ export function OtherInput({
     </div>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* GOOGLE ICON                                                                */
-/* -------------------------------------------------------------------------- */
 
 export function GoogleIcon({
   className,
@@ -309,15 +246,11 @@ export function GoogleIcon({
 
       <path
         fill="#1976D2"
-        d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24 C44,22.659,43.862,21.35,43.611,20.083z"
+        d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571 c0.001-0.001,0.002-0.002,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24 C44,22.659,43.862,21.35,43.611,20.083z"
       />
     </svg>
   );
 }
-
-/* -------------------------------------------------------------------------- */
-/* TRANSITION SCREEN                                                          */
-/* -------------------------------------------------------------------------- */
 
 interface TransitionScreenProps {
   pose: MascotPose;
@@ -335,48 +268,287 @@ export function TransitionScreen({
   onContinue,
 }: TransitionScreenProps) {
   return (
-    <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 text-center">
-      <GrokitMascot
-        size={130}
-        pose={pose}
-        className="mb-8"
+    <div
+      className="
+        relative
+        flex-1
+        min-h-0
+        flex
+        flex-col
+        items-center
+        justify-center
+        px-5
+        sm:px-6
+        py-8
+        sm:py-10
+        text-center
+        bg-[#131F24]
+        overflow-hidden
+      "
+    >
+      {/* Subtle atmospheric glow behind mascot */}
+      <div
+        aria-hidden="true"
+        className="
+          absolute
+          top-[18%]
+          left-1/2
+          -translate-x-1/2
+          w-[280px]
+          h-[280px]
+          rounded-full
+          bg-orange/10
+          blur-[90px]
+          pointer-events-none
+        "
       />
 
-      <h1
+      {/* Decorative stars */}
+      <div
+        aria-hidden="true"
         className="
-          font-display
-          text-2xl
-          sm:text-3xl
-          md:text-4xl
-          text-ink
-          font-extrabold
-          mb-4
-          max-w-3xl
+          absolute
+          top-[19%]
+          left-[18%]
+          w-2
+          h-2
+          rounded-full
+          bg-[#3A5863]
+          opacity-60
+        "
+      />
+
+      <div
+        aria-hidden="true"
+        className="
+          absolute
+          top-[31%]
+          right-[17%]
+          w-2.5
+          h-2.5
+          rotate-45
+          bg-[#3A5863]
+          opacity-50
+        "
+      />
+
+      <div
+        aria-hidden="true"
+        className="
+          absolute
+          bottom-[23%]
+          left-[12%]
+          w-1.5
+          h-1.5
+          rounded-full
+          bg-orange/40
+        "
+      />
+
+      <div
+        aria-hidden="true"
+        className="
+          absolute
+          bottom-[18%]
+          right-[12%]
+          w-1.5
+          h-1.5
+          rounded-full
+          bg-[#3A5863]
+          opacity-60
+        "
+      />
+
+      {/* Main content */}
+      <div
+        className="
+          relative
+          z-10
+          w-full
+          max-w-[820px]
+          flex
+          flex-col
+          items-center
         "
       >
-        {heading}
-      </h1>
-
-      <p className="text-body font-sans font-medium max-w-2xl mb-2">
-        {sub}
-      </p>
-
-      {note && (
-        <p className="text-muted font-sans text-sm max-w-2xl">
-          {note}
-        </p>
-      )}
-
-      <div className="w-full max-w-2xl mt-10">
-        <button
-          type="button"
-          onClick={onContinue}
-          className="btn-duo w-full px-8 py-4 text-lg"
+        {/* Mascot */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 14,
+            scale: 0.94,
+          }}
+          animate={{
+            opacity: 1,
+            y: [0, -4, 0],
+            scale: 1,
+          }}
+          transition={{
+            opacity: {
+              duration: 0.35,
+            },
+            y: {
+              duration: 3.5,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            },
+            scale: {
+              duration: 0.35,
+            },
+          }}
+          className="mb-5 sm:mb-6"
         >
-          Continue
+          <GrokitMascot
+            size={118}
+            pose={pose}
+          />
+        </motion.div>
 
-          <ArrowRight className="w-5 h-5" />
-        </button>
+        {/* Heading */}
+        <motion.h1
+          initial={{
+            opacity: 0,
+            y: 10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.08,
+            duration: 0.35,
+          }}
+          className="
+            font-display
+            text-[28px]
+            leading-[1.12]
+            sm:text-3xl
+            md:text-[38px]
+            text-white
+            font-extrabold
+            tracking-[-0.02em]
+            mb-3
+            max-w-[760px]
+          "
+        >
+          {heading}
+        </motion.h1>
+
+        {/* Main description */}
+        <motion.p
+          initial={{
+            opacity: 0,
+            y: 8,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.14,
+            duration: 0.35,
+          }}
+          className="
+            text-[#91A4AC]
+            font-sans
+            font-medium
+            text-[15px]
+            sm:text-base
+            md:text-[17px]
+            leading-relaxed
+            max-w-[680px]
+          "
+        >
+          {sub}
+        </motion.p>
+
+        {/* Optional note */}
+        {note && (
+          <motion.p
+            initial={{
+              opacity: 0,
+            }}
+            animate={{
+              opacity: 1,
+            }}
+            transition={{
+              delay: 0.2,
+              duration: 0.35,
+            }}
+            className="
+              text-[#60757E]
+              font-sans
+              text-sm
+              sm:text-[15px]
+              mt-2
+            "
+          >
+            {note}
+          </motion.p>
+        )}
+
+        {/* CTA */}
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 10,
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+          }}
+          transition={{
+            delay: 0.22,
+            duration: 0.35,
+          }}
+          className="
+            w-full
+            max-w-[800px]
+            mt-8
+            sm:mt-9
+          "
+        >
+          <button
+            type="button"
+            onClick={onContinue}
+            className="
+              group
+              w-full
+              min-h-[58px]
+              px-8
+              py-4
+              rounded-full
+              bg-orange
+              text-white
+              font-sans
+              font-extrabold
+              text-base
+              sm:text-lg
+              flex
+              items-center
+              justify-center
+              gap-2
+              shadow-[0_4px_0_#C94713]
+              hover:brightness-105
+              active:translate-y-[2px]
+              active:shadow-none
+              transition-all
+              duration-150
+            "
+          >
+            <span>Continue</span>
+
+            <ArrowRight
+              className="
+                w-5
+                h-5
+                transition-transform
+                duration-150
+                group-hover:translate-x-0.5
+              "
+            />
+          </button>
+        </motion.div>
       </div>
     </div>
   );

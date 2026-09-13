@@ -22,36 +22,19 @@ export default function PasswordField({
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
+  const borderClasses = error
+    ? 'border-red-500 focus-within:border-red-500'
+    : 'border-[#3A4D55] focus-within:border-orange';
+
   return (
     <div
-      className={`
-        relative
-
-        w-full
-        h-[56px]
-
-        rounded-full
-
-        border
-
-        bg-[#202F35]
-
-        transition-colors
-
-        ${
-          error
-            ? 'border-red-500 focus-within:border-red-500'
-            : 'border-[#3A4D55] focus-within:border-orange'
-        }
-      `}
+      className={`relative w-full h-[56px] rounded-full border bg-[#202F35] transition-colors ${borderClasses}`}
     >
       <input
         type={visible ? 'text' : 'password'}
         name={name}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
+        onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         autoComplete={autoComplete}
         autoCapitalize="none"
@@ -63,62 +46,22 @@ export default function PasswordField({
         disabled={disabled}
         aria-invalid={error}
         className="
-          w-full
-          h-full
-
-          px-5
-          pr-14
-
-          bg-transparent
-
-          outline-none
-
-          text-white
-
-          font-sans
-          text-[15px]
-
-          placeholder:text-[#91A4AC]
-
-          disabled:opacity-50
+          w-full h-full px-5 pr-14 bg-transparent outline-none
+          text-white font-sans text-[15px]
+          placeholder:text-[#91A4AC] disabled:opacity-50
         "
       />
 
       <button
         type="button"
-        onClick={() =>
-          setVisible((current) => !current)
-        }
+        onClick={() => setVisible((current) => !current)}
         disabled={disabled}
-        aria-label={
-          visible
-            ? 'Hide password'
-            : 'Show password'
-        }
+        aria-label={visible ? 'Hide password' : 'Show password'}
         className="
-          absolute
-
-          right-2
-          top-1/2
-          -translate-y-1/2
-
-          w-10
-          h-10
-
-          rounded-full
-
-          flex
-          items-center
-          justify-center
-
-          text-[#71858E]
-
-          hover:text-white
-          hover:bg-white/[0.05]
-
-          transition-colors
-
-          disabled:opacity-40
+          absolute right-2 top-1/2 -translate-y-1/2
+          w-10 h-10 rounded-full flex items-center justify-center
+          text-[#71858E] transition-colors
+          hover:text-white hover:bg-white/[0.05] disabled:opacity-40
         "
       >
         {visible ? (
