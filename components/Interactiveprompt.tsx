@@ -6,6 +6,8 @@ const examplePrompts = [
   'Build a startup from zero',
   'Understand machine learning',
   'Learn quantitative finance',
+  'Understand the universe',
+  'Become better at public speaking'
 ];
 
 interface InteractivePromptProps {
@@ -39,7 +41,10 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
   };
 
   return (
-    <section id="explore" className="relative bg-surface py-16 md:py-[120px] overflow-hidden">
+    <section
+      id="explore"
+      className="relative bg-surface py-16 md:py-[120px] overflow-hidden"
+    >
       {/* Single soft glow — the only decoration */}
       <div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full pointer-events-none"
@@ -49,14 +54,15 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
         }}
       />
 
-      <div className="relative max-w-[760px] mx-auto px-5 md:px-16 text-center">
+      <div className="relative max-w-[1000px] mx-auto px-5 md:px-10 text-center">
         <motion.h2
           className="font-display text-[26px] sm:text-3xl md:text-[34px] text-ink font-extrabold leading-tight mb-10"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          What do you want to <span className="text-orange">understand?</span>
+          What do you want to{' '}
+          <span className="text-orange">understand?</span>
         </motion.h2>
 
         <motion.div
@@ -66,7 +72,10 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
           transition={{ delay: 0.1 }}
           className="relative"
         >
-          <Sparkles className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-orange pointer-events-none" />
+          <Sparkles
+            className="absolute left-7 top-1/2 -translate-y-1/2 w-6 h-6 text-orange pointer-events-none"
+          />
+
           <input
             ref={inputRef}
             type="text"
@@ -75,14 +84,15 @@ export function InteractivePrompt({ onOpenWaitlist }: InteractivePromptProps) {
             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
             placeholder="Ask anything…"
             disabled={isTyping}
-            className="w-full h-16 rounded-full bg-surface-alt border border-line pl-14 pr-36 sm:pr-44 text-ink font-sans font-medium text-base sm:text-lg placeholder:text-muted outline-none focus:border-orange/40 transition-colors"
+            className="w-full h-20 sm:h-[84px] rounded-full bg-surface-alt border border-line pl-16 pr-40 sm:pr-52 text-ink font-sans font-medium text-lg sm:text-xl placeholder:text-muted outline-none focus:border-orange/40 transition-colors"
           />
+
           <button
             onClick={handleSubmit}
-            className="btn-duo absolute right-2 top-1/2 -translate-y-1/2 px-4 sm:px-6 py-3 text-sm sm:text-base whitespace-nowrap"
+            className="btn-duo absolute right-2 top-1/2 -translate-y-1/2 px-5 sm:px-7 py-4 text-base sm:text-lg whitespace-nowrap"
           >
             Create your path
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-5 h-5" />
           </button>
         </motion.div>
 

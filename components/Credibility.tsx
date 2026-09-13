@@ -1,80 +1,207 @@
 import { motion } from 'framer-motion';
+import octoPng from '../assets/grokit-octo.png';
+import { Check, BookOpen, ShieldCheck } from 'lucide-react';
 
 function GroundedIllustration() {
   return (
-    <svg viewBox="0 0 260 260" className="w-52 h-52 md:w-64 md:h-64" fill="none">
-      {/* knowledge tree growing from the mascot's head */}
-      <g stroke="#C1531E" strokeWidth={7} strokeLinecap="round">
-        <path d="M130 148 V86" />
-        <path d="M130 118 C112 112 100 100 94 84" />
-        <path d="M130 104 C148 98 160 86 166 70" />
-      </g>
-      <circle cx="130" cy="72" r="9" fill="#F4611F" />
-      <circle cx="88" cy="76" r="8" fill="#F4611F" />
-      <circle cx="172" cy="62" r="8" fill="#F4611F" />
-      <ellipse cx="106" cy="66" rx="9" ry="5" fill="#FFFFFF" opacity="0.85" transform="rotate(-30 106 66)" />
-      <ellipse cx="152" cy="80" rx="9" ry="5" fill="#FFFFFF" opacity="0.85" transform="rotate(25 152 80)" />
-      <path d="M196 96 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z" fill="#FDB022" />
-      <path d="M66 108 l2.4 5.4 5.4 2.4 -5.4 2.4 -2.4 5.4 -2.4 -5.4 -5.4 -2.4 5.4 -2.4 z" fill="#FDB022" />
+    <div className="relative w-full max-w-[520px] h-[380px] flex items-center justify-center">
+      {/* Soft background glow */}
+      <div
+        className="absolute w-[320px] h-[320px] rounded-full pointer-events-none"
+        style={{
+          background:
+            'radial-gradient(circle, rgba(244,97,31,0.10) 0%, transparent 68%)',
+        }}
+      />
 
-      {/* tentacles as roots, drawn behind the body */}
-      <g stroke="#E0501A" strokeWidth={9} strokeLinecap="round">
-        <path d="M98 222 C78 232 62 232 48 244" />
-        <path d="M114 228 C104 238 94 241 84 250" />
-        <path d="M130 232 C130 243 129 249 130 256" />
-        <path d="M146 228 C156 238 166 241 176 250" />
-        <path d="M162 222 C182 232 198 232 212 244" />
-      </g>
+      {/* Decorative spark */}
+      <motion.div
+        className="absolute top-12 right-[22%] text-[#FDB022]"
+        animate={{
+          rotate: [0, 8, -8, 0],
+          scale: [1, 1.08, 1, 1.08, 1],
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: 'easeInOut',
+        }}
+      >
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <path
+            d="M13 1L15.5 10.5L25 13L15.5 15.5L13 25L10.5 15.5L1 13L10.5 10.5L13 1Z"
+            fill="currentColor"
+          />
+        </svg>
+      </motion.div>
 
-      {/* octopus mascot */}
-      <ellipse cx="130" cy="188" rx="54" ry="46" fill="#F4611F" />
-      <g fill="#E0501A">
-        <circle cx="106" cy="158" r="2.6" />
-        <circle cx="118" cy="152" r="2.6" />
-        <circle cx="132" cy="150" r="2.6" />
-        <circle cx="146" cy="153" r="2.6" />
-        <circle cx="157" cy="160" r="2.6" />
-      </g>
-      <circle cx="116" cy="182" r="9.5" fill="#fff" />
-      <circle cx="144" cy="182" r="9.5" fill="#fff" />
-      <circle cx="117.5" cy="184" r="4.6" fill="#12142B" />
-      <circle cx="145.5" cy="184" r="4.6" fill="#12142B" />
-      <circle cx="115.5" cy="180" r="1.6" fill="#fff" />
-      <circle cx="143.5" cy="180" r="1.6" fill="#fff" />
-      <path d="M117 200 Q130 210 143 200" stroke="#fff" strokeWidth={5} strokeLinecap="round" />
-    </svg>
+      {/* Small orange dot */}
+      <div className="absolute top-[27%] left-[18%] w-3 h-3 rounded-full bg-orange" />
+
+      {/* Source verification card */}
+      <motion.div
+        className="absolute top-5 right-[2%] sm:right-[6%] z-20"
+        initial={{ opacity: 0, y: 10 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.25, duration: 0.5 }}
+      >
+        <div className="bg-white rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(18,20,43,0.08)] border border-white/80">
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-6 h-6 rounded-full bg-[#DCFCE7] flex items-center justify-center">
+              <Check className="w-4 h-4 text-[#16A34A]" strokeWidth={3} />
+            </div>
+            <span className="text-sm font-bold text-ink whitespace-nowrap">
+              Verified sources
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5 mb-2">
+            <div className="w-6 h-6 rounded-full bg-[#DCFCE7] flex items-center justify-center">
+              <Check className="w-4 h-4 text-[#16A34A]" strokeWidth={3} />
+            </div>
+            <span className="text-sm font-bold text-ink whitespace-nowrap">
+              Evidence-backed
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="w-6 h-6 rounded-full bg-[#DCFCE7] flex items-center justify-center">
+              <Check className="w-4 h-4 text-[#16A34A]" strokeWidth={3} />
+            </div>
+            <span className="text-sm font-bold text-ink whitespace-nowrap">
+              Real knowledge
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Books / source stack */}
+      <motion.div
+        className="absolute bottom-[34px] left-1/2 -translate-x-1/2 w-[270px] sm:w-[300px]"
+        initial={{ opacity: 0, y: 15 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.15, duration: 0.6 }}
+      >
+        {/* Bottom book */}
+        <div className="relative h-[46px] bg-[#E7D8C8] rounded-xl border border-[#D8C6B3] shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-[18px] bg-[#D1BBA5] rounded-l-xl" />
+
+          <div className="h-full flex items-center justify-center">
+            <span className="font-display text-sm sm:text-base font-extrabold tracking-wide text-[#756457]">
+              SOURCES
+            </span>
+          </div>
+        </div>
+
+        {/* Middle book */}
+        <div className="relative -mt-1 ml-[-8px] mr-[8px] h-[45px] bg-white rounded-xl border border-[#DED9D2] shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-[18px] bg-[#E8E1D9] rounded-l-xl" />
+
+          <div className="h-full flex items-center justify-center">
+            <span className="font-display text-sm sm:text-base font-extrabold tracking-wide text-[#756457]">
+              PAPERS
+            </span>
+          </div>
+        </div>
+
+        {/* Top book */}
+        <div className="relative -mt-1 ml-[6px] mr-[-6px] h-[47px] bg-[#F7C56A] rounded-xl border border-[#E7AD48] shadow-sm">
+          <div className="absolute left-0 top-0 bottom-0 w-[18px] bg-[#E7AD48] rounded-l-xl" />
+
+          <div className="h-full flex items-center justify-center">
+            <span className="font-display text-sm sm:text-base font-extrabold tracking-wide text-[#8A5B16]">
+              RESEARCH
+            </span>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Mascot */}
+      <motion.img
+        src={octoPng}
+        alt="Grokit mascot"
+        className="absolute z-10 w-[205px] sm:w-[225px] md:w-[245px] h-auto object-contain bottom-[75px] left-1/2 -translate-x-1/2"
+        initial={{ opacity: 0, scale: 0.88, y: 10 }}
+        whileInView={{ opacity: 1, scale: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{
+          delay: 0.2,
+          duration: 0.6,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+        animate={{
+          y: [0, -5, 0],
+        }}
+      />
+
+      {/* Ground shadow */}
+      <div className="absolute bottom-[18px] left-1/2 -translate-x-1/2 w-[300px] h-[25px] rounded-[50%] bg-[#DCA87F]/20 blur-[2px]" />
+
+      {/* Small floating shield/check icon */}
+      <motion.div
+        className="absolute bottom-[120px] left-[8%] sm:left-[12%] z-20"
+        initial={{ opacity: 0, scale: 0.8 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.4, duration: 0.4 }}
+      >
+        <div className="w-11 h-11 rounded-2xl bg-white shadow-[0_8px_25px_rgba(18,20,43,0.08)] flex items-center justify-center">
+          <ShieldCheck className="w-6 h-6 text-orange" strokeWidth={2.2} />
+        </div>
+      </motion.div>
+
+      {/* Small book icon */}
+      <motion.div
+        className="absolute bottom-[180px] right-[7%] sm:right-[12%] z-20"
+        initial={{ opacity: 0, scale: 0.8 }}
+        whileInView={{ opacity: 1, scale: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.5, duration: 0.4 }}
+      >
+        <div className="w-10 h-10 rounded-2xl bg-white shadow-[0_8px_25px_rgba(18,20,43,0.08)] flex items-center justify-center">
+          <BookOpen className="w-5 h-5 text-[#C1531E]" strokeWidth={2.2} />
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
 export function Credibility() {
   return (
-    <section className="bg-peach py-20 md:py-[120px]">
-      <div className="max-w-[1140px] mx-auto px-5 md:px-16 flex flex-col md:flex-row items-center gap-14 md:gap-20">
+    <section className="bg-peach py-20 md:py-[120px] overflow-hidden">
+      <div className="max-w-[1140px] mx-auto px-5 md:px-16 flex flex-col md:flex-row items-center gap-12 md:gap-16 lg:gap-20">
+
+        {/* Text */}
         <motion.div
           className="flex-1 text-center md:text-left"
-          initial={{ opacity: 0, y: 24 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, x: -24 }}
+          whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
           <h2 className="font-display text-[32px] sm:text-4xl md:text-[48px] text-ink font-extrabold leading-[1.1] mb-6">
             Grounded in real knowledge
           </h2>
+
           <p className="text-lg md:text-xl text-body font-sans font-medium leading-relaxed max-w-lg mx-auto md:mx-0">
             Every course in our core domains is built from verified public
             sources, not just plausible-sounding AI text.
           </p>
         </motion.div>
 
+        {/* Illustration */}
         <motion.div
-          className="flex-1 flex justify-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          whileInView={{ opacity: 1, scale: 1 }}
+          className="flex-1 w-full flex justify-center"
+          initial={{ opacity: 0, x: 24 }}
+          whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           <GroundedIllustration />
         </motion.div>
+
       </div>
     </section>
   );

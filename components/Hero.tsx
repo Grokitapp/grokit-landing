@@ -22,7 +22,7 @@ export function Hero({ onOpenWaitlist }: HeroProps) {
           >
             <span className="eyebrow block mb-6">Now building</span>
 
-            <h1 className="font-display text-[40px] sm:text-6xl lg:text-[64px] text-ink font-extrabold leading-[1.05] tracking-tight mb-6">
+            <h1 className="font-display text-[36px] sm:text-5xl lg:text-[56px] text-ink font-extrabold leading-[1.08] tracking-tight mb-6">
               The smartest way to learn <span className="text-orange">anything</span>
             </h1>
 
