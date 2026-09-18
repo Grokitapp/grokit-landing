@@ -27,159 +27,64 @@ const buttonMotion = {
   whileTap: { scale: 0.98 },
 };
 
-export function Hero({
-  onOpenWaitlist,
-}: HeroProps) {
+const sectionClasses = 'relative pt-28 pb-14 sm:pt-32 sm:pb-16 md:pt-36 md:pb-20 bg-surface overflow-hidden';
+const containerClasses = 'max-w-[1140px] mx-auto px-5 md:px-16';
+const gridClasses = 'grid md:grid-cols-2 gap-10 md:gap-12 lg:gap-16 items-center';
+const leftColumnClasses = 'order-2 md:order-1 text-center md:text-left';
+const rightColumnClasses = 'order-1 md:order-2 w-full flex justify-center md:justify-end';
+const headingClasses = 'font-display text-[36px] sm:text-5xl lg:text-[56px] text-ink font-extrabold leading-[1.08] tracking-tight mb-6';
+const subtitleClasses = 'text-lg md:text-xl text-body font-sans font-medium leading-relaxed max-w-md mx-auto md:mx-0 mb-9 md:mb-10';
+const buttonRowClasses = 'flex flex-col sm:flex-row items-center md:items-start justify-center md:justify-start gap-3 sm:gap-4';
+const primaryButtonClasses = 'btn-duo w-full sm:w-auto px-9 py-4 text-lg justify-center';
+const outlineButtonClasses = 'btn-duo-outline w-full sm:w-auto px-9 py-4 text-lg justify-center';
+
+export function Hero({ onOpenWaitlist }: HeroProps) {
   const navigate = useNavigate();
 
   const handleStartLearning = async () => {
     try {
       const profile = await getProfile();
-
-      /* Returning users who already completed onboarding go directly to the learning experience. */
-      if (profile?.onboardingCompleted) {
-        navigate('/learn');
-        return;
-      }
-
-      /* Authenticated but not onboarded */
+      // Returning users who completed onboarding go directly to learning
+      if (profile?.onboardingCompleted) return navigate('/learn');
+      // Authenticated but not onboarded
       navigate('/onboarding');
     } catch {
-      /* Not authenticated, or profile doesn't exist yet. Onboarding will handle authentication. */
+      // Not authenticated — onboarding handles auth
       navigate('/onboarding');
     }
   };
 
   return (
-    <section
-      className="
-        relative
-        pt-28
-        pb-14
-        sm:pt-32
-        sm:pb-16
-        md:pt-36
-        md:pb-20
-        bg-surface
-        overflow-hidden
-      "
-    >
-      <div
-        className="
-          max-w-[1140px]
-          mx-auto
-          px-5
-          md:px-16
-        "
-      >
-        <div
-          className="
-            grid
-            md:grid-cols-2
-            gap-10
-            md:gap-12
-            lg:gap-16
-            items-center
-          "
-        >
+    <section className={sectionClasses}>
+      <div className={containerClasses}>
+        <div className={gridClasses}>
           {/* LEFT — Hero copy */}
-          <motion.div
-            className="
-              order-2
-              md:order-1
-              text-center
-              md:text-left
-            "
-            {...fadeUp}
-          >
-            <span className="eyebrow block mb-5 md:mb-6">
-              Now building
-            </span>
+          <motion.div className={leftColumnClasses} {...fadeUp}>
+            <span className="eyebrow block mb-5 md:mb-6">Now building</span>
 
-            <h1
-              className="
-                font-display
-                text-[36px]
-                sm:text-5xl
-                lg:text-[56px]
-                text-ink
-                font-extrabold
-                leading-[1.08]
-                tracking-tight
-                mb-6
-              "
-            >
-              The smartest way to learn{' '}
-              <span className="text-orange">
-                anything
-              </span>
+            <h1 className={headingClasses}>
+              The smartest way to learn <span className="text-orange">anything</span>
             </h1>
 
-            <p
-              className="
-                text-lg
-                md:text-xl
-                text-body
-                font-sans
-                font-medium
-                leading-relaxed
-                max-w-md
-                mx-auto
-                md:mx-0
-                mb-9
-                md:mb-10
-              "
-            >
-              Grounded in real knowledge.
-              Built around you.
+            <p className={subtitleClasses}>
+              Grounded in real knowledge. Built around you.
             </p>
 
-            <div
-              className="
-                flex
-                flex-col
-                sm:flex-row
-                items-center
-                md:items-start
-                justify-center
-                md:justify-start
-                gap-3
-                sm:gap-4
-              "
-            >
-              {/* Start learning */}
+            <div className={buttonRowClasses}>
               <motion.button
                 type="button"
                 onClick={handleStartLearning}
-                className="
-                  btn-duo
-                  w-full
-                  sm:w-auto
-                  px-9
-                  py-4
-                  text-lg
-                  justify-center
-                "
+                className={primaryButtonClasses}
                 {...buttonMotion}
               >
                 Start learning
-
                 <ArrowRight className="w-5 h-5" />
               </motion.button>
 
-              {/* Waitlist */}
               <motion.button
                 type="button"
                 onClick={onOpenWaitlist}
-                className="
-                  btn-duo-outline
-                  w-full
-                  sm:w-auto
-                  px-9
-                  py-4
-                  text-lg
-                  justify-center
-                "
+                className={outlineButtonClasses}
                 {...buttonMotion}
               >
                 Join the waitlist
@@ -188,17 +93,7 @@ export function Hero({
           </motion.div>
 
           {/* RIGHT — Mascot illustration */}
-          <motion.div
-            className="
-              order-1
-              md:order-2
-              w-full
-              flex
-              justify-center
-              md:justify-end
-            "
-            {...fadeInRight}
-          >
+          <motion.div className={rightColumnClasses} {...fadeInRight}>
             <HeroGraphic />
           </motion.div>
         </div>
