@@ -16,6 +16,10 @@ export const auth = defineAuth({
       google: {
         clientId: secret('GOOGLE_CLIENT_ID'),
         clientSecret: secret('GOOGLE_CLIENT_SECRET'),
+        scopes: ['email', 'profile', 'openid'],
+        attributeMapping: {
+          email: 'email',
+        },
       },
       callbackUrls: ['http://localhost:5173/onboarding', 'https://grokit.app/onboarding'],
       logoutUrls: ['http://localhost:5173', 'https://grokit.app'],
