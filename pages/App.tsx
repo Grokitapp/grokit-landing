@@ -13,6 +13,10 @@ import Onboarding from './Onboarding';
 import Learn from './Learn';
 import Terms from './Terms';
 import PrivacyPolicy from './Privacypolicy';
+import Personalize from './learn/Personalize';
+import Generating from './learn/Generating';
+import CourseOverview from './learn/CourseOverview';
+import PhaseDetail from './learn/PhaseDetail';
 
 export default function App() {
   return (
@@ -40,6 +44,26 @@ export default function App() {
       <Route
         path="/privacy"
         element={<PrivacyPolicy />}
+      />
+
+      <Route 
+        path="/learn/personalize" 
+        element={<Personalize />} 
+      />
+
+      <Route 
+        path="/learn/generating" 
+        element={<Generating />} 
+      />
+
+      <Route 
+        path="/learn/course/:courseId" 
+        element={<CourseOverview />} 
+      />
+
+      <Route 
+        path="/learn/course/:courseId/phase/:phaseId" 
+        element={<PhaseDetail />} 
       />
     </Routes>
   );

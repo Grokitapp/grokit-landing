@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { ArrowRight } from 'lucide-react';
 import { WaitlistModal } from '../components/Waitlistmodal';
 import { EXAMPLE_COURSES } from './onboarding/constants';
+import AppShell from './learn/AppShell';
+import { useNavigate } from 'react-router';
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
-const mainClasses = 'min-h-[100dvh] bg-[#131F24] text-white overflow-x-hidden';
 const containerClasses = 'min-h-[100dvh] w-full max-w-[900px] mx-auto px-5 sm:px-6 py-10 sm:py-14 md:py-16';
 const badgeClasses = 'inline-flex items-center px-4 py-2 rounded-full border border-[#37464F] bg-[#202F35] text-[#91A4AC] font-sans font-bold text-xs sm:text-sm mb-5';
 const headingClasses = 'font-display text-[30px] sm:text-4xl md:text-[42px] leading-[1.08] font-extrabold tracking-[-0.02em] text-white mb-3';
@@ -33,17 +34,16 @@ const sectionLabelClasses = 'text-[#91A4AC] font-sans font-semibold text-sm mb-4
 export default function Learn() {
   const [learnPrompt, setLearnPrompt] = useState('');
   const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
-
+  const navigate = useNavigate();
   const hasPrompt = learnPrompt.trim().length > 0;
 
   const handleCreate = () => {
     if (!hasPrompt) return;
-    // Later: call course-generation API here
-    setIsWaitlistOpen(true);
+    navigate('/learn/personalize', { state: { prompt: learnPrompt } });
   };
 
   return (
-    <main className={mainClasses}>
+    <AppShell>
       <div className={containerClasses}>
         {/* Header */}
         <div className="text-center mb-8 sm:mb-10">
@@ -107,6 +107,6 @@ export default function Learn() {
       </div>
 
       <WaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
-    </main>
+    </AppShell>
   );
 }
