@@ -2,8 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { ChevronLeft } from 'lucide-react';
 import grokitMascot from '../../assets/grokit-hero-mascot.png';
+import { createCourseFromPrompt } from '../../lib/courseGeneration';
+import type { Schema } from '../../amplify/data/resource';
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
+// ─── Shared styles (unchanged) ─────────────────────────────────────────────
 
 const pageClasses = 'min-h-[100dvh] bg-[#131F24] text-white flex flex-col items-center justify-center px-5 relative';
 const backButtonClasses = 'absolute top-6 left-6 w-9 h-9 rounded-full flex items-center justify-center text-[#91A4AC] hover:bg-[#202F35] hover:text-white transition-colors';
@@ -18,27 +20,26 @@ const statusRowClasses = 'flex items-center gap-3 mb-8';
 const statusIconClasses = 'w-8 h-8 shrink-0 object-contain';
 const statusTextClasses = 'text-[#91A4AC] font-sans text-[15px]';
 const heroPlaceholderClasses = 'w-full max-w-[900px] h-[300px] sm:h-[380px] rounded-3xl bg-gradient-to-r from-[#202F35] via-[#26383F] to-[#202F35] bg-[length:200%_100%] animate-pulse mb-8';
-const heroImageClasses = 'w-full max-w-[900px] h-[300px] sm:h-[380px] rounded-3xl object-cover mb-8';
 const bodyClasses = 'text-[#91A4AC] font-sans text-[15px] sm:text-base leading-relaxed max-w-[600px] mb-8';
+const heroImageClasses = 'w-full max-w-[900px] h-[300px] sm:h-[380px] rounded-3xl object-cover mb-8';
 
-const actionButtonClasses = `
-  w-full max-w-[900px] min-h-[52px] rounded-full font-sans font-extrabold text-[15px]
-  flex items-center justify-center gap-2 transition-all
-`;
+const actionButtonClasses = 'w-full max-w-[900px] min-h-[52px] rounded-full font-sans font-extrabold text-[15px] flex items-center justify-center gap-2 transition-all';
 const actionButtonDisabledClasses = 'bg-[#202F35]/60 text-[#60757E] cursor-not-allowed';
-const actionButtonReadyClasses = `
-  bg-orange text-white shadow-[0_4px_0_#C94713] hover:brightness-105
-  active:translate-y-[2px] active:shadow-none
-`;
+const actionButtonReadyClasses = 'bg-orange text-white shadow-[0_4px_0_#C94713] hover:brightness-105 active:translate-y-[2px] active:shadow-none';
+
+const errorBoxClasses = 'text-red-400 font-sans text-sm text-center max-w-[500px] mb-6';
+const retryButtonClasses = 'text-orange font-sans font-semibold text-sm underline';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface LocationState {
   prompt?: string;
   personalized?: boolean;
+  personalizationProfile?: unknown;
 }
 
-type Stage = 'building' | 'streaming' | 'ready';
+type Stage = 'building' | 'streaming' | 'ready' | 'error';
+type Course = Schema['Course']['type'];
 
 const STATUS_MESSAGES = [
   'Calling course curation fairy...',
@@ -51,40 +52,66 @@ const STATUS_MESSAGES = [
 export default function Generating() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { prompt } = (location.state as LocationState) ?? {};
+  const { prompt, personalized, personalizationProfile } = (location.state as LocationState) ?? {};
 
   const [stage, setStage] = useState<Stage>('building');
   const [typedTitle, setTypedTitle] = useState('');
   const [statusIndex, setStatusIndex] = useState(0);
+  const [course, setCourse] = useState<Course | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // Mock generated data — replace with real API response once wired
-  const fullTitle = useRef(deriveTitle(prompt)).current;
-  const courseId = useRef('mock-course-id').current;
+  const fullTitleRef = useRef('');
+  const startedRef = useRef(false);
 
   const goBack = () => navigate(-1);
 
-  // Stage 1 → 2: after a short "building" beat, start streaming the title
+  const runGeneration = () => {
+    if (!prompt) {
+      setErrorMessage('No topic was provided.');
+      setStage('error');
+      return;
+    }
+
+    setStage('building');
+    setErrorMessage('');
+
+    createCourseFromPrompt(prompt, personalized ? personalizationProfile : undefined)
+      .then((created) => {
+        setCourse(created);
+        fullTitleRef.current = created.title;
+        setStage('streaming');
+      })
+      .catch((err: Error) => {
+        setErrorMessage(err.message || 'Something went wrong generating your course.');
+        setStage('error');
+      });
+  };
+
+  // Kick off generation once on mount
   useEffect(() => {
-    const timer = setTimeout(() => setStage('streaming'), 1400);
-    return () => clearTimeout(timer);
+    if (startedRef.current) return;
+    startedRef.current = true;
+    runGeneration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Stage 2: type out the title character by character
+  // Type out the title once the real title is known
   useEffect(() => {
     if (stage !== 'streaming') return;
 
+    const fullTitle = fullTitleRef.current;
     let i = 0;
     const interval = setInterval(() => {
       i += 1;
       setTypedTitle(fullTitle.slice(0, i));
       if (i >= fullTitle.length) {
         clearInterval(interval);
-        setTimeout(() => setStage('ready'), 900);
+        setTimeout(() => setStage('ready'), 700);
       }
     }, 35);
 
     return () => clearInterval(interval);
-  }, [stage, fullTitle]);
+  }, [stage]);
 
   // Rotate status message while streaming
   useEffect(() => {
@@ -96,9 +123,25 @@ export default function Generating() {
   }, [stage]);
 
   const handleGoToCourse = () => {
-    if (stage !== 'ready') return;
-    navigate(`/learn/course/${courseId}`);
+    if (stage !== 'ready' || !course) return;
+    navigate(`/learn/course/${course.id}`);
   };
+
+  if (stage === 'error') {
+    return (
+      <div className={pageClasses}>
+        <button type="button" onClick={goBack} aria-label="Go back" className={backButtonClasses}>
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <img src={grokitMascot} alt="" className={mascotClasses} />
+        <h1 className={headingClasses}>Something went wrong</h1>
+        <p className={errorBoxClasses}>{errorMessage}</p>
+        <button type="button" onClick={runGeneration} className={retryButtonClasses}>
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   if (stage === 'building') {
     return (
@@ -106,7 +149,6 @@ export default function Generating() {
         <button type="button" onClick={goBack} aria-label="Go back" className={backButtonClasses}>
           <ChevronLeft className="w-5 h-5" />
         </button>
-
         <p className={eyebrowClasses}>Generating lesson plan</p>
         <h1 className={headingClasses}>Building your course</h1>
         <img src={grokitMascot} alt="" className={mascotClasses} />
@@ -133,11 +175,7 @@ export default function Generating() {
           </>
         ) : (
           <>
-            <p className={bodyClasses}>
-              Welcome! Together, we will explore this topic step by step, building real
-              understanding from the ground up.
-            </p>
-            {/* Swap for the real generated hero image once the API is wired */}
+            <p className={bodyClasses}>{course?.description}</p>
             <div className={`${heroImageClasses} bg-gradient-to-br from-teal-700 to-emerald-800`} />
           </>
         )}
@@ -153,12 +191,4 @@ export default function Generating() {
       </div>
     </div>
   );
-}
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function deriveTitle(prompt?: string): string {
-  if (!prompt) return 'Your New Course';
-  const cleaned = prompt.replace(/^i want to learn about\s*/i, '').trim();
-  return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
 }

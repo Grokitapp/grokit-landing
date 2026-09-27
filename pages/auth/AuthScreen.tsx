@@ -3,7 +3,7 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { Hub } from 'aws-amplify/utils';
 
-import { GrokitLogo } from '../../../components/Grokitlogo';
+import { GrokitLogo } from '../../components/Grokitlogo';
 
 import {
   confirmEmailSignUp,
@@ -273,15 +273,20 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   /* ── Google ───────────────────────────────────────────────────────────── */
 
   const handleGoogle = async () => {
-    setError('');
-    setGoogleLoading(true);
-    try {
-      await signInWithGoogle();
-    } catch (err) {
-      setGoogleLoading(false);
-      setError(getErrorMessage(err));
-    }
-  };
+  if (googleLoading) return;
+
+  setError('');
+  setGoogleLoading(true);
+
+  try {
+    await signInWithGoogle();
+    // Redirect happens immediately.
+    // Keep the button disabled until the auth event returns.
+  } catch (err) {
+    setGoogleLoading(false);
+    setError(getErrorMessage(err));
+  }
+};
 
   /* ── Loading state ────────────────────────────────────────────────────── */
 

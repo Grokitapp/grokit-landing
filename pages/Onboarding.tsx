@@ -2,13 +2,12 @@ import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
-
 import { WaitlistModal } from '../components/Waitlistmodal';
-import { saveProfile } from '../lib/profile';
-import type { MascotPose } from '../components/Grokitmascot';
-
-import AuthScreen from './onboarding/auth/AuthScreen';
+import { GrokitMascot, type MascotPose } from '../components/Grokitmascot';
 import Welcome from './onboarding/Welcome';
+import { saveProfile, getProfile } from "../lib/profile";
+import AuthScreen from './auth/AuthScreen';
+import { getAuthenticatedUser } from './auth/authService';
 
 import {
   BACK_STEP,
@@ -77,6 +76,40 @@ const backButtonBaseClasses = 'p-2 -ml-2 shrink-0 rounded-full transition-colors
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const [initializing, setInitializing] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function initialize() {
+      try {
+        await getAuthenticatedUser();
+        const profile = await getProfile();
+        if (!mounted) return;
+
+        if (profile?.onboardingCompleted) {
+          navigate('/learn', { replace: true });
+          return;
+        }
+
+        setStep(STEP.WELCOME);
+      } catch {
+        if (mounted) {
+          setStep(STEP.AUTH);
+        }
+      } finally {
+        if (mounted) {
+          setInitializing(false);
+        }
+      }
+    }
+
+    initialize();
+
+    return () => {
+      mounted = false;
+    };
+  }, [navigate]);
 
   const [step, setStep] = useState<Step>(STEP.AUTH);
 
@@ -154,6 +187,7 @@ export default function Onboarding() {
         });
 
         if (cancelled) return;
+        await getProfile();
         navigate('/learn', { replace: true });
       } catch (error) {
         console.error('Failed to finalize onboarding profile:', error);
@@ -176,7 +210,21 @@ export default function Onboarding() {
   const renderStep = () => {
     switch (step) {
       case STEP.AUTH:
-        return <AuthScreen onAuthenticated={() => setStep(STEP.WELCOME)} />;
+        return <AuthScreen
+          onAuthenticated={async () => {
+            try {
+              const profile = await getProfile();
+
+              if (profile?.onboardingCompleted) {
+                navigate("/learn", { replace: true });
+              } else {
+                setStep(STEP.WELCOME);
+              }
+            } catch {
+              setStep(STEP.WELCOME);
+            }
+          }}
+        />;
 
       case STEP.WELCOME:
         return <Welcome onContinue={() => setStep(STEP.INTRO)} discordInviteUrl={DISCORD_INVITE_URL} />;
@@ -273,7 +321,7 @@ export default function Onboarding() {
                     setSavingError(null);
                     setIsSavingProfile(true);
                     // Re-entering LOADING triggers the effect again
-                    setStep(STEP.TIME);
+                    setStep(STEP.LOADING);
                   }
                 : undefined
             }
@@ -294,6 +342,38 @@ export default function Onboarding() {
     : 'text-body hover:text-ink';
 
   // ── Page ─────────────────────────────────────────────────────────────────
+
+  if (initializing) {
+  return (
+    <div className="min-h-screen bg-[#131F24] flex items-center justify-center">
+      <div className="flex flex-col items-center gap-5">
+        <GrokitMascot pose="thinking" size={120} />
+
+        <div className="flex gap-1">
+          <motion.span
+            className="w-2 h-2 rounded-full bg-orange"
+            animate={{ y: [0, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 0.6 }}
+          />
+          <motion.span
+            className="w-2 h-2 rounded-full bg-orange"
+            animate={{ y: [0, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
+          />
+          <motion.span
+            className="w-2 h-2 rounded-full bg-orange"
+            animate={{ y: [0, -5, 0] }}
+            transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
+          />
+        </div>
+
+        <p className="text-[#91A4AC] font-semibold text-lg">
+          Preparing your learning space...
+        </p>
+      </div>
+    </div>
+  );
+}
 
   return (
     <div className={`${canvasBaseClasses} ${canvasBg}`}>

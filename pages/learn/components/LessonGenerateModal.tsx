@@ -26,36 +26,51 @@ export interface LessonMeta {
   id: string;
   title: string;
   hook: string;
-  hasContent: boolean; // false = needs generation on open (lazy generation)
+  hasContent: boolean;
 }
 
 interface LessonGenerateModalProps {
   lesson: LessonMeta;
   onClose: () => void;
   onStart: (lessonId: string) => void;
+  onGenerate: (lessonId: string) => Promise<void>;
   onPodcast: (lessonId: string) => void;
   onLiveChallenge: (lessonId: string) => void;
 }
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function LessonGenerateModal({
   lesson,
   onClose,
   onStart,
+  onGenerate,
   onPodcast,
   onLiveChallenge,
 }: LessonGenerateModalProps) {
   const [ready, setReady] = useState(lesson.hasContent);
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (lesson.hasContent) return;
+    if (lesson.hasContent) {
+      setReady(true);
+      return;
+    }
 
-    // Mock generation delay — replace with the real per-lesson generation
-    // Lambda call here. On success, set ready(true).
-    const timer = setTimeout(() => setReady(true), 2200);
-    return () => clearTimeout(timer);
-  }, [lesson.hasContent]);
+    let cancelled = false;
+    setFailed(false);
+
+    onGenerate(lesson.id)
+      .then(() => {
+        if (!cancelled) setReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lesson.id, lesson.hasContent]);
 
   return (
     <div className={overlayClasses}>
@@ -67,7 +82,12 @@ export default function LessonGenerateModal({
         <h2 className={titleClasses}>{lesson.title}</h2>
         <p className={bodyClasses}>{lesson.hook}</p>
 
-        {!ready ? (
+        {failed ? (
+          <div className={generatingWrapClasses}>
+            <p className={generatingLabelClasses}>Couldn't generate this lesson</p>
+            <p className={generatingSubClasses}>Please try again.</p>
+          </div>
+        ) : !ready ? (
           <div className={generatingWrapClasses}>
             <img src={grokitMascot} alt="" className={generatingMascotClasses} />
             <p className={generatingLabelClasses}>Generating your lesson...</p>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { completePasswordReset, sendPasswordResetCode } from './authService';
-import { GrokitLogo } from '../../../components/Grokitlogo';
+import { GrokitLogo } from '../../components/Grokitlogo';
 import { getMissingPasswordRequirements, isStrongPassword } from './password';
 import PasswordField from './PasswordField';
 

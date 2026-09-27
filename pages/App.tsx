@@ -1,11 +1,3 @@
-/**
- * ROUTING RULES:
- * - Router is in main.tsx. Do NOT add another <BrowserRouter> here or anywhere.
- * - Use <Routes> + <Route> components ONLY. Do NOT use useRoutes().
- * - STATIC IMPORTS ONLY — no React.lazy() or dynamic import().
- * - Import from 'react-router' — NOT 'react-router-dom'.
- */
-
 import { Routes, Route } from 'react-router';
 
 import Index from './Index';
@@ -13,57 +5,67 @@ import Onboarding from './Onboarding';
 import Learn from './Learn';
 import Terms from './Terms';
 import PrivacyPolicy from './Privacypolicy';
+
 import Personalize from './learn/Personalize';
 import Generating from './learn/Generating';
 import CourseOverview from './learn/CourseOverview';
 import PhaseDetail from './learn/PhaseDetail';
 
+import AuthGuard from './auth/AuthGuard';
+
 export default function App() {
   return (
     <Routes>
-      <Route
-        path="/"
-        element={<Index />}
-      />
+      <Route path="/" element={<Index />} />
 
-      <Route
-        path="/onboarding"
-        element={<Onboarding />}
-      />
+      <Route path="/onboarding" element={<Onboarding />} />
 
       <Route
         path="/learn"
-        element={<Learn />}
+        element={
+          <AuthGuard>
+            <Learn />
+          </AuthGuard>
+        }
+      />
+
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/privacy" element={<PrivacyPolicy />} />
+
+      <Route
+        path="/learn/personalize"
+        element={
+          <AuthGuard>
+            <Personalize />
+          </AuthGuard>
+        }
       />
 
       <Route
-        path="/terms"
-        element={<Terms />}
+        path="/learn/generating"
+        element={
+          <AuthGuard>
+            <Generating />
+          </AuthGuard>
+        }
       />
 
       <Route
-        path="/privacy"
-        element={<PrivacyPolicy />}
+        path="/learn/course/:courseId"
+        element={
+          <AuthGuard>
+            <CourseOverview />
+          </AuthGuard>
+        }
       />
 
-      <Route 
-        path="/learn/personalize" 
-        element={<Personalize />} 
-      />
-
-      <Route 
-        path="/learn/generating" 
-        element={<Generating />} 
-      />
-
-      <Route 
-        path="/learn/course/:courseId" 
-        element={<CourseOverview />} 
-      />
-
-      <Route 
-        path="/learn/course/:courseId/phase/:phaseId" 
-        element={<PhaseDetail />} 
+      <Route
+        path="/learn/course/:courseId/phase/:phaseId"
+        element={
+          <AuthGuard>
+            <PhaseDetail />
+          </AuthGuard>
+        }
       />
     </Routes>
   );
