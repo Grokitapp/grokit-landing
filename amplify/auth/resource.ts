@@ -134,8 +134,8 @@ grokit.app
       },
 
       callbackUrls: [
-        "http://localhost:5173/auth/callback",
-        "https://grokit.app/auth/callback",
+        "http://localhost:5173/onboarding",
+        "https://grokit.app/onboarding",
       ],
 
       logoutUrls: [
