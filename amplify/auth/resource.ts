@@ -1,4 +1,5 @@
 import { defineAuth, secret } from "@aws-amplify/backend";
+import { linkGoogleUser } from "../functions/link-google-user/resource";
 
 export const auth = defineAuth({
   loginWith: {
@@ -143,5 +144,9 @@ grokit.app
         "https://grokit.app",
       ],
     },
+  },
+
+  triggers: {
+    preSignUp: linkGoogleUser,
   },
 });

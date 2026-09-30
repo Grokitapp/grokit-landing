@@ -15,6 +15,7 @@
     "vite": "^8.2.2"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1143.0",
     "@tailwindcss/vite": "^4.3.3",
     "aws-amplify": "^6.20.0",
     "framer-motion": "^13.1.1",

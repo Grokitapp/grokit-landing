@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router';
+import { fetchAuthSession } from 'aws-amplify/auth';
 import { GrokitMascot } from '../../components/Grokitmascot';
 import { getAuthenticatedUser } from './authService';
 import { getProfile } from '../../lib/profile';
@@ -19,7 +20,14 @@ export default function AuthGuard({ children }: Props) {
     async function check() {
       try {
         await getAuthenticatedUser();
-        const profile = await getProfile();
+        await fetchAuthSession();
+        let profile = await getProfile();
+
+        if (!profile) {
+          await new Promise(r => setTimeout(r, 400));
+          profile = await getProfile();
+        }
+
         if (!mounted) return;
 
         if (profile?.onboardingCompleted) {
