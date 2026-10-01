@@ -35,5 +35,8 @@
     "@parcel/watcher@2.6.0": true,
     "core-js@3.50.0": true,
     "core-js@2.6.12": true
+  },
+  "optionalDependencies": {
+    "@parcel/watcher-linux-x64-glibc": "^2.6.0"
   }
 }
