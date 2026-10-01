@@ -39,6 +39,7 @@
   },
   "optionalDependencies": {
     "@parcel/watcher-linux-x64-glibc": "^2.6.0",
-    "@rolldown/binding-linux-x64-gnu": "^1.2.12"
+    "@rolldown/binding-linux-x64-gnu": "^1.2.12",
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.3.3"
   }
 }
