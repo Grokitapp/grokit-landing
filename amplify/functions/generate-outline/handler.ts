@@ -24,12 +24,6 @@ if (!ANTHROPIC_API_KEY) {
 
 type Handler = Schema['generateOutline']['functionHandler'];
 
-type OwnerIdentity = {
-  value: string;
-  sub: string;
-  username: string;
-};
-
 interface OutlineLesson {
   order: number;
   title: string;
@@ -51,13 +45,13 @@ interface CourseOutline {
 const OUTLINE_MODEL = 'claude-sonnet-5-5';
 
 /**
- * Keep the Anthropic schema intentionally structural.
+ * Anthropic Structured Outputs schema.
  *
- * Anthropic Structured Outputs does not support the array-size
- * constraints we would normally use with JSON Schema.
- *
- * Exact curriculum constraints are enforced separately by
- * validateCourseOutline().
+ * Keep this schema structural only.
+ * Curriculum-size and ordering rules are enforced by
+ * validateCourseOutline() below because Anthropic's
+ * Structured Outputs schema does not support the array
+ * constraints we would otherwise use here.
  */
 const OUTLINE_SCHEMA = {
   type: 'object',
@@ -118,12 +112,9 @@ export const handler: Handler = async (event, context) => {
     throw new Error('COURSE_TOPIC_REQUIRED');
   }
 
-  const owner = getOwnerIdentity(event);
-
   console.info('Starting course outline generation', {
     requestId,
     topic: normalizedTopic,
-    owner: owner.sub,
     model: OUTLINE_MODEL,
   });
 
@@ -149,7 +140,6 @@ export const handler: Handler = async (event, context) => {
     validateCourseOutline(outline);
 
     const courseResult = await client.models.Course.create({
-      owner: owner.value,
       title: outline.title,
       topic: normalizedTopic,
       description: outline.description,
@@ -174,7 +164,6 @@ export const handler: Handler = async (event, context) => {
 
     for (const phase of outline.phases) {
       const phaseResult = await client.models.Phase.create({
-        owner: owner.value,
         courseId: course.id,
         order: phase.order,
         title: phase.title,
@@ -197,7 +186,6 @@ export const handler: Handler = async (event, context) => {
 
       for (const lesson of phase.lessons) {
         const lessonResult = await client.models.Lesson.create({
-          owner: owner.value,
           courseId: course.id,
           phaseId: phaseRecord.id,
           order: lesson.order,
@@ -286,29 +274,6 @@ export const handler: Handler = async (event, context) => {
   }
 };
 
-function getOwnerIdentity(event: Parameters<Handler>[0]): OwnerIdentity {
-  const identity = event.identity as
-    | {
-        sub?: string;
-        username?: string;
-      }
-    | null
-    | undefined;
-
-  const sub = identity?.sub?.trim();
-  const username = identity?.username?.trim();
-
-  if (!sub || !username) {
-    throw new Error('AUTHENTICATED_USER_IDENTITY_REQUIRED');
-  }
-
-  return {
-    sub,
-    username,
-    value: `${sub}::${username}`,
-  };
-}
-
 async function callClaudeForOutline(
   topic: string,
   personalizationProfile: unknown,
@@ -335,7 +300,7 @@ Course structure requirements:
 - Hooks should create curiosity and explain why the lesson matters.
 - Do not use markdown.
 - Do not include quizzes, explanations, examples, references, or long prose.
-- Keep the structure appropriate for the learner profile when one is provided.
+- Keep the structure appropriate to the learner profile when one is provided.
 - The output is only the blueprint for later lesson generation.
 `;
 
@@ -427,7 +392,9 @@ Course structure requirements:
   return parsed;
 }
 
-function validateCourseOutline(value: unknown): asserts value is CourseOutline {
+function validateCourseOutline(
+  value: unknown,
+): asserts value is CourseOutline {
   if (!isRecord(value)) {
     throw new Error('INVALID_AI_OUTLINE: Expected an object.');
   }
@@ -462,6 +429,12 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
     if (!isInteger(phaseValue.order)) {
       throw new Error(
         `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} has an invalid order.`,
+      );
+    }
+
+    if (phaseValue.order < 1 || phaseValue.order > 4) {
+      throw new Error(
+        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} order must be between 1 and 4.`,
       );
     }
 
@@ -503,6 +476,12 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
       if (!isInteger(lessonValue.order)) {
         throw new Error(
           `INVALID_AI_OUTLINE: Lesson ${lessonIndex + 1} in phase ${phaseIndex + 1} has an invalid order.`,
+        );
+      }
+
+      if (lessonValue.order < 1 || lessonValue.order > 3) {
+        throw new Error(
+          `INVALID_AI_OUTLINE: Lesson ${lessonIndex + 1} in phase ${phaseIndex + 1} order must be between 1 and 3.`,
         );
       }
 
@@ -570,7 +549,9 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, any> {
+function isRecord(
+  value: unknown,
+): value is Record<string, any> {
   return (
     typeof value === 'object' &&
     value !== null &&
