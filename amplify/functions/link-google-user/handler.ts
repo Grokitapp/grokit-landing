@@ -1,16 +1,17 @@
-import type { PreSignUpTriggerHandler } from "aws-lambda";
+import type { PreSignUpTriggerHandler } from 'aws-lambda';
 
 import {
   AdminLinkProviderForUserCommand,
   CognitoIdentityProviderClient,
   ListUsersCommand,
   type UserType,
-} from "@aws-sdk/client-cognito-identity-provider";
+} from '@aws-sdk/client-cognito-identity-provider';
 
 const cognito = new CognitoIdentityProviderClient({});
 
-const GOOGLE_PROVIDER = "Google";
-const GOOGLE_TRIGGER_SOURCE = "PreSignUp_ExternalProvider";
+const GOOGLE_PROVIDER = 'Google';
+const GOOGLE_PROVIDER_NORMALIZED = GOOGLE_PROVIDER.toLowerCase();
+const GOOGLE_TRIGGER_SOURCE = 'PreSignUp_ExternalProvider';
 
 function getAttribute(
   user: UserType,
@@ -22,15 +23,20 @@ function getAttribute(
 }
 
 function escapeCognitoFilterValue(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"');
 }
 
 function parseFederatedUsername(
   username: string,
 ): { provider: string; subject: string } | null {
-  const separatorIndex = username.indexOf("_");
+  const separatorIndex = username.indexOf('_');
 
-  if (separatorIndex <= 0 || separatorIndex === username.length - 1) {
+  if (
+    separatorIndex <= 0 ||
+    separatorIndex === username.length - 1
+  ) {
     return null;
   }
 
@@ -45,23 +51,32 @@ function isVerifiedNativeUser(user: UserType): boolean {
     return false;
   }
 
-  const emailVerified = getAttribute(user, "email_verified");
+  const emailVerified = getAttribute(
+    user,
+    'email_verified',
+  );
 
   return (
-    user.UserStatus === "CONFIRMED" &&
-    emailVerified === "true"
+    user.UserStatus === 'CONFIRMED' &&
+    emailVerified === 'true'
   );
 }
 
-export const handler: PreSignUpTriggerHandler = async (event, context) => {
+export const handler: PreSignUpTriggerHandler = async (
+  event,
+  context,
+) => {
   if (event.triggerSource !== GOOGLE_TRIGGER_SOURCE) {
     return event;
   }
 
-  const email = event.request.userAttributes.email?.trim();
+  const email =
+    event.request.userAttributes.email?.trim();
 
   if (!email) {
-    throw new Error("GOOGLE_ACCOUNT_LINKING_EMAIL_MISSING");
+    throw new Error(
+      'GOOGLE_ACCOUNT_LINKING_EMAIL_MISSING',
+    );
   }
 
   /**
@@ -69,47 +84,81 @@ export const handler: PreSignUpTriggerHandler = async (event, context) => {
    *
    * Google_<google-sub>
    *
-   * AdminLinkProviderForUser requires the actual Google subject,
-   * not the complete Cognito username.
+   * The provider portion may arrive from the trigger as
+   * lowercase ("google"), so provider comparison must be
+   * case-insensitive.
+   *
+   * AdminLinkProviderForUser requires the actual Google
+   * subject, not the complete Cognito username.
    */
-  const federatedIdentity = parseFederatedUsername(event.userName);
+  const federatedIdentity = parseFederatedUsername(
+    event.userName,
+  );
 
   if (!federatedIdentity) {
-    console.error("Invalid federated username format", {
-      requestId: context.awsRequestId,
-      triggerSource: event.triggerSource,
-    });
+    console.error(
+      'Invalid federated username format',
+      {
+        requestId: context.awsRequestId,
+        userName: event.userName,
+        triggerSource: event.triggerSource,
+      },
+    );
 
-    throw new Error("GOOGLE_ACCOUNT_LINKING_INVALID_IDENTITY");
+    throw new Error(
+      'GOOGLE_ACCOUNT_LINKING_INVALID_IDENTITY',
+    );
   }
 
-  if (federatedIdentity.provider !== GOOGLE_PROVIDER) {
-    console.error("Unexpected external provider", {
-      requestId: context.awsRequestId,
-      provider: federatedIdentity.provider,
-    });
+  const normalizedProvider =
+    federatedIdentity.provider
+      .trim()
+      .toLowerCase();
 
-    return event;
+  if (
+    normalizedProvider !==
+    GOOGLE_PROVIDER_NORMALIZED
+  ) {
+    console.error(
+      'Unexpected external provider',
+      {
+        requestId: context.awsRequestId,
+        provider: federatedIdentity.provider,
+        normalizedProvider,
+      },
+    );
+
+    throw new Error(
+      'GOOGLE_ACCOUNT_LINKING_UNSUPPORTED_PROVIDER',
+    );
   }
 
   /**
    * Never automatically link an unverified external email.
    *
-   * Google supplies email_verified through OIDC and we explicitly
-   * map that attribute in auth/resource.ts.
+   * Google supplies email_verified through OIDC and we
+   * explicitly map that attribute in auth/resource.ts.
    */
   const googleEmailVerified =
-    event.request.userAttributes.email_verified === "true";
+    event.request.userAttributes.email_verified ===
+    'true';
 
   if (!googleEmailVerified) {
-    console.warn("Google email is not verified", {
-      requestId: context.awsRequestId,
-    });
+    console.warn(
+      'Google email is not verified',
+      {
+        requestId: context.awsRequestId,
+        email,
+      },
+    );
 
-    throw new Error("GOOGLE_EMAIL_NOT_VERIFIED");
+    throw new Error(
+      'GOOGLE_EMAIL_NOT_VERIFIED',
+    );
   }
 
-  const filterEmail = escapeCognitoFilterValue(email);
+  const filterEmail =
+    escapeCognitoFilterValue(email);
 
   const { Users = [] } = await cognito.send(
     new ListUsersCommand({
@@ -120,11 +169,12 @@ export const handler: PreSignUpTriggerHandler = async (event, context) => {
   );
 
   /**
-   * We only auto-link to an existing native Cognito account.
+   * We only auto-link to an existing native Cognito
+   * account.
    *
-   * We deliberately do not select another federated account as the
-   * destination because the canonical Grokit account is the native
-   * Cognito account.
+   * We deliberately do not select another federated
+   * account as the destination because the canonical
+   * Grokit account is the native Cognito account.
    */
   const nativeUsers = Users.filter((user) => {
     if (!user.Username) {
@@ -135,11 +185,12 @@ export const handler: PreSignUpTriggerHandler = async (event, context) => {
       return false;
     }
 
-    if (user.Username.startsWith("Google_")) {
-      return false;
-    }
+    const usernameLower =
+      user.Username.toLowerCase();
 
-    if (user.Username.startsWith("google_")) {
+    if (
+      usernameLower.startsWith('google_')
+    ) {
       return false;
     }
 
@@ -149,39 +200,60 @@ export const handler: PreSignUpTriggerHandler = async (event, context) => {
   /**
    * No existing verified native account:
    *
-   * This is a brand-new Google user, so Cognito should continue
-   * normal federated-user creation.
+   * This is a brand-new Google user, so Cognito should
+   * continue normal federated-user creation.
    */
   if (nativeUsers.length === 0) {
     event.response.autoConfirmUser = true;
     event.response.autoVerifyEmail = true;
 
+    console.info(
+      'No existing native account found; allowing Google user creation',
+      {
+        requestId: context.awsRequestId,
+        email,
+      },
+    );
+
     return event;
   }
 
   /**
-   * Never arbitrarily choose between multiple verified accounts.
+   * Never arbitrarily choose between multiple verified
+   * accounts.
+   *
    * Ambiguous identity resolution must fail closed.
    */
   if (nativeUsers.length > 1) {
-    console.error("Multiple verified native accounts share an email", {
-      requestId: context.awsRequestId,
-      userCount: nativeUsers.length,
-    });
+    console.error(
+      'Multiple verified native accounts share an email',
+      {
+        requestId: context.awsRequestId,
+        email,
+        userCount: nativeUsers.length,
+      },
+    );
 
-    throw new Error("GOOGLE_ACCOUNT_LINKING_AMBIGUOUS");
+    throw new Error(
+      'GOOGLE_ACCOUNT_LINKING_AMBIGUOUS',
+    );
   }
 
-  const destinationUser = nativeUsers[0];
+  const destinationUser =
+    nativeUsers[0];
 
   if (!destinationUser.Username) {
-    throw new Error("GOOGLE_ACCOUNT_LINKING_DESTINATION_MISSING");
+    throw new Error(
+      'GOOGLE_ACCOUNT_LINKING_DESTINATION_MISSING',
+    );
   }
 
   /**
-   * Link Google's stable subject to the existing Cognito user.
+   * Link Google's stable subject to the existing
+   * Cognito user.
    *
    * IMPORTANT:
+   *
    * ProviderAttributeValue must be Google's `sub`,
    * not event.userName (`Google_<sub>`).
    */
@@ -190,34 +262,43 @@ export const handler: PreSignUpTriggerHandler = async (event, context) => {
       UserPoolId: event.userPoolId,
 
       DestinationUser: {
-        ProviderName: "Cognito",
-        ProviderAttributeValue: destinationUser.Username,
+        ProviderName: 'Cognito',
+        ProviderAttributeValue:
+          destinationUser.Username,
       },
 
       SourceUser: {
         ProviderName: GOOGLE_PROVIDER,
-        ProviderAttributeName: "Cognito_Subject",
-        ProviderAttributeValue: federatedIdentity.subject,
+        ProviderAttributeName:
+          'Cognito_Subject',
+        ProviderAttributeValue:
+          federatedIdentity.subject,
       },
     }),
   );
 
   /**
-   * Google has been successfully linked to the existing verified
-   * native account.
+   * Google has been successfully linked to the existing
+   * verified native account.
    *
-   * We intentionally do NOT swallow AdminLinkProviderForUser errors.
-   * If linking fails, the OAuth signup must fail rather than allowing
-   * Cognito to create a second account.
+   * We intentionally do NOT swallow
+   * AdminLinkProviderForUser errors.
+   *
+   * If linking fails, the OAuth signup must fail rather
+   * than allowing Cognito to create a second account.
    */
   event.response.autoConfirmUser = true;
   event.response.autoVerifyEmail = true;
 
-  console.info("Google identity linked successfully", {
-    requestId: context.awsRequestId,
-    provider: GOOGLE_PROVIDER,
-    destinationUsername: destinationUser.Username,
-  });
+  console.info(
+    'Google identity linked successfully',
+    {
+      requestId: context.awsRequestId,
+      provider: GOOGLE_PROVIDER,
+      destinationUsername:
+        destinationUser.Username,
+    },
+  );
 
   return event;
 };
