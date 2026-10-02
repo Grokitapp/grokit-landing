@@ -65,7 +65,6 @@ const OUTLINE_SCHEMA = {
     },
     phases: {
       type: 'array',
-      minItems: 3,
       maxItems: 6,
       items: {
         type: 'object',
@@ -83,7 +82,6 @@ const OUTLINE_SCHEMA = {
           },
           lessons: {
             type: 'array',
-            minItems: 2,
             maxItems: 5,
             items: {
               type: 'object',
