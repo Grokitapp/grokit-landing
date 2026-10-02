@@ -15,6 +15,7 @@ const { resourceConfig, libraryOptions } =
 Amplify.configure(resourceConfig, libraryOptions);
 
 const client = generateClient<Schema>();
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? '';
 
 if (!ANTHROPIC_API_KEY) {
@@ -49,58 +50,51 @@ interface CourseOutline {
 
 const OUTLINE_MODEL = 'claude-sonnet-5-5';
 
+/**
+ * Keep the Anthropic schema intentionally structural.
+ *
+ * Anthropic Structured Outputs does not support the array-size
+ * constraints we would normally use with JSON Schema.
+ *
+ * Exact curriculum constraints are enforced separately by
+ * validateCourseOutline().
+ */
 const OUTLINE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
     title: {
       type: 'string',
-      minLength: 1,
-      maxLength: 120,
     },
     description: {
       type: 'string',
-      minLength: 1,
-      maxLength: 500,
     },
     phases: {
       type: 'array',
-      maxItems: 6,
       items: {
         type: 'object',
         additionalProperties: false,
         properties: {
           order: {
             type: 'integer',
-            minimum: 1,
-            maximum: 6,
           },
           title: {
             type: 'string',
-            minLength: 1,
-            maxLength: 100,
           },
           lessons: {
             type: 'array',
-            maxItems: 5,
             items: {
               type: 'object',
               additionalProperties: false,
               properties: {
                 order: {
                   type: 'integer',
-                  minimum: 1,
-                  maximum: 5,
                 },
                 title: {
                   type: 'string',
-                  minLength: 1,
-                  maxLength: 120,
                 },
                 hook: {
                   type: 'string',
-                  minLength: 1,
-                  maxLength: 240,
                 },
               },
               required: ['order', 'title', 'hook'],
@@ -327,7 +321,12 @@ Design a coherent learning curriculum for the requested topic.
 Your job is to create the COURSE STRUCTURE only.
 Do not write lesson content.
 
-Curriculum rules:
+Course structure requirements:
+- Create exactly 4 phases.
+- Create exactly 3 lessons in every phase.
+- The course must contain exactly 12 lessons total.
+- Phase order must be 1, 2, 3, 4.
+- Lesson order within every phase must be 1, 2, 3.
 - Start from fundamentals and progress toward practical understanding.
 - Avoid unnecessary repetition.
 - Each phase should have a clear learning purpose.
@@ -337,9 +336,7 @@ Curriculum rules:
 - Do not use markdown.
 - Do not include quizzes, explanations, examples, references, or long prose.
 - Keep the structure appropriate for the learner profile when one is provided.
-- Prefer 3–5 phases.
-- Prefer 2–4 lessons per phase unless the topic genuinely requires more.
-- The output should be useful as the blueprint for later lesson generation.
+- The output is only the blueprint for later lesson generation.
 `;
 
   const userMessage = [
@@ -447,9 +444,9 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
     throw new Error('INVALID_AI_OUTLINE: Phases must be an array.');
   }
 
-  if (value.phases.length < 3 || value.phases.length > 6) {
+  if (value.phases.length !== 4) {
     throw new Error(
-      'INVALID_AI_OUTLINE: Course must contain between 3 and 6 phases.',
+      `INVALID_AI_OUTLINE: Course must contain exactly 4 phases, received ${value.phases.length}.`,
     );
   }
 
@@ -462,11 +459,7 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
       );
     }
 
-    if (
-      !isInteger(phaseValue.order) ||
-      phaseValue.order < 1 ||
-      phaseValue.order > 6
-    ) {
+    if (!isInteger(phaseValue.order)) {
       throw new Error(
         `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} has an invalid order.`,
       );
@@ -492,9 +485,9 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
       );
     }
 
-    if (phaseValue.lessons.length < 2 || phaseValue.lessons.length > 5) {
+    if (phaseValue.lessons.length !== 3) {
       throw new Error(
-        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} must contain between 2 and 5 lessons.`,
+        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} must contain exactly 3 lessons, received ${phaseValue.lessons.length}.`,
       );
     }
 
@@ -507,11 +500,7 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
         );
       }
 
-      if (
-        !isInteger(lessonValue.order) ||
-        lessonValue.order < 1 ||
-        lessonValue.order > 5
-      ) {
+      if (!isInteger(lessonValue.order)) {
         throw new Error(
           `INVALID_AI_OUTLINE: Lesson ${lessonIndex + 1} in phase ${phaseIndex + 1} has an invalid order.`,
         );
@@ -539,14 +528,16 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
     });
   });
 
-  const sortedPhaseOrders = [...phaseOrders].sort((a, b) => a - b);
+  const sortedPhaseOrders = [...phaseOrders].sort(
+    (a, b) => a - b,
+  );
 
   sortedPhaseOrders.forEach((order, index) => {
     const expected = index + 1;
 
     if (order !== expected) {
       throw new Error(
-        `INVALID_AI_OUTLINE: Phase ordering must start at 1 and be sequential.`,
+        'INVALID_AI_OUTLINE: Phase ordering must be exactly 1, 2, 3, 4.',
       );
     }
   });
@@ -561,15 +552,30 @@ function validateCourseOutline(value: unknown): asserts value is CourseOutline {
     orders.forEach((order: number, lessonIndex: number) => {
       if (order !== lessonIndex + 1) {
         throw new Error(
-          `INVALID_AI_OUTLINE: Lesson ordering in phase ${phaseIndex + 1} must start at 1 and be sequential.`,
+          `INVALID_AI_OUTLINE: Lesson ordering in phase ${phaseIndex + 1} must be exactly 1, 2, 3.`,
         );
       }
     });
   });
+
+  const totalLessons = value.phases.reduce(
+    (total: number, phase: any) => total + phase.lessons.length,
+    0,
+  );
+
+  if (totalLessons !== 12) {
+    throw new Error(
+      `INVALID_AI_OUTLINE: Course must contain exactly 12 lessons, received ${totalLessons}.`,
+    );
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, any> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value)
+  );
 }
 
 function isNonEmptyString(value: unknown): value is string {
