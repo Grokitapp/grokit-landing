@@ -6,6 +6,7 @@ import {
   signIn,
   signInWithRedirect,
   signUp,
+  signOut as amplifySignOut,
 } from 'aws-amplify/auth';
 
 export const getAuthenticatedUser = () => getCurrentUser();
@@ -25,6 +26,8 @@ export const signInWithEmail = (username: string, password: string) =>
 
 export const signInWithGoogle = () =>
   signInWithRedirect({ provider: 'Google' });
+
+export const signOutUser = () => amplifySignOut();
 
 export const sendPasswordResetCode = (username: string) =>
   resetPassword({ username });
