@@ -131,6 +131,7 @@ grokit.app
         scopes: ["email", "profile", "openid"],
         attributeMapping: {
           email: "email",
+          emailVerified: "email_verified",
         },
       },
 
