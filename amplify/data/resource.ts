@@ -11,6 +11,7 @@ const schema = a
       heroImageUrl: a.string(),
       personalizationProfile: a.json(),
       status: a.enum(['DRAFT', 'GENERATING', 'READY', 'FAILED']),
+      generationError: a.string(),
       phases: a.hasMany('Phase', 'courseId'),
       lessons: a.hasMany('Lesson', 'courseId'),
     }).authorization((allow) => [allow.owner()]),
@@ -36,6 +37,7 @@ const schema = a
       keyTerms: a.json(),
       quiz: a.json(),
       status: a.enum(['PENDING', 'GENERATING', 'READY', 'FAILED']),
+      generationError: a.string(),
     }).authorization((allow) => [allow.owner()]),
 
     UserProfile: a.model({
