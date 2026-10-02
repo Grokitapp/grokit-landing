@@ -1,11 +1,26 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import {
+  useEffect,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router';
+
 import { WaitlistModal } from '../components/Waitlistmodal';
-import { GrokitMascot, type MascotPose } from '../components/Grokitmascot';
+import {
+  GrokitMascot,
+  type MascotPose,
+} from '../components/Grokitmascot';
+
 import Welcome from './onboarding/Welcome';
-import { saveProfile, getProfile } from "../lib/profile";
+
+import {
+  getProfileWithRetry,
+  saveProfile,
+} from '../lib/profile';
+
 import AuthScreen from './auth/AuthScreen';
 import { getAuthenticatedUser } from './auth/authService';
 
@@ -19,10 +34,21 @@ import {
   type Step,
 } from './onboarding/constants';
 
-import { ProgressBar, TransitionScreen } from './onboarding/shared';
-import { GoalsStep, IntroStep, LoadingStep, TimeStep, TopicsStep, WorkTypeStep } from './onboarding/steps';
+import {
+  ProgressBar,
+  TransitionScreen,
+} from './onboarding/shared';
 
-// ─── Types & constants ────────────────────────────────────────────────────────
+import {
+  GoalsStep,
+  IntroStep,
+  LoadingStep,
+  TimeStep,
+  TopicsStep,
+  WorkTypeStep,
+} from './onboarding/steps';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface TransitionConfig {
   pose: MascotPose;
@@ -32,6 +58,8 @@ interface TransitionConfig {
   next: Step;
 }
 
+// ─── Constants ────────────────────────────────────────────────────────────────
+
 const STATIC_TRANSITIONS: Partial<Record<Step, TransitionConfig>> = {
   [STEP.T_PERSONALIZED]: {
     pose: 'thinking',
@@ -40,16 +68,22 @@ const STATIC_TRANSITIONS: Partial<Record<Step, TransitionConfig>> = {
     note: 'You can update this anytime in your settings.',
     next: STEP.TOPICS,
   },
+
   [STEP.T_PERFECT]: {
     pose: 'celebrate',
-    heading: "Perfect choice! We'll use this to find the best courses for you",
-    sub: 'You can also build your own course for any topic you want to learn.',
+    heading:
+      "Perfect choice! We'll use this to find the best courses for you",
+    sub:
+      'You can also build your own course for any topic you want to learn.',
     next: STEP.GOALS,
   },
+
   [STEP.T_GREAT]: {
     pose: 'wave',
-    heading: "Great! We'll help you learn what you thought you didn't have time for",
-    sub: "Finally learn the things you've always wanted to learn.",
+    heading:
+      "Great! We'll help you learn what you thought you didn't have time for",
+    sub:
+      "Finally learn the things you've always wanted to learn.",
     next: STEP.TIME,
   },
 };
@@ -67,16 +101,46 @@ const DARK_STEPS = new Set<Step>([
   STEP.LOADING,
 ]);
 
-const canvasBaseClasses = 'min-h-[100dvh] h-[100dvh] flex flex-col overflow-hidden';
-const navBaseClasses = 'relative z-30 w-full shrink-0 px-5 sm:px-6 pt-4 sm:pt-5 pb-1 flex items-start';
-const contentBaseClasses = 'flex-1 min-h-0 flex flex-col';
-const backButtonBaseClasses = 'p-2 -ml-2 shrink-0 rounded-full transition-colors';
+const canvasBaseClasses =
+  'min-h-[100dvh] h-[100dvh] flex flex-col overflow-hidden';
+
+const navBaseClasses =
+  'relative z-30 w-full shrink-0 px-5 sm:px-6 pt-4 sm:pt-5 pb-1 flex items-start';
+
+const contentBaseClasses =
+  'flex-1 min-h-0 flex flex-col';
+
+const backButtonBaseClasses =
+  'p-2 -ml-2 shrink-0 rounded-full transition-colors';
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Onboarding() {
   const navigate = useNavigate();
+
   const [initializing, setInitializing] = useState(true);
+  const [step, setStep] = useState<Step>(STEP.AUTH);
+
+  // Profile state
+  const [workTypes, setWorkTypes] = useState<string[]>([]);
+  const [otherWorkType, setOtherWorkType] = useState('');
+  const [isOtherWorkTypeSelected, setIsOtherWorkTypeSelected] =
+    useState(false);
+
+  const [topics, setTopics] = useState<string[]>([]);
+  const [otherTopic, setOtherTopic] = useState('');
+
+  const [goals, setGoals] = useState<string[]>([]);
+  const [otherGoal, setOtherGoal] = useState('');
+
+  const [timeId, setTimeId] = useState<string | null>(null);
+
+  // UI state
+  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
+  const [savingError, setSavingError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // ── Initial authentication/profile check ─────────────────────────────────
 
   useEffect(() => {
     let mounted = true;
@@ -84,16 +148,21 @@ export default function Onboarding() {
     async function initialize() {
       try {
         await getAuthenticatedUser();
-        const profile = await getProfile();
+
+        // Use the same retry-aware profile lookup as AuthGuard.
+        const profile = await getProfileWithRetry();
+
         if (!mounted) return;
 
-        if (profile?.onboardingCompleted) {
+        if (profile?.onboardingCompleted === true) {
           navigate('/learn', { replace: true });
           return;
         }
 
         setStep(STEP.WELCOME);
-      } catch {
+      } catch (error) {
+        console.error('Failed to initialize onboarding:', error);
+
         if (mounted) {
           setStep(STEP.AUTH);
         }
@@ -111,50 +180,62 @@ export default function Onboarding() {
     };
   }, [navigate]);
 
-  const [step, setStep] = useState<Step>(STEP.AUTH);
-
-  // Profile state
-  const [workTypes, setWorkTypes] = useState<string[]>([]);
-  const [otherWorkType, setOtherWorkType] = useState('');
-  const [isOtherWorkTypeSelected, setIsOtherWorkTypeSelected] = useState(false);
-  const [topics, setTopics] = useState<string[]>([]);
-  const [otherTopic, setOtherTopic] = useState('');
-  const [goals, setGoals] = useState<string[]>([]);
-  const [otherGoal, setOtherGoal] = useState('');
-  const [timeId, setTimeId] = useState<string | null>(null);
-
-  // UI state
-  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
-  const [savingError, setSavingError] = useState<string | null>(null);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  const toggleItem = (setList: Dispatch<SetStateAction<string[]>>, item: string) => {
-    setList((current) => (current.includes(item) ? current.filter((i) => i !== item) : [...current, item]));
+  const toggleItem = (
+    setList: Dispatch<SetStateAction<string[]>>,
+    item: string,
+  ) => {
+    setList((current) =>
+      current.includes(item)
+        ? current.filter((value) => value !== item)
+        : [...current, item],
+    );
   };
 
-  const addOther = (value: string, setList: Dispatch<SetStateAction<string[]>>, clear: () => void) => {
+  const addOther = (
+    value: string,
+    setList: Dispatch<SetStateAction<string[]>>,
+    clear: () => void,
+  ) => {
     const trimmed = value.trim();
+
     if (!trimmed) return;
-    setList((current) => (current.includes(trimmed) ? current : [...current, trimmed]));
+
+    setList((current) =>
+      current.includes(trimmed)
+        ? current
+        : [...current, trimmed],
+    );
+
     clear();
   };
 
   // ── Derived state ────────────────────────────────────────────────────────
 
-  const hasOtherWorkType = isOtherWorkTypeSelected && otherWorkType.trim().length > 0;
+  const hasOtherWorkType =
+    isOtherWorkTypeSelected &&
+    otherWorkType.trim().length > 0;
 
   const finalWorkTypes = hasOtherWorkType
-    ? [...workTypes, ...(workTypes.includes(otherWorkType.trim()) ? [] : [otherWorkType.trim()])]
+    ? [
+        ...workTypes,
+        ...(workTypes.includes(otherWorkType.trim())
+          ? []
+          : [otherWorkType.trim()]),
+      ]
     : workTypes;
 
   const canContinue =
-    step === STEP.WORK_TYPE ? finalWorkTypes.length > 0
-    : step === STEP.TOPICS ? topics.length > 0
-    : step === STEP.GOALS ? goals.length > 0
-    : step === STEP.TIME ? timeId !== null
-    : true;
+    step === STEP.WORK_TYPE
+      ? finalWorkTypes.length > 0
+      : step === STEP.TOPICS
+        ? topics.length > 0
+        : step === STEP.GOALS
+          ? goals.length > 0
+          : step === STEP.TIME
+            ? timeId !== null
+            : true;
 
   const prevStep = BACK_STEP[step];
   const progress = PROGRESS_BY_STEP[step];
@@ -171,14 +252,16 @@ export default function Onboarding() {
       setSavingError(null);
 
       if (!timeId) {
-        setSavingError('Your learning time preference is missing.');
+        setSavingError(
+          'Your learning time preference is missing.',
+        );
         setIsSavingProfile(false);
         return;
       }
 
       try {
-        // The only place where the complete onboarding profile is sent to AWS
-        await saveProfile({
+        // Save the complete onboarding profile.
+        const savedProfile = await saveProfile({
           workTypes: finalWorkTypes,
           topics,
           goals,
@@ -187,62 +270,115 @@ export default function Onboarding() {
         });
 
         if (cancelled) return;
-        await getProfile();
+
+        // Make sure the write returned successfully before navigating.
+        if (!savedProfile?.data) {
+          throw new Error(
+            'The onboarding profile was not saved.',
+          );
+        }
+
+        /*
+         * Confirm that the completed profile is readable before
+         * sending the user into the protected learning area.
+         *
+         * This prevents AuthGuard from racing the profile write.
+         */
+        const profile = await getProfileWithRetry();
+
+        if (cancelled) return;
+
+        if (!profile?.onboardingCompleted) {
+          throw new Error(
+            'Onboarding was saved, but the completed profile is not yet readable.',
+          );
+        }
+
         navigate('/learn', { replace: true });
       } catch (error) {
-        console.error('Failed to finalize onboarding profile:', error);
+        console.error(
+          'Failed to finalize onboarding profile:',
+          error,
+        );
+
         if (!cancelled) {
-          setSavingError('We could not save your learning profile.');
+          setSavingError(
+            'We could not finish setting up your learning profile.',
+          );
           setIsSavingProfile(false);
         }
       }
     };
 
-    const timer = window.setTimeout(finalizeOnboarding, 1200);
+    const timer = window.setTimeout(
+      finalizeOnboarding,
+      1200,
+    );
+
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [step, timeId, finalWorkTypes, topics, goals, navigate]);
+  }, [
+    step,
+    timeId,
+    finalWorkTypes,
+    topics,
+    goals,
+    navigate,
+  ]);
 
   // ── Render step ──────────────────────────────────────────────────────────
 
   const renderStep = () => {
     switch (step) {
       case STEP.AUTH:
-        return <AuthScreen
-          onAuthenticated={async () => {
-            try {
-              const profile = await getProfile();
+        return (
+          <AuthScreen
+            onAuthenticated={async () => {
+              const profile = await getProfileWithRetry();
 
-              if (profile?.onboardingCompleted) {
-                navigate("/learn", { replace: true });
+              if (profile?.onboardingCompleted === true) {
+                navigate('/learn', { replace: true });
               } else {
                 setStep(STEP.WELCOME);
               }
-            } catch {
-              setStep(STEP.WELCOME);
-            }
-          }}
-        />;
+            }}
+          />
+        );
 
       case STEP.WELCOME:
-        return <Welcome onContinue={() => setStep(STEP.INTRO)} discordInviteUrl={DISCORD_INVITE_URL} />;
+        return (
+          <Welcome
+            onContinue={() => setStep(STEP.INTRO)}
+            discordInviteUrl={DISCORD_INVITE_URL}
+          />
+        );
 
       case STEP.INTRO:
-        return <IntroStep onContinue={() => setStep(STEP.WORK_TYPE)} />;
+        return (
+          <IntroStep
+            onContinue={() => setStep(STEP.WORK_TYPE)}
+          />
+        );
 
       case STEP.WORK_TYPE:
         return (
           <WorkTypeStep
             selected={workTypes}
-            onToggle={(type) => toggleItem(setWorkTypes, type)}
+            onToggle={(type) =>
+              toggleItem(setWorkTypes, type)
+            }
             otherSelected={isOtherWorkTypeSelected}
             otherValue={otherWorkType}
-            onToggleOther={() => setIsOtherWorkTypeSelected((v) => !v)}
+            onToggleOther={() =>
+              setIsOtherWorkTypeSelected((value) => !value)
+            }
             onOtherChange={setOtherWorkType}
             canContinue={canContinue}
-            onContinue={() => setStep(STEP.T_PERSONALIZED)}
+            onContinue={() =>
+              setStep(STEP.T_PERSONALIZED)
+            }
           />
         );
 
@@ -250,14 +386,18 @@ export default function Onboarding() {
       case STEP.T_PERFECT:
       case STEP.T_GREAT: {
         const transition = STATIC_TRANSITIONS[step];
+
         if (!transition) return null;
+
         return (
           <TransitionScreen
             pose={transition.pose}
             heading={transition.heading}
             sub={transition.sub}
             note={transition.note}
-            onContinue={() => setStep(transition.next)}
+            onContinue={() =>
+              setStep(transition.next)
+            }
           />
         );
       }
@@ -266,12 +406,22 @@ export default function Onboarding() {
         return (
           <TopicsStep
             selected={topics}
-            onToggle={(topic) => toggleItem(setTopics, topic)}
+            onToggle={(topic) =>
+              toggleItem(setTopics, topic)
+            }
             otherValue={otherTopic}
             onOtherChange={setOtherTopic}
-            onAddOther={() => addOther(otherTopic, setTopics, () => setOtherTopic(''))}
+            onAddOther={() =>
+              addOther(
+                otherTopic,
+                setTopics,
+                () => setOtherTopic(''),
+              )
+            }
             canContinue={canContinue}
-            onContinue={() => setStep(STEP.T_PERFECT)}
+            onContinue={() =>
+              setStep(STEP.T_PERFECT)
+            }
           />
         );
 
@@ -279,12 +429,22 @@ export default function Onboarding() {
         return (
           <GoalsStep
             selected={goals}
-            onToggle={(goal) => toggleItem(setGoals, goal)}
+            onToggle={(goal) =>
+              toggleItem(setGoals, goal)
+            }
             otherValue={otherGoal}
             onOtherChange={setOtherGoal}
-            onAddOther={() => addOther(otherGoal, setGoals, () => setOtherGoal(''))}
+            onAddOther={() =>
+              addOther(
+                otherGoal,
+                setGoals,
+                () => setOtherGoal(''),
+              )
+            }
             canContinue={canContinue}
-            onContinue={() => setStep(STEP.T_GREAT)}
+            onContinue={() =>
+              setStep(STEP.T_GREAT)
+            }
           />
         );
 
@@ -296,6 +456,7 @@ export default function Onboarding() {
             canContinue={canContinue}
             onContinue={() => {
               if (!timeId) return;
+
               setStep(STEP.T_BOOKS);
             }}
           />
@@ -307,7 +468,9 @@ export default function Onboarding() {
             pose="celebrate"
             heading={`${lessonsPerWeekFor(timeId)} lessons in your first week`}
             sub="You're on your way to building a lasting learning habit!"
-            onContinue={() => setStep(STEP.LOADING)}
+            onContinue={() =>
+              setStep(STEP.LOADING)
+            }
           />
         );
 
@@ -319,8 +482,7 @@ export default function Onboarding() {
               savingError
                 ? () => {
                     setSavingError(null);
-                    setIsSavingProfile(true);
-                    // Re-entering LOADING triggers the effect again
+                    setIsSavingProfile(false);
                     setStep(STEP.LOADING);
                   }
                 : undefined
@@ -336,50 +498,62 @@ export default function Onboarding() {
   // ── Canvas ───────────────────────────────────────────────────────────────
 
   const isDarkOnboarding = DARK_STEPS.has(step);
-  const canvasBg = isDarkOnboarding ? 'bg-[#131F24]' : 'bg-surface';
+
+  const canvasBg = isDarkOnboarding
+    ? 'bg-[#131F24]'
+    : 'bg-surface';
+
   const backButtonColor = isDarkOnboarding
     ? 'text-[#91A4AC] hover:text-white hover:bg-white/5'
     : 'text-body hover:text-ink';
 
-  // ── Page ─────────────────────────────────────────────────────────────────
+  // ── Initialization screen ───────────────────────────────────────────────
 
   if (initializing) {
-  return (
-    <div className="min-h-screen bg-[#131F24] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-5">
-        <GrokitMascot pose="thinking" size={120} />
+    return (
+      <div className="min-h-screen bg-[#131F24] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-5">
+          <GrokitMascot
+            pose="thinking"
+            size={120}
+          />
 
-        <div className="flex gap-1">
-          <motion.span
-            className="w-2 h-2 rounded-full bg-orange"
-            animate={{ y: [0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 0.6 }}
-          />
-          <motion.span
-            className="w-2 h-2 rounded-full bg-orange"
-            animate={{ y: [0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 0.6, delay: 0.2 }}
-          />
-          <motion.span
-            className="w-2 h-2 rounded-full bg-orange"
-            animate={{ y: [0, -5, 0] }}
-            transition={{ repeat: Infinity, duration: 0.6, delay: 0.4 }}
-          />
+          <div className="flex gap-1">
+            {[0, 1, 2].map((index) => (
+              <motion.span
+                key={index}
+                className="w-2 h-2 rounded-full bg-orange"
+                animate={{
+                  y: [0, -5, 0],
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 0.6,
+                  delay: index * 0.2,
+                }}
+              />
+            ))}
+          </div>
+
+          <p className="text-[#91A4AC] font-semibold text-lg">
+            Preparing your learning space...
+          </p>
         </div>
-
-        <p className="text-[#91A4AC] font-semibold text-lg">
-          Preparing your learning space...
-        </p>
       </div>
-    </div>
-  );
-}
+    );
+  }
+
+  // ── Page ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className={`${canvasBaseClasses} ${canvasBg}`}>
+    <div
+      className={`${canvasBaseClasses} ${canvasBg}`}
+    >
       {/* Navigation + progress */}
       {prevStep !== undefined && (
-        <div className={`${navBaseClasses} ${canvasBg}`}>
+        <div
+          className={`${navBaseClasses} ${canvasBg}`}
+        >
           <button
             type="button"
             onClick={() => setStep(prevStep)}
@@ -391,7 +565,11 @@ export default function Onboarding() {
 
           {progress !== undefined && (
             <div className="flex-1 min-w-0">
-              <ProgressBar value={progress / TOTAL_QUESTIONS} />
+              <ProgressBar
+                value={
+                  progress / TOTAL_QUESTIONS
+                }
+              />
             </div>
           )}
         </div>
@@ -401,17 +579,33 @@ export default function Onboarding() {
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
+          initial={{
+            opacity: 0,
+            x: 20,
+          }}
+          animate={{
+            opacity: 1,
+            x: 0,
+          }}
+          exit={{
+            opacity: 0,
+            x: -20,
+          }}
+          transition={{
+            duration: 0.3,
+          }}
           className={`${contentBaseClasses} ${canvasBg}`}
         >
           {renderStep()}
         </motion.div>
       </AnimatePresence>
 
-      <WaitlistModal isOpen={isWaitlistOpen} onClose={() => setIsWaitlistOpen(false)} />
+      <WaitlistModal
+        isOpen={isWaitlistOpen}
+        onClose={() =>
+          setIsWaitlistOpen(false)
+        }
+      />
     </div>
   );
 }

@@ -1,42 +1,52 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router';
 import { fetchAuthSession } from 'aws-amplify/auth';
+
 import { GrokitMascot } from '../../components/Grokitmascot';
 import { getAuthenticatedUser } from './authService';
-import { getProfile } from '../../lib/profile';
+import { getProfileWithRetry } from '../../lib/profile';
 
 interface Props {
   children: React.ReactNode;
 }
 
+type AuthState =
+  | 'loading'
+  | 'login'
+  | 'onboarding'
+  | 'ready';
+
 export default function AuthGuard({ children }: Props) {
-  const [state, setState] = useState<
-    'loading' | 'login' | 'onboarding' | 'ready'
-  >('loading');
+  const [state, setState] = useState<AuthState>('loading');
 
   useEffect(() => {
     let mounted = true;
 
     async function check() {
       try {
+        // Confirm that a Cognito user is currently signed in.
         await getAuthenticatedUser();
-        await fetchAuthSession();
-        let profile = await getProfile();
 
-        if (!profile) {
-          await new Promise(r => setTimeout(r, 400));
-          profile = await getProfile();
-        }
+        // Confirm that the current authenticated session is valid.
+        await fetchAuthSession();
+
+        // Profile reads can temporarily lag immediately after
+        // onboarding is saved, so use the retry-aware lookup.
+        const profile = await getProfileWithRetry();
 
         if (!mounted) return;
 
-        if (profile?.onboardingCompleted) {
+        if (profile?.onboardingCompleted === true) {
           setState('ready');
         } else {
           setState('onboarding');
         }
-      } catch {
-        if (mounted) setState('login');
+      } catch (error) {
+        console.error('AuthGuard check failed:', error);
+
+        if (mounted) {
+          setState('login');
+        }
       }
     }
 
@@ -52,6 +62,7 @@ export default function AuthGuard({ children }: Props) {
       <div className="min-h-screen bg-[#131F24] flex items-center justify-center">
         <div className="flex flex-col items-center gap-5">
           <GrokitMascot pose="thinking" size={110} />
+
           <p className="text-[#91A4AC] font-semibold">
             Preparing your learning space...
           </p>

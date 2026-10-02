@@ -1,6 +1,6 @@
-import { generateClient } from "aws-amplify/data";
-import { fetchUserAttributes } from "aws-amplify/auth";
-import type { Schema } from "../amplify/data/resource";
+import { generateClient } from 'aws-amplify/data';
+import { fetchUserAttributes } from 'aws-amplify/auth';
+import type { Schema } from '../amplify/data/resource';
 
 const client = generateClient<Schema>();
 
@@ -17,10 +17,10 @@ async function getEmail() {
   const attrs = await fetchUserAttributes();
 
   if (!attrs.email) {
-    throw new Error("User email not found.");
+    throw new Error('User email not found.');
   }
 
-  return attrs.email.toLowerCase();
+  return attrs.email.trim().toLowerCase();
 }
 
 async function findExistingProfile() {
@@ -32,14 +32,54 @@ async function findExistingProfile() {
         eq: email,
       },
     },
-    limit: 1,
+    limit: 10,
   });
 
-  return data[0] ?? null;
+  if (!data.length) {
+    return null;
+  }
+
+  // If duplicate profiles exist for the same email,
+  // always prefer the completed profile.
+  const completedProfile = data.find(
+    (profile) => profile.onboardingCompleted === true,
+  );
+
+  return completedProfile ?? data[0];
 }
 
 export async function getProfile() {
   return findExistingProfile();
+}
+
+/**
+ * Reads the profile repeatedly until onboarding completion
+ * becomes visible, or the retry window is exhausted.
+ *
+ * This protects the onboarding -> /learn transition from
+ * temporary read-after-write delays.
+ */
+export async function getProfileWithRetry() {
+  const delays = [0, 300, 700, 1200, 2000, 3000];
+
+  let profile = null;
+
+  for (let attempt = 0; attempt < delays.length; attempt++) {
+    if (delays[attempt] > 0) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, delays[attempt]),
+      );
+    }
+
+    profile = await getProfile();
+
+    // The state we actually need has become available.
+    if (profile?.onboardingCompleted === true) {
+      return profile;
+    }
+  }
+
+  return profile;
 }
 
 export async function saveProfile(fields: ProfileFields) {
