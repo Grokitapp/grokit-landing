@@ -3,7 +3,6 @@ declare const process: {
 };
 
 import type { Schema } from '../../data/resource';
-
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
@@ -19,15 +18,16 @@ const client = generateClient<Schema>();
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY ?? '';
 
 if (!ANTHROPIC_API_KEY) {
-  throw new Error('ANTHROPIC_API_KEY is not configured');
+  throw new Error('ANTHROPIC_API_KEY is not configured.');
 }
 
 type Handler = Schema['generateOutline']['functionHandler'];
 
-interface OwnerIdentity {
+type OwnerIdentity = {
+  value: string;
   sub: string;
   username: string;
-}
+};
 
 interface OutlineLesson {
   order: number;
@@ -47,9 +47,77 @@ interface CourseOutline {
   phases: OutlinePhase[];
 }
 
+const OUTLINE_MODEL = 'claude-sonnet-5-5';
+
+const OUTLINE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    title: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 120,
+    },
+    description: {
+      type: 'string',
+      minLength: 1,
+      maxLength: 500,
+    },
+    phases: {
+      type: 'array',
+      minItems: 3,
+      maxItems: 6,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          order: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 6,
+          },
+          title: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 100,
+          },
+          lessons: {
+            type: 'array',
+            minItems: 2,
+            maxItems: 5,
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                order: {
+                  type: 'integer',
+                  minimum: 1,
+                  maximum: 5,
+                },
+                title: {
+                  type: 'string',
+                  minLength: 1,
+                  maxLength: 120,
+                },
+                hook: {
+                  type: 'string',
+                  minLength: 1,
+                  maxLength: 240,
+                },
+              },
+              required: ['order', 'title', 'hook'],
+            },
+          },
+        },
+        required: ['order', 'title', 'lessons'],
+      },
+    },
+  },
+  required: ['title', 'description', 'phases'],
+};
+
 export const handler: Handler = async (event, context) => {
   const { topic, personalizationProfile } = event.arguments;
-
   const requestId = context.awsRequestId;
 
   const normalizedTopic = topic.trim();
@@ -63,32 +131,31 @@ export const handler: Handler = async (event, context) => {
   console.info('Starting course outline generation', {
     requestId,
     topic: normalizedTopic,
-    owner: owner.username,
+    owner: owner.sub,
+    model: OUTLINE_MODEL,
   });
 
   let courseId: string | undefined;
 
   try {
-    /*
-     * ------------------------------------------------------------
-     * 1. Generate and validate the curriculum outline.
-     * ------------------------------------------------------------
-     */
+    const startedAt = Date.now();
+
     const outline = await callClaudeForOutline(
       normalizedTopic,
       personalizationProfile,
     );
 
+    const aiDurationMs = Date.now() - startedAt;
+
+    console.info('Claude outline generated', {
+      requestId,
+      durationMs: aiDurationMs,
+      phases: outline.phases.length,
+      lessons: countLessons(outline),
+    });
+
     validateCourseOutline(outline);
 
-    /*
-     * ------------------------------------------------------------
-     * 2. Create the Course in GENERATING state.
-     * ------------------------------------------------------------
-     *
-     * We explicitly preserve the authenticated user's owner
-     * identity because this write is performed by the Lambda.
-     */
     const courseResult = await client.models.Course.create({
       owner: owner.value,
       title: outline.title,
@@ -101,25 +168,18 @@ export const handler: Handler = async (event, context) => {
 
     if (courseResult.errors?.length) {
       throw new Error(
-        `COURSE_CREATE_FAILED: ${formatDataErrors(
-          courseResult.errors,
-        )}`,
+        `COURSE_CREATE_FAILED: ${formatDataErrors(courseResult.errors)}`,
       );
     }
 
     const course = courseResult.data;
 
     if (!course) {
-      throw new Error('COURSE_CREATE_FAILED');
+      throw new Error('COURSE_CREATE_FAILED: No course was returned.');
     }
 
     courseId = course.id;
 
-    /*
-     * ------------------------------------------------------------
-     * 3. Create the phase and lesson structure.
-     * ------------------------------------------------------------
-     */
     for (const phase of outline.phases) {
       const phaseResult = await client.models.Phase.create({
         owner: owner.value,
@@ -131,9 +191,7 @@ export const handler: Handler = async (event, context) => {
 
       if (phaseResult.errors?.length) {
         throw new Error(
-          `PHASE_CREATE_FAILED: ${formatDataErrors(
-            phaseResult.errors,
-          )}`,
+          `PHASE_CREATE_FAILED: ${formatDataErrors(phaseResult.errors)}`,
         );
       }
 
@@ -141,70 +199,60 @@ export const handler: Handler = async (event, context) => {
 
       if (!phaseRecord) {
         throw new Error(
-          `PHASE_CREATE_FAILED: No phase returned for "${phase.title}"`,
+          `PHASE_CREATE_FAILED: No phase was returned for "${phase.title}".`,
         );
       }
 
       for (const lesson of phase.lessons) {
-        const lessonResult =
-          await client.models.Lesson.create({
-            owner: owner.value,
-            courseId: course.id,
-            phaseId: phaseRecord.id,
-            order: lesson.order,
-            title: lesson.title,
-            hook: lesson.hook,
-            status: 'PENDING',
-            generationError: undefined,
-          });
+        const lessonResult = await client.models.Lesson.create({
+          owner: owner.value,
+          courseId: course.id,
+          phaseId: phaseRecord.id,
+          order: lesson.order,
+          title: lesson.title,
+          hook: lesson.hook,
+          status: 'PENDING',
+          generationError: undefined,
+        });
 
         if (lessonResult.errors?.length) {
           throw new Error(
-            `LESSON_CREATE_FAILED: ${formatDataErrors(
-              lessonResult.errors,
-            )}`,
+            `LESSON_CREATE_FAILED: ${formatDataErrors(lessonResult.errors)}`,
           );
         }
 
         if (!lessonResult.data) {
           throw new Error(
-            `LESSON_CREATE_FAILED: No lesson returned for "${lesson.title}"`,
+            `LESSON_CREATE_FAILED: No lesson was returned for "${lesson.title}".`,
           );
         }
       }
     }
 
-    /*
-     * ------------------------------------------------------------
-     * 4. The complete course structure exists.
-     * ------------------------------------------------------------
-     */
-    const updatedResult =
-      await client.models.Course.update({
-        id: course.id,
-        status: 'READY',
-        generationError: undefined,
-      });
+    const updatedResult = await client.models.Course.update({
+      id: course.id,
+      status: 'READY',
+      generationError: undefined,
+    });
 
     if (updatedResult.errors?.length) {
       throw new Error(
-        `COURSE_FINALIZE_FAILED: ${formatDataErrors(
-          updatedResult.errors,
-        )}`,
+        `COURSE_FINALIZE_FAILED: ${formatDataErrors(updatedResult.errors)}`,
       );
     }
 
     const updatedCourse = updatedResult.data;
 
     if (!updatedCourse) {
-      throw new Error('COURSE_FINALIZE_FAILED');
+      throw new Error('COURSE_FINALIZE_FAILED: No course was returned.');
     }
 
-    console.info('Course outline generated successfully', {
+    console.info('Course outline generation completed', {
       requestId,
-      courseId: updatedCourse.id,
-      phaseCount: outline.phases.length,
-      lessonCount: countLessons(outline),
+      courseId: course.id,
+      phases: outline.phases.length,
+      lessons: countLessons(outline),
+      totalDurationMs: Date.now() - startedAt,
     });
 
     return updatedCourse;
@@ -218,40 +266,27 @@ export const handler: Handler = async (event, context) => {
       error: message,
     });
 
-    /*
-     * If the Course was already created, make the failure visible
-     * instead of leaving it permanently stuck in GENERATING.
-     */
     if (courseId) {
       try {
-        const failureResult =
-          await client.models.Course.update({
-            id: courseId,
-            status: 'FAILED',
-            generationError: message.slice(0, 5000),
-          });
+        const failureResult = await client.models.Course.update({
+          id: courseId,
+          status: 'FAILED',
+          generationError: message.slice(0, 5000),
+        });
 
         if (failureResult.errors?.length) {
-          console.error(
-            'Failed to persist course generation error',
-            {
-              requestId,
-              courseId,
-              error: formatDataErrors(
-                failureResult.errors,
-              ),
-            },
-          );
-        }
-      } catch (updateError) {
-        console.error(
-          'Unexpected error while marking course as FAILED',
-          {
+          console.error('Failed to mark course as FAILED', {
             requestId,
             courseId,
-            error: getErrorMessage(updateError),
-          },
-        );
+            errors: formatDataErrors(failureResult.errors),
+          });
+        }
+      } catch (updateError) {
+        console.error('Failed to persist course generation error', {
+          requestId,
+          courseId,
+          error: getErrorMessage(updateError),
+        });
       }
     }
 
@@ -259,20 +294,7 @@ export const handler: Handler = async (event, context) => {
   }
 };
 
-/*
- * ==============================================================
- * OWNER
- * ==============================================================
- *
- * Amplify owner authorization uses:
- *
- *     <sub>::<username>
- *
- * for Cognito user-pool identities.
- */
-function getOwnerIdentity(
-  event: Parameters<Handler>[0],
-): OwnerIdentity & { value: string } {
+function getOwnerIdentity(event: Parameters<Handler>[0]): OwnerIdentity {
   const identity = event.identity as
     | {
         sub?: string;
@@ -285,13 +307,7 @@ function getOwnerIdentity(
   const username = identity?.username?.trim();
 
   if (!sub || !username) {
-    console.error('Missing authenticated user identity', {
-      identity,
-    });
-
-    throw new Error(
-      'COURSE_OWNER_IDENTITY_MISSING',
-    );
+    throw new Error('AUTHENTICATED_USER_IDENTITY_REQUIRED');
   }
 
   return {
@@ -301,84 +317,38 @@ function getOwnerIdentity(
   };
 }
 
-/*
- * ==============================================================
- * CLAUDE OUTLINE GENERATION
- * ==============================================================
- */
 async function callClaudeForOutline(
   topic: string,
-  profile: unknown,
+  personalizationProfile: unknown,
 ): Promise<CourseOutline> {
   const systemPrompt = `
-You are Grokit's AI curriculum architect.
+You are Grokit's curriculum architect.
 
-Your job is to design a coherent, progressive learning course
-for the learner.
+Design a coherent learning curriculum for the requested topic.
 
-The course must:
+Your job is to create the COURSE STRUCTURE only.
+Do not write lesson content.
 
-- Start from the learner's likely starting point.
-- Build concepts progressively.
+Curriculum rules:
+- Start from fundamentals and progress toward practical understanding.
 - Avoid unnecessary repetition.
-- Introduce prerequisites before dependent concepts.
-- Move from understanding to application.
-- Keep lessons focused on one meaningful learning objective.
-- Make the sequence feel intentional rather than like a list
-  of unrelated topics.
-- Adapt the structure to the learner profile when one is provided.
-- Cover the requested topic thoroughly without adding unrelated
-  material.
-- Create useful lesson hooks that make the learner want to
-  continue.
-- Prefer practical understanding and examples where appropriate.
-- Avoid assuming advanced knowledge unless the learner profile
-  indicates it.
-
-Do not generate lesson content yet.
-
-Generate the course structure only.
-
-Return ONLY valid JSON.
-Do not use markdown fences.
-Do not include commentary outside the JSON.
-
-The JSON must have exactly this conceptual structure:
-
-{
-  "title": "Course title",
-  "description": "Short course description",
-  "phases": [
-    {
-      "order": 1,
-      "title": "Phase title",
-      "lessons": [
-        {
-          "order": 1,
-          "title": "Lesson title",
-          "hook": "Short compelling lesson hook"
-        }
-      ]
-    }
-  ]
-}
-
-Rules for the structure:
-
-- Every phase must contain at least one lesson.
-- Lesson ordering must restart from 1 within each phase.
-- Phase ordering must start at 1 and increase sequentially.
-- Lesson ordering must increase sequentially within each phase.
-- Do not duplicate lesson concepts unnecessarily.
-- Do not generate quizzes or detailed lesson content.
+- Each phase should have a clear learning purpose.
+- Lessons within a phase must build logically on one another.
+- Use concise, specific lesson titles.
+- Hooks should create curiosity and explain why the lesson matters.
+- Do not use markdown.
+- Do not include quizzes, explanations, examples, references, or long prose.
+- Keep the structure appropriate for the learner profile when one is provided.
+- Prefer 3–5 phases.
+- Prefer 2–4 lessons per phase unless the topic genuinely requires more.
+- The output should be useful as the blueprint for later lesson generation.
 `;
 
   const userMessage = [
-    `Learning topic: ${topic}`,
+    `Topic: ${topic}`,
     '',
-    profile
-      ? `Learner profile:\n${JSON.stringify(profile)}`
-      : 'Learner profile: Not provided',
+    'Learner profile:',
+    JSON.stringify(personalizationProfile ?? {}),
   ].join('\n');
 
   const response = await fetch(
@@ -391,8 +361,15 @@ Rules for the structure:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 2000,
+        model: OUTLINE_MODEL,
+        max_tokens: 4096,
+        output_config: {
+          effort: 'low',
+          format: {
+            type: 'json_schema',
+            schema: OUTLINE_SCHEMA,
+          },
+        },
         system: systemPrompt,
         messages: [
           {
@@ -405,299 +382,233 @@ Rules for the structure:
   );
 
   if (!response.ok) {
-    const errorBody = await response.text();
+    const body = await response.text();
 
     throw new Error(
-      `ANTHROPIC_API_ERROR_${response.status}: ${errorBody}`,
+      `ANTHROPIC_API_ERROR_${response.status}: ${body.slice(0, 2000)}`,
     );
   }
 
-  const responseBody = await response.json();
+  const json = (await response.json()) as {
+    content?: Array<{
+      type?: string;
+      text?: string;
+    }>;
+    stop_reason?: string;
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+    };
+  };
 
-  const text = extractTextResponse(responseBody);
+  const text =
+    json.content?.find((block) => block.type === 'text')?.text?.trim() ?? '';
 
   if (!text) {
     throw new Error(
-      'ANTHROPIC_EMPTY_RESPONSE',
+      `ANTHROPIC_EMPTY_RESPONSE: stopReason=${json.stop_reason ?? 'unknown'}`,
     );
   }
 
-  return parseJsonResponse(text);
-}
+  console.info('Anthropic outline response received', {
+    model: OUTLINE_MODEL,
+    stopReason: json.stop_reason,
+    inputTokens: json.usage?.input_tokens,
+    outputTokens: json.usage?.output_tokens,
+  });
 
-/*
- * ==============================================================
- * RESPONSE PARSING
- * ==============================================================
- */
-function extractTextResponse(
-  responseBody: unknown,
-): string {
-  if (
-    !responseBody ||
-    typeof responseBody !== 'object'
-  ) {
-    throw new Error(
-      'ANTHROPIC_INVALID_RESPONSE',
-    );
-  }
-
-  const content = (
-    responseBody as {
-      content?: unknown;
-    }
-  ).content;
-
-  if (!Array.isArray(content)) {
-    throw new Error(
-      'ANTHROPIC_CONTENT_MISSING',
-    );
-  }
-
-  const textBlock = content.find(
-    (block): block is { type: 'text'; text: string } =>
-      typeof block === 'object' &&
-      block !== null &&
-      (block as { type?: unknown }).type === 'text' &&
-      typeof (block as { text?: unknown }).text ===
-        'string',
-  );
-
-  return textBlock?.text.trim() ?? '';
-}
-
-function parseJsonResponse(
-  text: string,
-): CourseOutline {
-  const cleaned = text
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/i, '')
-    .replace(/\s*```$/i, '')
-    .trim();
+  let parsed: unknown;
 
   try {
-    const parsed: unknown = JSON.parse(cleaned);
-
-    validateCourseOutline(parsed);
-
-    return parsed;
+    parsed = JSON.parse(text);
   } catch (error) {
-    console.error(
-      'Failed to parse or validate Claude outline',
-      {
-        error: getErrorMessage(error),
-        responsePreview: cleaned.slice(0, 2000),
-      },
-    );
-
     throw new Error(
-      `INVALID_AI_OUTLINE: ${getErrorMessage(error)}`,
+      `INVALID_AI_OUTLINE_JSON: ${getErrorMessage(error)}`,
     );
   }
+
+  validateCourseOutline(parsed);
+
+  return parsed;
 }
 
-/*
- * ==============================================================
- * OUTLINE VALIDATION
- * ==============================================================
- *
- * This validates structure rather than imposing arbitrary
- * curriculum limits.
- */
-function validateCourseOutline(
-  value: unknown,
-): asserts value is CourseOutline {
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value)
-  ) {
+function validateCourseOutline(value: unknown): asserts value is CourseOutline {
+  if (!isRecord(value)) {
+    throw new Error('INVALID_AI_OUTLINE: Expected an object.');
+  }
+
+  if (!isNonEmptyString(value.title)) {
+    throw new Error('INVALID_AI_OUTLINE: Missing course title.');
+  }
+
+  if (!isNonEmptyString(value.description)) {
+    throw new Error('INVALID_AI_OUTLINE: Missing course description.');
+  }
+
+  if (!Array.isArray(value.phases)) {
+    throw new Error('INVALID_AI_OUTLINE: Phases must be an array.');
+  }
+
+  if (value.phases.length < 3 || value.phases.length > 6) {
     throw new Error(
-      'Outline must be a JSON object',
+      'INVALID_AI_OUTLINE: Course must contain between 3 and 6 phases.',
     );
   }
 
-  const outline = value as Record<string, unknown>;
+  const phaseOrders = new Set<number>();
 
-  if (
-    !isNonEmptyString(outline.title)
-  ) {
-    throw new Error(
-      'Outline title is missing or invalid',
-    );
-  }
-
-  if (
-    !isNonEmptyString(outline.description)
-  ) {
-    throw new Error(
-      'Outline description is missing or invalid',
-    );
-  }
-
-  if (!Array.isArray(outline.phases)) {
-    throw new Error(
-      'Outline phases must be an array',
-    );
-  }
-
-  if (outline.phases.length === 0) {
-    throw new Error(
-      'Outline must contain at least one phase',
-    );
-  }
-
-  let expectedPhaseOrder = 1;
-
-  for (const phaseValue of outline.phases) {
-    if (
-      !phaseValue ||
-      typeof phaseValue !== 'object' ||
-      Array.isArray(phaseValue)
-    ) {
+  value.phases.forEach((phaseValue, phaseIndex) => {
+    if (!isRecord(phaseValue)) {
       throw new Error(
-        'Invalid phase structure',
-      );
-    }
-
-    const phase =
-      phaseValue as Record<string, unknown>;
-
-    if (
-      phase.order !== expectedPhaseOrder
-    ) {
-      throw new Error(
-        `Phase order must be ${expectedPhaseOrder}`,
+        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} is invalid.`,
       );
     }
 
     if (
-      !isNonEmptyString(phase.title)
+      !isInteger(phaseValue.order) ||
+      phaseValue.order < 1 ||
+      phaseValue.order > 6
     ) {
       throw new Error(
-        `Phase ${expectedPhaseOrder} has an invalid title`,
+        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} has an invalid order.`,
       );
     }
 
-    if (!Array.isArray(phase.lessons)) {
+    if (phaseOrders.has(phaseValue.order)) {
       throw new Error(
-        `Phase ${expectedPhaseOrder} lessons must be an array`,
+        `INVALID_AI_OUTLINE: Duplicate phase order ${phaseValue.order}.`,
       );
     }
 
-    if (phase.lessons.length === 0) {
+    phaseOrders.add(phaseValue.order);
+
+    if (!isNonEmptyString(phaseValue.title)) {
       throw new Error(
-        `Phase ${expectedPhaseOrder} must contain at least one lesson`,
+        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} is missing a title.`,
       );
     }
 
-    let expectedLessonOrder = 1;
-
-    for (const lessonValue of phase.lessons) {
-      if (
-        !lessonValue ||
-        typeof lessonValue !== 'object' ||
-        Array.isArray(lessonValue)
-      ) {
-        throw new Error(
-          `Invalid lesson structure in phase ${expectedPhaseOrder}`,
-        );
-      }
-
-      const lesson =
-        lessonValue as Record<string, unknown>;
-
-      if (
-        lesson.order !== expectedLessonOrder
-      ) {
-        throw new Error(
-          `Lesson order must be ${expectedLessonOrder} in phase ${expectedPhaseOrder}`,
-        );
-      }
-
-      if (
-        !isNonEmptyString(lesson.title)
-      ) {
-        throw new Error(
-          `Lesson ${expectedLessonOrder} in phase ${expectedPhaseOrder} has an invalid title`,
-        );
-      }
-
-      if (
-        !isNonEmptyString(lesson.hook)
-      ) {
-        throw new Error(
-          `Lesson ${expectedLessonOrder} in phase ${expectedPhaseOrder} has an invalid hook`,
-        );
-      }
-
-      expectedLessonOrder += 1;
+    if (!Array.isArray(phaseValue.lessons)) {
+      throw new Error(
+        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} lessons must be an array.`,
+      );
     }
 
-    expectedPhaseOrder += 1;
-  }
+    if (phaseValue.lessons.length < 2 || phaseValue.lessons.length > 5) {
+      throw new Error(
+        `INVALID_AI_OUTLINE: Phase ${phaseIndex + 1} must contain between 2 and 5 lessons.`,
+      );
+    }
+
+    const lessonOrders = new Set<number>();
+
+    phaseValue.lessons.forEach((lessonValue, lessonIndex) => {
+      if (!isRecord(lessonValue)) {
+        throw new Error(
+          `INVALID_AI_OUTLINE: Lesson ${lessonIndex + 1} in phase ${phaseIndex + 1} is invalid.`,
+        );
+      }
+
+      if (
+        !isInteger(lessonValue.order) ||
+        lessonValue.order < 1 ||
+        lessonValue.order > 5
+      ) {
+        throw new Error(
+          `INVALID_AI_OUTLINE: Lesson ${lessonIndex + 1} in phase ${phaseIndex + 1} has an invalid order.`,
+        );
+      }
+
+      if (lessonOrders.has(lessonValue.order)) {
+        throw new Error(
+          `INVALID_AI_OUTLINE: Duplicate lesson order ${lessonValue.order} in phase ${phaseIndex + 1}.`,
+        );
+      }
+
+      lessonOrders.add(lessonValue.order);
+
+      if (!isNonEmptyString(lessonValue.title)) {
+        throw new Error(
+          `INVALID_AI_OUTLINE: Lesson ${lessonIndex + 1} in phase ${phaseIndex + 1} is missing a title.`,
+        );
+      }
+
+      if (!isNonEmptyString(lessonValue.hook)) {
+        throw new Error(
+          `INVALID_AI_OUTLINE: Lesson ${lessonIndex + 1} in phase ${phaseIndex + 1} is missing a hook.`,
+        );
+      }
+    });
+  });
+
+  const sortedPhaseOrders = [...phaseOrders].sort((a, b) => a - b);
+
+  sortedPhaseOrders.forEach((order, index) => {
+    const expected = index + 1;
+
+    if (order !== expected) {
+      throw new Error(
+        `INVALID_AI_OUTLINE: Phase ordering must start at 1 and be sequential.`,
+      );
+    }
+  });
+
+  value.phases.forEach((phase, phaseIndex) => {
+    const orders: number[] = phase.lessons.map(
+      (lesson: OutlineLesson) => lesson.order,
+    );
+
+    orders.sort((a: number, b: number) => a - b);
+
+    orders.forEach((order: number, lessonIndex: number) => {
+      if (order !== lessonIndex + 1) {
+        throw new Error(
+          `INVALID_AI_OUTLINE: Lesson ordering in phase ${phaseIndex + 1} must start at 1 and be sequential.`,
+        );
+      }
+    });
+  });
 }
 
-function isNonEmptyString(
-  value: unknown,
-): value is string {
-  return (
-    typeof value === 'string' &&
-    value.trim().length > 0
-  );
+function isRecord(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/*
- * ==============================================================
- * HELPERS
- * ==============================================================
- */
-function countLessons(
-  outline: CourseOutline,
-): number {
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function isInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value);
+}
+
+function countLessons(outline: CourseOutline): number {
   return outline.phases.reduce(
-    (total, phase) =>
-      total + phase.lessons.length,
+    (total, phase) => total + phase.lessons.length,
     0,
   );
 }
 
 function formatDataErrors(
-  errors: readonly unknown[],
+  errors: Array<{ message?: string }>,
 ): string {
   return errors
-    .map((error) => {
-      if (
-        error &&
-        typeof error === 'object' &&
-        'message' in error
-      ) {
-        return String(
-          (error as { message?: unknown }).message,
-        );
-      }
-
-      return String(error);
-    })
+    .map((error) => error.message ?? 'Unknown data error')
     .join('; ');
 }
 
-function getErrorMessage(
-  error: unknown,
-): string {
+function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
   }
 
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error
-  ) {
-    return String(
-      (error as { message?: unknown }).message,
-    );
+  if (typeof error === 'string') {
+    return error;
   }
 
-  return String(error);
+  try {
+    return JSON.stringify(error);
+  } catch {
+    return 'Unknown error';
+  }
 }
