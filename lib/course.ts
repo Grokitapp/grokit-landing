@@ -7,15 +7,21 @@ export async function createCourseFromPrompt(
   topic: string,
   personalizationProfile?: unknown,
 ) {
-  const { data, errors } =
-    await client.mutations.generateOutline({
-      topic,
+  const { data, errors } = await client.mutations.generateOutline(
+    {
+      topic: topic.trim(),
       personalizationProfile:
         personalizationProfile as never,
-    });
+    },
+    {
+      authMode: 'userPool',
+    },
+  );
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   if (!data) {
@@ -29,10 +35,14 @@ export async function createCourseFromPrompt(
 
 export async function listCourses() {
   const { data, errors } =
-    await client.models.Course.list();
+    await client.models.Course.list({
+      authMode: 'userPool',
+    });
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return [...(data ?? [])].sort((a, b) => {
@@ -48,16 +58,19 @@ export async function listCourses() {
   });
 }
 
-export async function getCourse(
-  courseId: string,
-) {
+export async function getCourse(courseId: string) {
   const { data, errors } =
-    await client.models.Course.get({
-      id: courseId,
-    });
+    await client.models.Course.get(
+      { id: courseId },
+      {
+        authMode: 'userPool',
+      },
+    );
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return data;
@@ -73,10 +86,13 @@ export async function listPhasesForCourse(
           eq: courseId,
         },
       },
+      authMode: 'userPool',
     });
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return [...(data ?? [])].sort(
@@ -94,10 +110,13 @@ export async function listLessonsForPhase(
           eq: phaseId,
         },
       },
+      authMode: 'userPool',
     });
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return [...(data ?? [])].sort(
@@ -115,10 +134,13 @@ export async function listLessonsForCourse(
           eq: courseId,
         },
       },
+      authMode: 'userPool',
     });
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return [...(data ?? [])].sort(
@@ -130,12 +152,17 @@ export async function generateLessonContent(
   lessonId: string,
 ) {
   const { data, errors } =
-    await client.mutations.generateLesson({
-      lessonId,
-    });
+    await client.mutations.generateLesson(
+      { lessonId },
+      {
+        authMode: 'userPool',
+      },
+    );
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   if (!data) {
@@ -157,10 +184,13 @@ export async function listProgressForCourse(
           eq: courseId,
         },
       },
+      authMode: 'userPool',
     });
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return data ?? [];
@@ -172,15 +202,22 @@ export async function markLessonComplete(
   xp = 10,
 ) {
   const { data, errors } =
-    await client.models.UserProgress.create({
-      courseId,
-      lessonId,
-      completedAt: new Date().toISOString(),
-      xp,
-    });
+    await client.models.UserProgress.create(
+      {
+        courseId,
+        lessonId,
+        completedAt: new Date().toISOString(),
+        xp,
+      },
+      {
+        authMode: 'userPool',
+      },
+    );
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return data;
@@ -190,13 +227,20 @@ export async function unlockPhase(
   phaseId: string,
 ) {
   const { data, errors } =
-    await client.models.Phase.update({
-      id: phaseId,
-      locked: false,
-    });
+    await client.models.Phase.update(
+      {
+        id: phaseId,
+        locked: false,
+      },
+      {
+        authMode: 'userPool',
+      },
+    );
 
   if (errors?.length) {
-    throw new Error(errors[0].message);
+    throw new Error(
+      errors.map((error) => error.message).join('; '),
+    );
   }
 
   return data;

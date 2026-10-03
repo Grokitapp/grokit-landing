@@ -33,7 +33,7 @@ type Handler = Schema['generateOutline']['functionHandler'];
 
 interface OwnerIdentity {
   sub: string;
-  username: string;
+  username?: string;
   value: string;
 }
 
@@ -57,13 +57,101 @@ interface CourseOutline {
 
 /*
  * ==============================================================
+ * STRUCTURED OUTPUT SCHEMA
+ * ==============================================================
+ *
+ * The AI generates the curriculum structure only.
+ *
+ * The application-level validator below enforces the exact
+ * curriculum shape required by Grokit:
+ *
+ *   4 phases
+ *   3 lessons per phase
+ *   12 lessons total
+ *
+ * We intentionally enforce this in application code rather
+ * than relying entirely on the model/schema.
+ */
+
+const OUTLINE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    title: {
+      type: 'string',
+      description: 'Clear, concise course title.',
+    },
+
+    description: {
+      type: 'string',
+      description:
+        'Short description explaining what the learner will understand or be able to do.',
+    },
+
+    phases: {
+      type: 'array',
+      description:
+        'The four progressive phases of the learning course.',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          order: {
+            type: 'integer',
+            description: 'Sequential phase number starting at 1.',
+          },
+
+          title: {
+            type: 'string',
+            description: 'Concise phase title.',
+          },
+
+          lessons: {
+            type: 'array',
+            description:
+              'The three lessons belonging to this phase.',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              properties: {
+                order: {
+                  type: 'integer',
+                  description:
+                    'Sequential lesson number within the phase starting at 1.',
+                },
+
+                title: {
+                  type: 'string',
+                  description: 'Clear lesson title.',
+                },
+
+                hook: {
+                  type: 'string',
+                  description:
+                    'Short compelling hook explaining why the lesson is interesting or useful.',
+                },
+              },
+              required: ['order', 'title', 'hook'],
+            },
+          },
+        },
+        required: ['order', 'title', 'lessons'],
+      },
+    },
+  },
+  required: ['title', 'description', 'phases'],
+} as const;
+
+/*
+ * ==============================================================
  * HANDLER
  * ==============================================================
  */
 
 export const handler: Handler = async (event, context) => {
-  const requestId = context.awsRequestId;
   const { topic, personalizationProfile } = event.arguments;
+
+  const requestId = context.awsRequestId;
 
   const normalizedTopic = topic.trim();
 
@@ -71,28 +159,21 @@ export const handler: Handler = async (event, context) => {
     throw new Error('COURSE_TOPIC_REQUIRED');
   }
 
-  /*
-   * The Lambda is executing on behalf of the authenticated user.
-   *
-   * Course / Phase / Lesson use ownerDefinedIn('owner'), so the
-   * Lambda must explicitly preserve the authenticated user's
-   * Cognito owner identity when creating those records.
-   */
   const owner = getOwnerIdentity(event);
 
   console.info('Starting course outline generation', {
     requestId,
     topic: normalizedTopic,
-    owner: owner.username,
+    owner: owner.value,
   });
 
   let courseId: string | undefined;
 
   try {
     /*
-     * ------------------------------------------------------------
-     * 1. Generate the curriculum outline.
-     * ------------------------------------------------------------
+     * ----------------------------------------------------------
+     * 1. Generate the curriculum outline
+     * ----------------------------------------------------------
      */
 
     const outline = await callClaudeForOutline(
@@ -102,27 +183,27 @@ export const handler: Handler = async (event, context) => {
 
     validateCourseOutline(outline);
 
-    console.info('Generated course outline', {
-      requestId,
-      outline: {
-        title: outline.title,
-        description: outline.description,
-        phases: outline.phases.map((phase) => ({
-          order: phase.order,
-          title: phase.title,
-          lessons: phase.lessons.map((lesson) => ({
-            order: lesson.order,
-            title: lesson.title,
-            hook: lesson.hook,
-          })),
-        })),
-      },
-    });
-
     /*
-     * ------------------------------------------------------------
-     * 2. Create the Course.
-     * ------------------------------------------------------------
+     * ----------------------------------------------------------
+     * 2. Create the Course
+     * ----------------------------------------------------------
+     *
+     * IMPORTANT:
+     *
+     * data/resource.ts now uses:
+     *
+     *   identityClaim('sub')
+     *
+     * Therefore owner MUST be the Cognito sub only.
+     *
+     * Example:
+     *
+     *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506
+     *
+     * NOT:
+     *
+     *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506::
+     *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506
      */
 
     const courseResult = await client.models.Course.create({
@@ -152,9 +233,9 @@ export const handler: Handler = async (event, context) => {
     courseId = course.id;
 
     /*
-     * ------------------------------------------------------------
-     * 3. Create all phases and lessons.
-     * ------------------------------------------------------------
+     * ----------------------------------------------------------
+     * 3. Create phases and lessons
+     * ----------------------------------------------------------
      */
 
     for (const phase of outline.phases) {
@@ -183,16 +264,17 @@ export const handler: Handler = async (event, context) => {
       }
 
       for (const lesson of phase.lessons) {
-        const lessonResult = await client.models.Lesson.create({
-          owner: owner.value,
-          courseId: course.id,
-          phaseId: phaseRecord.id,
-          order: lesson.order,
-          title: lesson.title,
-          hook: lesson.hook,
-          status: 'PENDING',
-          generationError: undefined,
-        });
+        const lessonResult =
+          await client.models.Lesson.create({
+            owner: owner.value,
+            courseId: course.id,
+            phaseId: phaseRecord.id,
+            order: lesson.order,
+            title: lesson.title,
+            hook: lesson.hook,
+            status: 'PENDING',
+            generationError: undefined,
+          });
 
         if (lessonResult.errors?.length) {
           throw new Error(
@@ -211,16 +293,21 @@ export const handler: Handler = async (event, context) => {
     }
 
     /*
-     * ------------------------------------------------------------
-     * 4. Mark the course as READY.
-     * ------------------------------------------------------------
+     * ----------------------------------------------------------
+     * 4. Mark the course READY
+     * ----------------------------------------------------------
+     *
+     * At this point only the curriculum structure is generated.
+     * Individual lesson content remains PENDING and can be
+     * generated separately by generateLesson.
      */
 
-    const updatedResult = await client.models.Course.update({
-      id: course.id,
-      status: 'READY',
-      generationError: undefined,
-    });
+    const updatedResult =
+      await client.models.Course.update({
+        id: course.id,
+        status: 'READY',
+        generationError: undefined,
+      });
 
     if (updatedResult.errors?.length) {
       throw new Error(
@@ -239,6 +326,7 @@ export const handler: Handler = async (event, context) => {
     console.info('Course outline generated successfully', {
       requestId,
       courseId: updatedCourse.id,
+      owner: owner.value,
       phaseCount: outline.phases.length,
       lessonCount: countLessons(outline),
     });
@@ -251,20 +339,24 @@ export const handler: Handler = async (event, context) => {
       requestId,
       courseId,
       topic: normalizedTopic,
+      owner: owner.value,
       error: message,
     });
 
     /*
-     * If the Course was already created, do not leave it stuck
-     * permanently in GENERATING.
+     * If Course creation already succeeded, persist the failure
+     * so the frontend never gets a permanently stuck GENERATING
+     * course.
      */
+
     if (courseId) {
       try {
-        const failureResult = await client.models.Course.update({
-          id: courseId,
-          status: 'FAILED',
-          generationError: message.slice(0, 5000),
-        });
+        const failureResult =
+          await client.models.Course.update({
+            id: courseId,
+            status: 'FAILED',
+            generationError: message.slice(0, 5000),
+          });
 
         if (failureResult.errors?.length) {
           console.error(
@@ -296,21 +388,20 @@ export const handler: Handler = async (event, context) => {
 
 /*
  * ==============================================================
- * OWNER IDENTITY
+ * OWNER
  * ==============================================================
  *
- * Amplify owner authorization for Cognito user-pool identities
- * uses the following owner value:
+ * data/resource.ts explicitly uses:
  *
- *     <sub>::<username>
+ *   identityClaim('sub')
+ *
+ * Therefore the owner stored in Course / Phase / Lesson is:
+ *
+ *   <cognito-sub>
  *
  * Example:
  *
- *     61c3bdfa-...::61c3bdfa-...
- *
- * We explicitly put this value into Course / Phase / Lesson
- * because those records are created by the Lambda rather than
- * directly by the browser's authenticated client.
+ *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506
  */
 
 function getOwnerIdentity(
@@ -327,24 +418,26 @@ function getOwnerIdentity(
   const sub = identity?.sub?.trim();
   const username = identity?.username?.trim();
 
-  if (!sub || !username) {
-    console.error('Missing authenticated user identity', {
+  if (!sub) {
+    console.error('Missing Cognito sub in authenticated identity', {
       identity,
     });
 
-    throw new Error('COURSE_OWNER_IDENTITY_MISSING');
+    throw new Error(
+      'COURSE_OWNER_IDENTITY_MISSING',
+    );
   }
 
   return {
     sub,
     username,
-    value: `${sub}::${username}`,
+    value: sub,
   };
 }
 
 /*
  * ==============================================================
- * CLAUDE OUTLINE GENERATION
+ * CLAUDE
  * ==============================================================
  */
 
@@ -358,77 +451,55 @@ You are Grokit's AI curriculum architect.
 Your job is to design a coherent, progressive learning course
 for the learner.
 
-The course must:
+Your curriculum should:
 
 - Start from the learner's likely starting point.
 - Build concepts progressively.
-- Avoid unnecessary repetition.
 - Introduce prerequisites before dependent concepts.
 - Move from understanding to application.
-- Keep lessons focused on one meaningful learning objective.
-- Make the sequence feel intentional rather than like a list
-  of unrelated topics.
-- Adapt the structure to the learner profile when one is provided.
-- Cover the requested topic thoroughly without adding unrelated
-  material.
-- Create useful lesson hooks that make the learner want to
-  continue.
+- Keep each lesson focused on one meaningful learning objective.
+- Avoid unnecessary repetition.
+- Make the sequence feel intentional and coherent.
+- Adapt to the learner profile when one is provided.
+- Cover the requested topic meaningfully.
+- Avoid unrelated material.
 - Prefer practical understanding and examples where appropriate.
 - Avoid assuming advanced knowledge unless the learner profile
   indicates it.
+- Make lesson hooks interesting and useful.
+- Ensure each phase naturally prepares the learner for the next.
 
-Do not generate lesson content yet.
+Do not generate detailed lesson content.
 
-Generate the course structure only.
+Do not generate quizzes.
 
-The course MUST contain exactly:
-- 4 phases
-- 3 lessons in every phase
-- 12 lessons total
+Generate the curriculum structure only.
 
-Phase 1 should establish the foundation.
-Phase 2 should build the core concepts.
-Phase 3 should move into deeper understanding and application.
-Phase 4 should consolidate knowledge and move toward practical
-use, synthesis, or advanced application.
+The course must contain exactly:
 
-Every lesson should have one clear learning objective.
+- 4 phases.
+- 3 lessons in every phase.
+- 12 lessons total.
 
-Return ONLY valid JSON.
-Do not use markdown fences.
-Do not include commentary outside the JSON.
+The progression should be:
 
-The JSON must have exactly this conceptual structure:
+Phase 1:
+Foundational concepts and mental model.
 
-{
-  "title": "Course title",
-  "description": "Short course description",
-  "phases": [
-    {
-      "order": 1,
-      "title": "Phase title",
-      "lessons": [
-        {
-          "order": 1,
-          "title": "Lesson title",
-          "hook": "Short compelling lesson hook"
-        }
-      ]
-    }
-  ]
-}
+Phase 2:
+Core mechanisms, principles, or processes.
 
-Rules:
+Phase 3:
+Deeper understanding, systems, practical reasoning, or application.
 
-- There must be exactly 4 phases.
-- Each phase must contain exactly 3 lessons.
-- Phase order must be 1, 2, 3, 4.
-- Lesson order must be 1, 2, 3 within every phase.
-- Do not duplicate lesson concepts unnecessarily.
-- Do not generate quizzes.
-- Do not generate detailed lesson content.
-- Do not generate key terms.
-- Do not add additional JSON fields.
+Phase 4:
+Real-world application, synthesis, troubleshooting, or advanced practical understanding.
+
+Do not blindly follow those labels if the topic requires a better pedagogical progression. Adapt the actual phase titles and lesson topics to the subject.
+
+Each lesson should have one clear learning objective.
+
+Return only the requested structured JSON.
 `;
 
   const userMessage = [
@@ -439,39 +510,40 @@ Rules:
       : 'Learner profile: Not provided',
   ].join('\n');
 
-  /*
-   * Keep the request intentionally compact.
-   *
-   * The outline is only the curriculum skeleton.
-   * Detailed lesson generation happens separately.
-   */
-
   const response = await fetch(
     'https://api.anthropic.com/v1/messages',
     {
       method: 'POST',
+
       headers: {
         'content-type': 'application/json',
         'x-api-key': ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
       },
+
       body: JSON.stringify({
         model: 'claude-sonnet-5-5',
+
         max_tokens: 4096,
-        output_config: {
-          effort: 'low',
-          format: {
-            type: 'json_schema',
-            schema: OUTLINE_SCHEMA,
-          },
-        },
+
         system: systemPrompt,
+
         messages: [
           {
             role: 'user',
             content: userMessage,
           },
         ],
+
+        output_config: {
+          effort: 'low',
+
+          format: {
+            type: 'json_schema',
+
+            schema: OUTLINE_SCHEMA,
+          },
+        },
       }),
     },
   );
@@ -484,90 +556,20 @@ Rules:
     );
   }
 
-  const responseBody = await response.json();
+  const responseBody: unknown =
+    await response.json();
 
-  const text = extractTextResponse(responseBody);
+  const text =
+    extractTextResponse(responseBody);
 
   if (!text) {
-    throw new Error('ANTHROPIC_EMPTY_RESPONSE');
+    throw new Error(
+      'ANTHROPIC_EMPTY_RESPONSE',
+    );
   }
 
   return parseJsonResponse(text);
 }
-
-/*
- * ==============================================================
- * STRUCTURED OUTPUT SCHEMA
- * ==============================================================
- *
- * Keep this schema compatible with Anthropic Structured Outputs.
- *
- * We deliberately do NOT use minItems / maxItems because those
- * constraints were rejected by the API in the previous version.
- *
- * Exact 4 × 3 enforcement happens in validateCourseOutline().
- */
-
-const OUTLINE_SCHEMA = {
-  type: 'object',
-  additionalProperties: false,
-  properties: {
-    title: {
-      type: 'string',
-    },
-    description: {
-      type: 'string',
-    },
-    phases: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          order: {
-            type: 'integer',
-          },
-          title: {
-            type: 'string',
-          },
-          lessons: {
-            type: 'array',
-            items: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                order: {
-                  type: 'integer',
-                },
-                title: {
-                  type: 'string',
-                },
-                hook: {
-                  type: 'string',
-                },
-              },
-              required: [
-                'order',
-                'title',
-                'hook',
-              ],
-            },
-          },
-        },
-        required: [
-          'order',
-          'title',
-          'lessons',
-        ],
-      },
-    },
-  },
-  required: [
-    'title',
-    'description',
-    'phases',
-  ],
-} as const;
 
 /*
  * ==============================================================
@@ -582,7 +584,9 @@ function extractTextResponse(
     !responseBody ||
     typeof responseBody !== 'object'
   ) {
-    throw new Error('ANTHROPIC_INVALID_RESPONSE');
+    throw new Error(
+      'ANTHROPIC_INVALID_RESPONSE',
+    );
   }
 
   const content = (
@@ -592,7 +596,9 @@ function extractTextResponse(
   ).content;
 
   if (!Array.isArray(content)) {
-    throw new Error('ANTHROPIC_CONTENT_MISSING');
+    throw new Error(
+      'ANTHROPIC_CONTENT_MISSING',
+    );
   }
 
   const textBlock = content.find(
@@ -604,9 +610,11 @@ function extractTextResponse(
     } =>
       typeof block === 'object' &&
       block !== null &&
-      (block as { type?: unknown }).type === 'text' &&
-      typeof (block as { text?: unknown }).text ===
-        'string',
+      (block as { type?: unknown }).type ===
+        'text' &&
+      typeof (
+        block as { text?: unknown }
+      ).text === 'string',
   );
 
   return textBlock?.text.trim() ?? '';
@@ -622,7 +630,8 @@ function parseJsonResponse(
     .trim();
 
   try {
-    const parsed: unknown = JSON.parse(cleaned);
+    const parsed: unknown =
+      JSON.parse(cleaned);
 
     validateCourseOutline(parsed);
 
@@ -632,12 +641,17 @@ function parseJsonResponse(
       'Failed to parse or validate Claude outline',
       {
         error: getErrorMessage(error),
-        responsePreview: cleaned.slice(0, 2000),
+        responsePreview: cleaned.slice(
+          0,
+          2000,
+        ),
       },
     );
 
     throw new Error(
-      `INVALID_AI_OUTLINE: ${getErrorMessage(error)}`,
+      `INVALID_AI_OUTLINE: ${getErrorMessage(
+        error,
+      )}`,
     );
   }
 }
@@ -647,10 +661,9 @@ function parseJsonResponse(
  * OUTLINE VALIDATION
  * ==============================================================
  *
- * The API schema guarantees JSON shape.
- * This validator guarantees application-level business rules.
+ * The AI schema defines the intended shape.
  *
- * This is where we enforce the exact 4 × 3 structure.
+ * This validator is the final application-level guard.
  */
 
 function validateCourseOutline(
@@ -662,51 +675,48 @@ function validateCourseOutline(
     Array.isArray(value)
   ) {
     throw new Error(
-      'Outline must be a JSON object',
+      'OUTLINE_MUST_BE_OBJECT',
     );
   }
 
-  const outline = value as Record<string, unknown>;
+  const outline =
+    value as Record<string, unknown>;
 
-  /*
-   * ------------------------------------------------------------
-   * Course
-   * ------------------------------------------------------------
-   */
-
-  if (!isNonEmptyString(outline.title)) {
+  if (
+    !isNonEmptyString(outline.title)
+  ) {
     throw new Error(
-      'Outline title is missing or invalid',
+      'OUTLINE_TITLE_INVALID',
     );
   }
 
-  if (!isNonEmptyString(outline.description)) {
+  if (
+    !isNonEmptyString(
+      outline.description,
+    )
+  ) {
     throw new Error(
-      'Outline description is missing or invalid',
+      'OUTLINE_DESCRIPTION_INVALID',
     );
   }
 
   if (!Array.isArray(outline.phases)) {
     throw new Error(
-      'Outline phases must be an array',
+      'OUTLINE_PHASES_INVALID',
     );
   }
 
   /*
-   * Exactly 4 phases.
+   * Grokit curriculum contract:
+   *
+   * 4 phases × 3 lessons = 12 lessons
    */
 
   if (outline.phases.length !== 4) {
     throw new Error(
-      `Outline must contain exactly 4 phases, received ${outline.phases.length}`,
+      `OUTLINE_PHASE_COUNT_INVALID: expected 4, received ${outline.phases.length}`,
     );
   }
-
-  /*
-   * ------------------------------------------------------------
-   * Phases
-   * ------------------------------------------------------------
-   */
 
   let expectedPhaseOrder = 1;
 
@@ -717,7 +727,7 @@ function validateCourseOutline(
       Array.isArray(phaseValue)
     ) {
       throw new Error(
-        'Invalid phase structure',
+        'INVALID_PHASE_STRUCTURE',
       );
     }
 
@@ -725,10 +735,11 @@ function validateCourseOutline(
       phaseValue as Record<string, unknown>;
 
     if (
-      phase.order !== expectedPhaseOrder
+      phase.order !==
+      expectedPhaseOrder
     ) {
       throw new Error(
-        `Phase order must be ${expectedPhaseOrder}`,
+        `PHASE_ORDER_INVALID: expected ${expectedPhaseOrder}`,
       );
     }
 
@@ -736,31 +747,21 @@ function validateCourseOutline(
       !isNonEmptyString(phase.title)
     ) {
       throw new Error(
-        `Phase ${expectedPhaseOrder} has an invalid title`,
+        `PHASE_TITLE_INVALID: phase ${expectedPhaseOrder}`,
       );
     }
 
     if (!Array.isArray(phase.lessons)) {
       throw new Error(
-        `Phase ${expectedPhaseOrder} lessons must be an array`,
+        `PHASE_LESSONS_INVALID: phase ${expectedPhaseOrder}`,
       );
     }
-
-    /*
-     * Exactly 3 lessons per phase.
-     */
 
     if (phase.lessons.length !== 3) {
       throw new Error(
-        `Phase ${expectedPhaseOrder} must contain exactly 3 lessons, received ${phase.lessons.length}`,
+        `PHASE_LESSON_COUNT_INVALID: phase ${expectedPhaseOrder} expected 3 lessons, received ${phase.lessons.length}`,
       );
     }
-
-    /*
-     * ----------------------------------------------------------
-     * Lessons
-     * ----------------------------------------------------------
-     */
 
     let expectedLessonOrder = 1;
 
@@ -771,34 +772,42 @@ function validateCourseOutline(
         Array.isArray(lessonValue)
       ) {
         throw new Error(
-          `Invalid lesson structure in phase ${expectedPhaseOrder}`,
+          `INVALID_LESSON_STRUCTURE: phase ${expectedPhaseOrder}`,
         );
       }
 
       const lesson =
-        lessonValue as Record<string, unknown>;
+        lessonValue as Record<
+          string,
+          unknown
+        >;
 
       if (
-        lesson.order !== expectedLessonOrder
+        lesson.order !==
+        expectedLessonOrder
       ) {
         throw new Error(
-          `Lesson order must be ${expectedLessonOrder} in phase ${expectedPhaseOrder}`,
+          `LESSON_ORDER_INVALID: phase ${expectedPhaseOrder}, expected ${expectedLessonOrder}`,
         );
       }
 
       if (
-        !isNonEmptyString(lesson.title)
+        !isNonEmptyString(
+          lesson.title,
+        )
       ) {
         throw new Error(
-          `Lesson ${expectedLessonOrder} in phase ${expectedPhaseOrder} has an invalid title`,
+          `LESSON_TITLE_INVALID: phase ${expectedPhaseOrder}, lesson ${expectedLessonOrder}`,
         );
       }
 
       if (
-        !isNonEmptyString(lesson.hook)
+        !isNonEmptyString(
+          lesson.hook,
+        )
       ) {
         throw new Error(
-          `Lesson ${expectedLessonOrder} in phase ${expectedPhaseOrder} has an invalid hook`,
+          `LESSON_HOOK_INVALID: phase ${expectedPhaseOrder}, lesson ${expectedLessonOrder}`,
         );
       }
 
@@ -807,12 +816,6 @@ function validateCourseOutline(
 
     expectedPhaseOrder += 1;
   }
-
-  /*
-   * The structure above guarantees:
-   *
-   * 4 phases × 3 lessons = 12 lessons.
-   */
 }
 
 /*
@@ -851,9 +854,11 @@ function formatDataErrors(
         'message' in error
       ) {
         return String(
-          (error as {
-            message?: unknown;
-          }).message,
+          (
+            error as {
+              message?: unknown;
+            }
+          ).message,
         );
       }
 
@@ -875,9 +880,11 @@ function getErrorMessage(
     'message' in error
   ) {
     return String(
-      (error as {
-        message?: unknown;
-      }).message,
+      (
+        error as {
+          message?: unknown;
+        }
+      ).message,
     );
   }
 
