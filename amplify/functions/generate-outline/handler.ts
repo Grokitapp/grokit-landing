@@ -59,18 +59,6 @@ interface CourseOutline {
  * ==============================================================
  * STRUCTURED OUTPUT SCHEMA
  * ==============================================================
- *
- * The AI generates the curriculum structure only.
- *
- * The application-level validator below enforces the exact
- * curriculum shape required by Grokit:
- *
- *   4 phases
- *   3 lessons per phase
- *   12 lessons total
- *
- * We intentionally enforce this in application code rather
- * than relying entirely on the model/schema.
  */
 
 const OUTLINE_SCHEMA = {
@@ -187,23 +175,6 @@ export const handler: Handler = async (event, context) => {
      * ----------------------------------------------------------
      * 2. Create the Course
      * ----------------------------------------------------------
-     *
-     * IMPORTANT:
-     *
-     * data/resource.ts now uses:
-     *
-     *   identityClaim('sub')
-     *
-     * Therefore owner MUST be the Cognito sub only.
-     *
-     * Example:
-     *
-     *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506
-     *
-     * NOT:
-     *
-     *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506::
-     *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506
      */
 
     const courseResult = await client.models.Course.create({
@@ -296,10 +267,6 @@ export const handler: Handler = async (event, context) => {
      * ----------------------------------------------------------
      * 4. Mark the course READY
      * ----------------------------------------------------------
-     *
-     * At this point only the curriculum structure is generated.
-     * Individual lesson content remains PENDING and can be
-     * generated separately by generateLesson.
      */
 
     const updatedResult =
@@ -390,18 +357,6 @@ export const handler: Handler = async (event, context) => {
  * ==============================================================
  * OWNER
  * ==============================================================
- *
- * data/resource.ts explicitly uses:
- *
- *   identityClaim('sub')
- *
- * Therefore the owner stored in Course / Phase / Lesson is:
- *
- *   <cognito-sub>
- *
- * Example:
- *
- *   61c3bdfa-c0b1-7074-afd7-d0ef802e0506
  */
 
 function getOwnerIdentity(
@@ -660,10 +615,6 @@ function parseJsonResponse(
  * ==============================================================
  * OUTLINE VALIDATION
  * ==============================================================
- *
- * The AI schema defines the intended shape.
- *
- * This validator is the final application-level guard.
  */
 
 function validateCourseOutline(
@@ -705,12 +656,6 @@ function validateCourseOutline(
       'OUTLINE_PHASES_INVALID',
     );
   }
-
-  /*
-   * Grokit curriculum contract:
-   *
-   * 4 phases × 3 lessons = 12 lessons
-   */
 
   if (outline.phases.length !== 4) {
     throw new Error(

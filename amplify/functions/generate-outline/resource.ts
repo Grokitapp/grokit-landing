@@ -4,6 +4,7 @@ export const generateOutline = defineFunction({
   name: "generate-outline",
   entry: "./handler.ts",
   timeoutSeconds: 60,
+  resourceGroupName: "data",
   environment: {
     ANTHROPIC_API_KEY: secret("ANTHROPIC_API_KEY"),
   },
