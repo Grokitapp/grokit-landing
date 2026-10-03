@@ -54,12 +54,11 @@ const schema = a
     }).authorization((allow) => [allow.owner()]),
 
     UserProgress: a.model({
-      owner: a.string(),
       courseId: a.id().required(),
       lessonId: a.id().required(),
       completedAt: a.datetime(),
       xp: a.integer().default(0),
-    }).authorization((allow) => [allow.ownerDefinedIn('owner')]),
+    }).authorization((allow) => [allow.owner()]),
 
     generateOutline: a
       .mutation()
