@@ -11,8 +11,6 @@ import AppShell from './learn/AppShell';
 import { getProfile } from '../lib/profile';
 import { listCourses } from '../lib/course';
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
-
 const containerClasses =
   'min-h-[100dvh] w-full max-w-[900px] mx-auto px-5 sm:px-6 py-10 sm:py-14 md:py-16';
 
@@ -46,7 +44,8 @@ const exampleButtonClasses = `
 const tagClasses =
   'shrink-0 w-16 h-16 rounded-xl bg-orange/10 border border-orange/10 flex items-center justify-center text-xs font-bold text-orange text-center px-1';
 
-const titleClasses = 'block font-display font-bold text-white';
+const titleClasses =
+  'block font-display font-bold text-white';
 
 const authorClasses =
   'block text-xs text-[#60757E] font-sans font-semibold mb-1';
@@ -56,8 +55,6 @@ const blurbClasses =
 
 const sectionLabelClasses =
   'text-[#91A4AC] font-sans font-semibold text-sm mb-4';
-
-// ──────────────────────────────────────────────────────────────────────────────
 
 export default function Learn() {
   const navigate = useNavigate();
@@ -186,7 +183,13 @@ export default function Learn() {
   };
 
   return (
-    <AppShell>
+    <AppShell
+      courses={courses.map((course) => ({
+        id: course.id,
+        title: course.title,
+      }))}
+      coursesLoading={loadingCourses}
+    >
       <div className={containerClasses}>
         <div className="text-center mb-8 sm:mb-10">
           <div className={badgeClasses}>
@@ -199,8 +202,7 @@ export default function Learn() {
 
           <p className={subtitleClasses}>
             Tell me what you're curious about, and
-            I'll build a personalized course for
-            you.
+            I'll build a personalized course for you.
           </p>
         </div>
 
@@ -236,21 +238,15 @@ export default function Learn() {
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    <span
-                      className={titleClasses}
-                    >
+                    <span className={titleClasses}>
                       {course.title}
                     </span>
 
-                    <span
-                      className={authorClasses}
-                    >
+                    <span className={authorClasses}>
                       {course.topic}
                     </span>
 
-                    <span
-                      className={blurbClasses}
-                    >
+                    <span className={blurbClasses}>
                       {course.description ||
                         'Continue learning from where you left off.'}
                     </span>
@@ -267,11 +263,9 @@ export default function Learn() {
 
         {loadingCourses && (
           <section className="mb-10">
-            <div className="flex items-center gap-2 mb-4">
-              <p className={sectionLabelClasses}>
-                Your courses
-              </p>
-            </div>
+            <p className={sectionLabelClasses}>
+              Your courses
+            </p>
 
             <div className="flex items-center justify-center py-8 rounded-3xl border border-[#37464F] bg-[#202F35]">
               <div className="flex items-center gap-3 text-[#91A4AC] text-sm font-semibold">
@@ -324,8 +318,7 @@ export default function Learn() {
 
         <section>
           <p className={sectionLabelClasses}>
-            Or, see what people like you are
-            learning
+            Or, see what people like you are learning
           </p>
 
           <div className="flex flex-col gap-3">
