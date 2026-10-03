@@ -5,6 +5,7 @@ import { generateLesson } from '../functions/generate-lesson/resource';
 const schema = a
   .schema({
     Course: a.model({
+      owner: a.string(),
       title: a.string().required(),
       topic: a.string().required(),
       description: a.string(),
@@ -14,18 +15,20 @@ const schema = a
       generationError: a.string(),
       phases: a.hasMany('Phase', 'courseId'),
       lessons: a.hasMany('Lesson', 'courseId'),
-    }).authorization((allow) => [allow.owner()]),
+    }).authorization((allow) => [allow.ownerDefinedIn('owner')]),
 
     Phase: a.model({
+      owner: a.string(),
       courseId: a.id().required(),
       course: a.belongsTo('Course', 'courseId'),
       order: a.integer().required(),
       title: a.string().required(),
       locked: a.boolean().default(true),
       lessons: a.hasMany('Lesson', 'phaseId'),
-    }).authorization((allow) => [allow.owner()]),
+    }).authorization((allow) => [allow.ownerDefinedIn('owner')]),
 
     Lesson: a.model({
+      owner: a.string(),
       courseId: a.id().required(),
       course: a.belongsTo('Course', 'courseId'),
       phaseId: a.id().required(),
@@ -38,7 +41,7 @@ const schema = a
       quiz: a.json(),
       status: a.enum(['PENDING', 'GENERATING', 'READY', 'FAILED']),
       generationError: a.string(),
-    }).authorization((allow) => [allow.owner()]),
+    }).authorization((allow) => [allow.ownerDefinedIn('owner')]),
 
     UserProfile: a.model({
       email: a.string().required(),
@@ -51,11 +54,12 @@ const schema = a
     }).authorization((allow) => [allow.owner()]),
 
     UserProgress: a.model({
+      owner: a.string(),
       courseId: a.id().required(),
       lessonId: a.id().required(),
       completedAt: a.datetime(),
       xp: a.integer().default(0),
-    }).authorization((allow) => [allow.owner()]),
+    }).authorization((allow) => [allow.ownerDefinedIn('owner')]),
 
     generateOutline: a
       .mutation()
