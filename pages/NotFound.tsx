@@ -7,114 +7,104 @@ export default function NotFound() {
   const navigate = useNavigate();
 
   const handleBack = () => {
-    if (window.history.length > 1) {
+    if (window.history.state?.idx > 0) {
       navigate(-1);
     } else {
-      navigate('/learn', { replace: true });
+      navigate('/', { replace: true });
     }
   };
 
   return (
-    <div className="relative min-h-[100dvh] overflow-hidden bg-[#03131E] text-white">
+    <div
+      className="
+        relative isolate
+        min-h-[100dvh]
+        overflow-hidden
+        bg-[#03131E]
+        text-white
+      "
+    >
       {/* ================================================================
           BACKGROUND
           ================================================================ */}
 
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-      >
-        {/* Main background */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_8%,rgba(8,61,88,0.42)_0%,rgba(3,28,42,0.22)_38%,#03131E_82%)]" />
+        className="
+          pointer-events-none
+          fixed inset-0 -z-10
+          bg-[radial-gradient(
+            ellipse_at_50%_35%,
+            #082B40_0%,
+            #041C2B_42%,
+            #03131E_82%
+          )]
+        "
+      />
 
-        {/* Soft top light */}
-        <div className="absolute left-1/2 top-[-180px] h-[420px] w-[650px] -translate-x-1/2 rounded-full bg-[#0A6B9C]/15 blur-[110px]" />
-
-        {/* Subtle orange glow behind mascot */}
-        <div className="absolute left-1/2 top-[36%] h-[260px] w-[360px] -translate-x-1/2 rounded-full bg-[#FF6B00]/8 blur-[100px]" />
-
-        {/* Bottom atmospheric glow */}
-        <div className="absolute bottom-[-180px] left-1/2 h-[350px] w-[800px] -translate-x-1/2 rounded-full bg-[#06334B]/25 blur-[110px]" />
-
-        {/* Subtle underwater particles */}
-        <span className="absolute left-[28%] top-[24%] h-1 w-1 rounded-full bg-[#7EC5E2]/25" />
-        <span className="absolute left-[54%] top-[14%] h-1.5 w-1.5 rounded-full bg-[#7EC5E2]/20" />
-        <span className="absolute right-[29%] top-[28%] h-1 w-1 rounded-full bg-[#7EC5E2]/20" />
-        <span className="absolute left-[19%] top-[60%] h-1 w-1 rounded-full bg-[#7EC5E2]/15" />
-        <span className="absolute right-[18%] top-[55%] h-1 w-1 rounded-full bg-[#7EC5E2]/15" />
-        <span className="absolute right-[32%] bottom-[17%] h-1 w-1 rounded-full bg-[#7EC5E2]/15" />
-
-        {/* Small bubbles */}
-        <span className="absolute left-[38%] top-[21%] h-5 w-5 rounded-full border border-[#4E9AC0]/35 bg-[#1C7195]/8" />
-
-        <span className="absolute left-[57%] top-[30%] h-2.5 w-2.5 rounded-full border border-[#4E9AC0]/25" />
-
-        <span className="absolute right-[27%] top-[38%] h-3 w-3 rounded-full border border-[#4E9AC0]/25" />
-      </div>
+      <div
+        aria-hidden="true"
+        className="
+          pointer-events-none
+          fixed
+          left-1/2
+          top-[38%]
+          h-[330px]
+          w-[460px]
+          -translate-x-1/2
+          -translate-y-1/2
+          rounded-full
+          bg-[#0A5577]/10
+          blur-[110px]
+        "
+      />
 
       {/* ================================================================
-          FIXED HEADER
-          
-          Same visual position as the Terms / Privacy pages.
+          HEADER
           ================================================================ */}
 
-      <header className="fixed inset-x-0 top-0 z-50">
-        {/* Very subtle top blur */}
-        <div
-          aria-hidden="true"
-          className="
-            absolute
-            inset-x-0
-            top-0
-            h-[105px]
-            bg-[#03131E]/30
-            backdrop-blur-[6px]
-          "
-        />
-
-        <div
-          className="
-            relative
-            flex
-            items-center
-            gap-4
-            px-6
-            pt-6
-            sm:px-8
-            sm:pt-8
-          "
-        >
-          {/* Back button */}
+      <header
+        className="
+          absolute
+          inset-x-0
+          top-0
+          z-50
+          px-5
+          pt-5
+          sm:px-6
+          sm:pt-6
+          md:px-7
+          md:pt-7
+          lg:px-8
+          lg:pt-8
+        "
+      >
+        <div className="flex items-center gap-2">
+          {/* Back */}
           <button
             type="button"
             onClick={handleBack}
             aria-label="Go back"
             className="
               flex
-              h-[54px]
-              w-[54px]
+              h-10
+              w-10
               shrink-0
               items-center
               justify-center
               rounded-full
-              border
-              border-[#294454]
-              bg-[#071A27]/55
-              text-[#A7B8C2]
-              backdrop-blur-sm
-              transition-all
-              duration-200
-              hover:border-[#536C7C]
-              hover:bg-[#0A2232]/75
+              text-[#71858E]
+              transition-colors
+              hover:bg-white/[0.04]
               hover:text-white
               active:scale-95
-              focus:outline-none
-              focus-visible:border-[#FF6B00]
-              focus-visible:text-white
+              focus-visible:outline-2
+              focus-visible:outline-offset-2
+              focus-visible:outline-[#FF6B00]
             "
           >
             <ArrowLeft
-              className="h-[23px] w-[23px]"
+              className="h-[22px] w-[22px]"
               strokeWidth={1.8}
             />
           </button>
@@ -122,19 +112,24 @@ export default function NotFound() {
           {/* Grokit logo */}
           <Link
             to="/"
-            aria-label="Go to Grokit home"
+            aria-label="Grokit home"
             className="
               flex
+              h-[42px]
+              w-[112px]
               shrink-0
               items-center
-              transition-opacity
-              duration-200
-              hover:opacity-90
+              overflow-hidden
             "
           >
             <GrokitLogo
-              size={88}
-              className="h-auto w-auto"
+              size={112}
+              className="
+                !h-auto
+                !w-[112px]
+                !max-w-none
+                object-contain
+              "
             />
           </Link>
         </div>
@@ -146,26 +141,27 @@ export default function NotFound() {
 
       <main
         className="
-          relative
-          z-10
           flex
           min-h-[100dvh]
+          w-full
           items-center
           justify-center
           px-5
-          pb-10
-          pt-[110px]
-          sm:px-8
-          sm:pt-[120px]
+          pb-8
+          pt-[86px]
+          sm:px-6
+          sm:pb-10
+          sm:pt-[92px]
         "
       >
         <div
           className="
             flex
             w-full
-            max-w-[900px]
+            max-w-[800px]
             flex-col
             items-center
+            justify-center
             text-center
           "
         >
@@ -175,65 +171,67 @@ export default function NotFound() {
 
           <div
             className="
-              relative
               flex
-              h-[270px]
               w-full
               items-center
               justify-center
-              sm:h-[330px]
-              md:h-[360px]
             "
           >
-            {/* Soft glow */}
-            <div
-              aria-hidden="true"
-              className="
-                absolute
-                left-1/2
-                top-1/2
-                h-[210px]
-                w-[280px]
-                -translate-x-1/2
-                -translate-y-1/2
-                rounded-full
-                bg-[#FF6B00]/10
-                blur-[80px]
-              "
-            />
-
             <img
               src={notFoundMascot}
-              alt="Grokit octopus looking confused"
+              alt="Confused Grokit octopus"
+              width={275}
+              height={238}
               className="
-                relative
-                z-10
+                block
                 h-auto
-                w-[250px]
-                max-w-[80vw]
+                w-[225px]
+                max-w-[78vw]
                 object-contain
-                drop-shadow-[0_22px_35px_rgba(0,0,0,0.35)]
-                sm:w-[310px]
-                md:w-[350px]
+                drop-shadow-[0_16px_30px_rgba(0,0,0,0.24)]
+                sm:w-[250px]
+                md:w-[275px]
               "
             />
           </div>
 
           {/* ============================================================
-              TEXT
+              ERROR LABEL + HEADING
               ============================================================ */}
 
-          <div className="-mt-2 sm:-mt-5">
+          <div
+            className="
+              mt-7
+              flex
+              flex-col
+              items-center
+            "
+          >
+            <p
+              className="
+                font-sans
+                text-[11px]
+                font-extrabold
+                uppercase
+                tracking-[0.16em]
+                text-[#71858E]
+                sm:text-[12px]
+              "
+            >
+              404 · Page not found
+            </p>
+
             <h1
               className="
+                mt-2.5
                 font-display
-                text-[38px]
+                text-[34px]
                 font-extrabold
-                leading-[1.05]
-                tracking-[-0.035em]
+                leading-[1.08]
+                tracking-[-0.025em]
                 text-white
-                sm:text-[48px]
-                md:text-[54px]
+                sm:text-[40px]
+                md:text-[46px]
               "
             >
               This page drifted away
@@ -241,13 +239,13 @@ export default function NotFound() {
 
             <p
               className="
-                mt-4
+                mt-3
                 font-sans
-                text-[17px]
+                text-[16px]
                 leading-relaxed
-                text-[#AABDCB]
-                sm:text-[19px]
-                md:text-[21px]
+                text-[#9DB1BC]
+                sm:text-[17px]
+                md:text-[18px]
               "
             >
               Let’s get you back to your path.
@@ -255,7 +253,7 @@ export default function NotFound() {
           </div>
 
           {/* ============================================================
-              ACTIONS
+              BUTTONS
               ============================================================ */}
 
           <div
@@ -266,11 +264,11 @@ export default function NotFound() {
               flex-col
               items-center
               justify-center
-              gap-4
+              gap-3
               sm:mt-9
               sm:w-auto
               sm:flex-row
-              sm:gap-7
+              sm:gap-4
             "
           >
             {/* Back to Learn */}
@@ -279,40 +277,37 @@ export default function NotFound() {
               className="
                 group
                 flex
-                h-[62px]
+                h-[54px]
                 w-full
-                max-w-[300px]
+                max-w-[250px]
                 items-center
                 justify-center
-                gap-4
+                gap-3
                 rounded-full
                 bg-[#FF6B00]
-                px-8
-                font-display
-                text-[18px]
+                px-7
+                font-sans
+                text-[15px]
                 font-extrabold
                 text-white
-                shadow-[0_7px_0_#C94713,0_0_30px_rgba(255,107,0,0.28)]
+                shadow-[0_4px_0_#C94713]
                 transition-all
-                duration-200
+                duration-150
                 hover:brightness-110
-                hover:shadow-[0_7px_0_#C94713,0_0_40px_rgba(255,107,0,0.38)]
-                active:translate-y-[3px]
-                active:shadow-[0_3px_0_#C94713]
-                focus:outline-none
-                focus-visible:ring-2
-                focus-visible:ring-[#FF8A3D]
-                focus-visible:ring-offset-2
-                focus-visible:ring-offset-[#03131E]
-                sm:w-[300px]
+                active:translate-y-[2px]
+                active:shadow-[0_2px_0_#C94713]
+                focus-visible:outline-2
+                focus-visible:outline-offset-4
+                focus-visible:outline-[#FF8A3D]
+                sm:w-[245px]
               "
             >
               <span>Back to Learn</span>
 
               <ArrowRight
                 className="
-                  h-5
-                  w-5
+                  h-[18px]
+                  w-[18px]
                   transition-transform
                   duration-200
                   group-hover:translate-x-1
@@ -326,33 +321,30 @@ export default function NotFound() {
               to="/"
               className="
                 flex
-                h-[62px]
+                h-[54px]
                 w-full
-                max-w-[190px]
+                max-w-[150px]
                 items-center
                 justify-center
                 rounded-full
                 border
                 border-[#345066]
-                bg-[#071925]/30
-                px-8
+                bg-transparent
+                px-7
                 font-sans
-                text-[17px]
-                font-semibold
-                text-[#D0DCE5]
-                backdrop-blur-sm
+                text-[15px]
+                font-bold
+                text-[#C7D4DC]
                 transition-all
                 duration-200
-                hover:border-[#5A7488]
-                hover:bg-[#0A2231]/60
+                hover:border-[#587182]
+                hover:bg-white/[0.035]
                 hover:text-white
                 active:scale-[0.98]
-                focus:outline-none
-                focus-visible:ring-2
-                focus-visible:ring-[#FF8A3D]
-                focus-visible:ring-offset-2
-                focus-visible:ring-offset-[#03131E]
-                sm:w-[170px]
+                focus-visible:outline-2
+                focus-visible:outline-offset-4
+                focus-visible:outline-[#FF8A3D]
+                sm:w-[145px]
               "
             >
               Home
