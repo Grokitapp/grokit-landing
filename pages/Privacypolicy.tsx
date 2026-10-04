@@ -3,27 +3,6 @@ import { ArrowLeft } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
 import type { ReactNode } from 'react';
 
-// ---------------------------------------------------------------------------
-// Grokit Privacy Policy
-//
-// Last revised: September 8, 2026
-//
-// IMPORTANT:
-// The following company/legal details must be completed before production:
-//
-// - Legal company name
-// - Registered address
-// - AWS region(s)
-// - Analytics provider, if any
-// - Email/waitlist provider, if any
-// - Verified Anthropic data-handling language
-// - Actual account-deletion timeline
-// - Data Protection / Grievance Officer details, if required
-// - EU/UK representative details, if required
-//
-// Please have the final Privacy Policy reviewed by qualified legal counsel.
-// ---------------------------------------------------------------------------
-
 const LAST_REVISED = 'September 8, 2026';
 const CONTACT_EMAIL = 'usegrokit@gmail.com';
 
@@ -39,8 +18,7 @@ function Section({
   return (
     <section
       className="
-        border-b
-        border-[#203442]
+        border-b border-[#203442]
         py-8
         first:pt-0
         last:border-b-0
@@ -180,9 +158,9 @@ export default function PrivacyPolicy() {
 
   return (
     <div className="min-h-[100dvh] bg-[#06131D] text-white">
-      {/* ================================================================= */}
-      {/* FIXED HEADER                                                      */}
-      {/* ================================================================= */}
+      {/* ================================================================ */}
+      {/* FIXED HEADER                                                     */}
+      {/* ================================================================ */}
 
       <header
         className="
@@ -190,106 +168,111 @@ export default function PrivacyPolicy() {
           inset-x-0
           top-0
           z-50
-          h-[108px]
+          h-[100px]
           pointer-events-none
         "
       >
-        {/* Subtle top blur / glass layer */}
+        {/* Subtle blur at the top while content scrolls underneath */}
         <div
           className="
             absolute
             inset-0
-            bg-[#06131D]/70
-            backdrop-blur-[10px]
-            [-webkit-backdrop-filter:blur(10px)]
+            bg-[#06131D]/72
+            backdrop-blur-[9px]
+            [-webkit-backdrop-filter:blur(9px)]
           "
         />
 
-        {/* Very subtle fade at the bottom */}
+        {/* Very subtle bottom fade */}
         <div
           className="
             absolute
             inset-x-0
             bottom-0
-            h-10
+            h-8
             bg-gradient-to-b
             from-[#06131D]/10
             to-transparent
           "
         />
 
-        {/* --------------------------------------------------------------- */}
-        {/* BACK BUTTON                                                      */}
-        {/* --------------------------------------------------------------- */}
+        {/* ============================================================ */}
+        {/* BACK + LOGO                                                   */}
+        {/* ============================================================ */}
 
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          aria-label="Go back"
+        <div
           className="
-            pointer-events-auto
             absolute
-            left-6
-            top-[42px]
+            top-5
+            left-5
+            z-10
             flex
-            h-9
-            w-9
+            h-10
             items-center
-            justify-center
-            bg-transparent
-            p-0
-            text-[#8295A3]
-            transition-colors
-            duration-200
-            hover:text-white
-            focus:outline-none
-            focus-visible:text-white
-            sm:left-10
-            lg:left-12
+            gap-3
+            sm:top-6
+            sm:left-6
+            md:top-7
+            md:left-7
+            lg:top-8
+            lg:left-8
           "
         >
-          <ArrowLeft
+          {/* Same position as signup/auth back button,
+              but WITHOUT the circle. */}
+
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Back"
             className="
-              h-7
-              w-7
-              transition-transform
+              pointer-events-auto
+              flex
+              h-10
+              w-10
+              shrink-0
+              items-center
+              justify-center
+              bg-transparent
+              p-0
+              text-[#71858E]
+              transition-colors
               duration-200
-              hover:-translate-x-0.5
+              hover:text-white
+              focus:outline-none
+              focus-visible:text-white
             "
-            strokeWidth={1.8}
-          />
-        </button>
+          >
+            <ArrowLeft
+              className="h-[22px] w-[22px]"
+              strokeWidth={1.8}
+            />
+          </button>
 
-        {/* --------------------------------------------------------------- */}
-        {/* CENTERED GROKIT LOGO                                             */}
-        {/* --------------------------------------------------------------- */}
-
-        <Link
-          to="/"
-          aria-label="Grokit home"
-          className="
-            pointer-events-auto
-            absolute
-            left-1/2
-            top-[32px]
-            flex
-            -translate-x-1/2
-            items-center
-            transition-opacity
-            duration-200
-            hover:opacity-90
-          "
-        >
-          <GrokitLogo
-            size={68}
-            className="text-[#FF6B00]"
-          />
-        </Link>
+          {/* Grokit logo beside the back button */}
+          <Link
+            to="/"
+            aria-label="Grokit home"
+            className="
+              pointer-events-auto
+              flex
+              items-center
+              transition-opacity
+              duration-200
+              hover:opacity-90
+            "
+          >
+            <GrokitLogo
+              size={88}
+              className="text-orange"
+            />
+          </Link>
+        </div>
       </header>
 
-      {/* ================================================================= */}
-      {/* MAIN                                                              */}
-      {/* ================================================================= */}
+      {/* ================================================================ */}
+      {/* PAGE CONTENT                                                      */}
+      {/* ================================================================ */}
 
       <main
         className="
@@ -298,16 +281,16 @@ export default function PrivacyPolicy() {
           max-w-[900px]
           px-6
           pb-24
-          pt-[148px]
+          pt-[132px]
           sm:px-8
-          sm:pt-[154px]
+          sm:pt-[138px]
           lg:px-10
-          lg:pt-[158px]
+          lg:pt-[142px]
         "
       >
-        {/* ================================================================= */}
-        {/* TITLE                                                             */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* TITLE                                                         */}
+        {/* ============================================================ */}
 
         <div className="mb-12 sm:mb-14">
           <h1
@@ -356,9 +339,9 @@ export default function PrivacyPolicy() {
           </p>
         </div>
 
-        {/* ================================================================= */}
-        {/* 1. OVERVIEW                                                       */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 1                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={1}
@@ -383,9 +366,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 2. INFORMATION WE COLLECT                                         */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 2                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={2}
@@ -479,9 +462,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 3. HOW WE USE                                                     */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 3                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={3}
@@ -538,9 +521,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 4. AI INVOLVED                                                    */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 4                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={4}
@@ -580,9 +563,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 5. SHARING                                                        */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 5                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={5}
@@ -648,9 +631,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 6. WHERE DATA IS STORED                                           */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 6                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={6}
@@ -667,9 +650,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 7. RIGHTS                                                         */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 7                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={7}
@@ -757,9 +740,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 8. RETENTION                                                      */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 8                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={8}
@@ -778,9 +761,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 9. SECURITY                                                       */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 9                                                              */}
+        {/* ============================================================ */}
 
         <Section
           number={9}
@@ -799,9 +782,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 10. CHILDREN                                                      */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 10                                                             */}
+        {/* ============================================================ */}
 
         <Section
           number={10}
@@ -818,9 +801,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 11. THIRD PARTY                                                   */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 11                                                             */}
+        {/* ============================================================ */}
 
         <Section
           number={11}
@@ -834,9 +817,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 12. DO NOT TRACK                                                  */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 12                                                             */}
+        {/* ============================================================ */}
 
         <Section
           number={12}
@@ -849,9 +832,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 13. CHANGES                                                       */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 13                                                             */}
+        {/* ============================================================ */}
 
         <Section
           number={13}
@@ -865,9 +848,9 @@ export default function PrivacyPolicy() {
           </p>
         </Section>
 
-        {/* ================================================================= */}
-        {/* 14. CONTACT                                                       */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* 14                                                             */}
+        {/* ============================================================ */}
 
         <Section
           number={14}
@@ -892,9 +875,9 @@ export default function PrivacyPolicy() {
           </div>
         </Section>
 
-        {/* ================================================================= */}
-        {/* SEE ALSO                                                          */}
-        {/* ================================================================= */}
+        {/* ============================================================ */}
+        {/* TERMS LINK                                                     */}
+        {/* ============================================================ */}
 
         <div className="border-t border-[#203442] pt-8">
           <p
