@@ -6,6 +6,7 @@ import { GrokitLogo } from '../../components/Grokitlogo';
 import {
   confirmEmailSignUp,
   getAuthenticatedUser,
+  resendEmailSignUpCode,
   signInWithEmail,
   signInWithGoogle,
   signUpWithEmail,
@@ -23,7 +24,16 @@ interface AuthScreenProps {
   onAuthenticated: () => void;
 }
 
+// -----------------------------------------------------------------------------
+// Constants
+// -----------------------------------------------------------------------------
+
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RESEND_COOLDOWN_SECONDS = 60;
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
 
 const getErrorMessage = (error: unknown) =>
   error instanceof Error
@@ -31,7 +41,9 @@ const getErrorMessage = (error: unknown) =>
     : 'Something went wrong. Please try again.';
 
 const isAlreadySignedInError = (message: string) =>
-  /already.*signed.?in|signed.?in.*user|UserAlreadyAuthenticated/i.test(message);
+  /already.*signed.?in|signed.?in.*user|UserAlreadyAuthenticated/i.test(
+    message,
+  );
 
 const formatMissingPasswordError = (password: string) => {
   const missing = getMissingPasswordRequirements(password);
@@ -51,7 +63,9 @@ const formatMissingPasswordError = (password: string) => {
   } to your password.`;
 };
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Shared styles
+// -----------------------------------------------------------------------------
 
 const errorTextClasses =
   'flex items-start gap-2 text-sm text-red-400 font-sans font-semibold';
@@ -60,23 +74,43 @@ const alertIconClasses = 'w-4 h-4 shrink-0 mt-0.5';
 
 const primaryButtonClasses = `
   w-full h-[56px] rounded-full bg-orange text-white font-sans font-extrabold text-[15px]
-  flex items-center justify-center shadow-[0_4px_0_#C94713] hover:brightness-105
-  active:translate-y-[2px] active:shadow-none transition-all duration-150
+  flex items-center justify-center shadow-[0_4px_0_#C94713]
+  hover:brightness-105
+  active:translate-y-[2px] active:shadow-none
+  transition-all duration-150
   disabled:opacity-40 disabled:pointer-events-none
 `;
 
 const backButtonClasses = `
-  absolute top-5 left-5 sm:top-6 sm:left-6 md:top-7 md:left-7 lg:top-8 lg:left-8 z-10
-  flex items-center justify-center w-10 h-10 rounded-full text-[#71858E]
-  hover:text-white hover:bg-white/[0.04] transition-colors
+  absolute top-5 left-5
+  sm:top-6 sm:left-6
+  md:top-7 md:left-7
+  lg:top-8 lg:left-8
+  z-10
+  flex items-center justify-center
+  w-10 h-10
+  rounded-full
+  text-[#71858E]
+  hover:text-white
+  hover:bg-white/[0.04]
+  transition-colors
 `;
 
 const inputBaseClasses = `
-  w-full h-[56px] px-5 rounded-full bg-[#202F35] border text-white font-sans text-[15px]
-  placeholder:text-[#91A4AC] outline-none transition-colors disabled:opacity-50
+  w-full h-[56px] px-5 rounded-full
+  bg-[#202F35]
+  border
+  text-white
+  font-sans text-[15px]
+  placeholder:text-[#91A4AC]
+  outline-none
+  transition-colors
+  disabled:opacity-50
 `;
 
-// ─── Reusable components ─────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Reusable components
+// -----------------------------------------------------------------------------
 
 function ErrorMessage({
   message,
@@ -114,9 +148,13 @@ function BackButton({
   );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
+// Main component
+// -----------------------------------------------------------------------------
 
-export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
+export default function AuthScreen({
+  onAuthenticated,
+}: AuthScreenProps) {
   const navigate = useNavigate();
 
   const [mode, setMode] = useState<AuthMode>('signup');
@@ -128,7 +166,12 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   // Signup-only confirmation password.
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // Signup email verification code.
   const [confirmCode, setConfirmCode] = useState('');
+
+  // Signup OTP resend state.
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendingCode, setResendingCode] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -137,11 +180,14 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
   const [error, setError] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const [confirmPasswordError, setConfirmPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] =
+    useState('');
 
   const isBusy = submitting || googleLoading;
 
-  // ── Existing session ────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Existing session
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     let active = true;
@@ -170,13 +216,24 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         payload.event === 'signedIn'
       ) {
         getAuthenticatedUser()
-          .then(() => active && onAuthenticated())
-          .catch(() => active && setLoading(false));
+          .then(() => {
+            if (active) {
+              onAuthenticated();
+            }
+          })
+          .catch(() => {
+            if (active) {
+              setLoading(false);
+            }
+          });
       }
 
-      if (payload.event === 'signInWithRedirect_failure') {
+      if (
+        payload.event === 'signInWithRedirect_failure'
+      ) {
         setGoogleLoading(false);
         setLoading(false);
+
         setError(
           'Google sign-in could not be completed. Please try again.',
         );
@@ -189,7 +246,45 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     };
   }, [onAuthenticated]);
 
-  // ── Mode switching ──────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Signup verification countdown
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (view !== 'confirm' || resendCooldown <= 0) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      setResendCooldown((current) => {
+        if (current <= 1) {
+          window.clearInterval(timer);
+          return 0;
+        }
+
+        return current - 1;
+      });
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [view, resendCooldown]);
+
+  // ---------------------------------------------------------------------------
+  // Reset OTP state when leaving confirmation
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (view !== 'confirm') {
+      setResendCooldown(0);
+      setResendingCode(false);
+    }
+  }, [view]);
+
+  // ---------------------------------------------------------------------------
+  // Mode switching
+  // ---------------------------------------------------------------------------
 
   const switchMode = (nextMode: AuthMode) => {
     setMode(nextMode);
@@ -201,11 +296,14 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     setConfirmPasswordError('');
     setConfirmCode('');
 
-    // Confirm password only belongs to signup.
+    setResendCooldown(0);
+    setResendingCode(false);
     setConfirmPassword('');
   };
 
-  // ── Validation ──────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Validation
+  // ---------------------------------------------------------------------------
 
   const validateForm = () => {
     let valid = true;
@@ -227,8 +325,13 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     if (!password) {
       setPasswordError('Password is required.');
       valid = false;
-    } else if (mode === 'signup' && !isStrongPassword(password)) {
-      setPasswordError(formatMissingPasswordError(password));
+    } else if (
+      mode === 'signup' &&
+      !isStrongPassword(password)
+    ) {
+      setPasswordError(
+        formatMissingPasswordError(password),
+      );
       valid = false;
     } else {
       setPasswordError('');
@@ -237,10 +340,14 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     // Confirm password — signup only.
     if (mode === 'signup') {
       if (!confirmPassword) {
-        setConfirmPasswordError('Please confirm your password.');
+        setConfirmPasswordError(
+          'Please confirm your password.',
+        );
         valid = false;
       } else if (password !== confirmPassword) {
-        setConfirmPasswordError('Passwords do not match.');
+        setConfirmPasswordError(
+          'Passwords do not match.',
+        );
         valid = false;
       } else {
         setConfirmPasswordError('');
@@ -252,12 +359,16 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     return valid;
   };
 
-  // ── Email submit ────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Email submit
+  // ---------------------------------------------------------------------------
 
   const handleSubmit = async () => {
     setError('');
 
-    if (!validateForm()) return;
+    if (!validateForm()) {
+      return;
+    }
 
     setSubmitting(true);
 
@@ -265,20 +376,42 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       const username = email.trim();
 
       if (mode === 'signup') {
-        const { nextStep } = await signUpWithEmail(username, password);
+        const { nextStep } = await signUpWithEmail(
+          username,
+          password,
+        );
 
-        if (nextStep.signUpStep === 'CONFIRM_SIGN_UP') {
-          setView('confirm');
-        } else if (
-          nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN'
+        if (
+          nextStep.signUpStep === 'CONFIRM_SIGN_UP'
         ) {
-          const result = await signInWithEmail(username, password);
+          setConfirmCode('');
 
-          if (result.nextStep.signInStep === 'DONE') {
+          setResendCooldown(
+            RESEND_COOLDOWN_SECONDS,
+          );
+
+          setView('confirm');
+          setSubmitting(false);
+        } else if (
+          nextStep.signUpStep ===
+          'COMPLETE_AUTO_SIGN_IN'
+        ) {
+          const result = await signInWithEmail(
+            username,
+            password,
+          );
+
+          if (
+            result.nextStep.signInStep === 'DONE'
+          ) {
             onAuthenticated();
+            return;
           }
+
+          setSubmitting(false);
         } else {
           onAuthenticated();
+          return;
         }
       } else {
         const { nextStep } = await signInWithEmail(
@@ -289,20 +422,27 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
         switch (nextStep.signInStep) {
           case 'DONE':
             onAuthenticated();
-            break;
+            return;
 
           case 'CONFIRM_SIGN_UP':
+            setConfirmCode('');
+            setResendCooldown(
+              RESEND_COOLDOWN_SECONDS,
+            );
             setView('confirm');
+            setSubmitting(false);
             break;
 
           case 'RESET_PASSWORD':
             setView('forgot');
+            setSubmitting(false);
             break;
 
           default:
             setError(
               'Your account requires an additional sign-in step. Please contact support.',
             );
+            setSubmitting(false);
         }
       }
     } catch (err) {
@@ -310,19 +450,25 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
       if (isAlreadySignedInError(message)) {
         onAuthenticated();
-      } else {
-        setError(message);
+        return;
       }
-    } finally {
+
+      setError(message);
       setSubmitting(false);
     }
   };
 
-  // ── Confirm email ──────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Confirm email
+  // ---------------------------------------------------------------------------
 
   const handleConfirm = async () => {
-    if (!confirmCode.trim()) {
-      setError('Enter the verification code from your email.');
+    const trimmedCode = confirmCode.trim();
+
+    if (!trimmedCode) {
+      setError(
+        'Enter the verification code from your email.',
+      );
       return;
     }
 
@@ -332,54 +478,124 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     try {
       const username = email.trim();
 
-      await confirmEmailSignUp(username, confirmCode.trim());
+      // 1. Verify the email.
+      await confirmEmailSignUp(
+        username,
+        trimmedCode,
+      );
 
-      const result = await signInWithEmail(username, password);
+      // 2. Sign the user in.
+      const result = await signInWithEmail(
+        username,
+        password,
+      );
 
-      if (result.nextStep.signInStep === 'DONE') {
-        onAuthenticated();
-      } else if (
-        result.nextStep.signInStep === 'RESET_PASSWORD'
+      // 3. Only finish loading after authentication
+      //    has actually completed.
+      if (
+        result.nextStep.signInStep === 'DONE'
       ) {
-        setView('forgot');
-      } else {
-        setError(
-          'Your account needs one more sign-in step. Please try logging in again.',
-        );
+        onAuthenticated();
+
+        // IMPORTANT:
+        // Do not setSubmitting(false) here.
+        // The auth screen should remain in "Verifying..."
+        // until the parent redirects to the next page.
+        return;
       }
+
+      if (
+        result.nextStep.signInStep ===
+        'RESET_PASSWORD'
+      ) {
+        setSubmitting(false);
+        setView('forgot');
+        return;
+      }
+
+      setSubmitting(false);
+      setError(
+        'Your account needs one more sign-in step. Please try logging in again.',
+      );
     } catch (err) {
       const message = getErrorMessage(err);
 
       if (isAlreadySignedInError(message)) {
         onAuthenticated();
-      } else {
-        setError(message);
+
+        // Keep "Verifying..." visible while the parent
+        // redirects the authenticated user.
+        return;
       }
-    } finally {
+
+      setError(message);
       setSubmitting(false);
     }
   };
 
-  // ── Google ───────────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Resend signup verification code
+  // ---------------------------------------------------------------------------
+
+  const handleResendCode = async () => {
+    if (
+      resendCooldown > 0 ||
+      resendingCode ||
+      submitting
+    ) {
+      return;
+    }
+
+    const username = email.trim();
+
+    if (!username) {
+      setError(
+        'We could not determine your email address. Please go back and try again.',
+      );
+      return;
+    }
+
+    setError('');
+    setResendingCode(true);
+
+    try {
+      await resendEmailSignUpCode(username);
+
+      setResendCooldown(
+        RESEND_COOLDOWN_SECONDS,
+      );
+    } catch (err) {
+      setError(
+        getErrorMessage(err),
+      );
+    } finally {
+      setResendingCode(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // Google
+  // ---------------------------------------------------------------------------
 
   const handleGoogle = async () => {
-    if (googleLoading) return;
+    if (googleLoading) {
+      return;
+    }
 
     setError('');
     setGoogleLoading(true);
 
     try {
       await signInWithGoogle();
-
-      // Redirect happens immediately.
-      // Keep the button disabled until the auth event returns.
     } catch (err) {
       setGoogleLoading(false);
       setError(getErrorMessage(err));
     }
   };
 
-  // ── Loading state ────────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Loading state
+  // ---------------------------------------------------------------------------
 
   if (loading) {
     return (
@@ -398,7 +614,9 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     );
   }
 
-  // ── Forgot password view ────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Forgot password view
+  // ---------------------------------------------------------------------------
 
   if (view === 'forgot') {
     return (
@@ -420,21 +638,33 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
     );
   }
 
-  // ── Email confirmation view ─────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Email confirmation view
+  // ---------------------------------------------------------------------------
 
   if (view === 'confirm') {
+    const canResend =
+      resendCooldown === 0 &&
+      !resendingCode &&
+      !submitting;
+
     return (
-      <div className="min-h-screen bg-[#131F24] flex flex-col relative overflow-hidden">
+      <div className="min-h-screen bg-[#131F24] flex flex-col relative overflow-hidden text-white">
         <BackButton
           onClick={() => {
+            if (submitting) return;
+
             setView('form');
             setError('');
+            setConfirmCode('');
+            setResendCooldown(0);
           }}
           label="Back"
         />
 
         <main className="min-h-screen flex items-center justify-center px-5 py-20 sm:py-24">
           <div className="w-full max-w-[450px] text-center">
+            {/* Logo */}
             <div className="flex justify-center mb-5">
               <GrokitLogo
                 size={104}
@@ -442,18 +672,22 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               />
             </div>
 
+            {/* Heading */}
             <h1 className="font-display text-[30px] sm:text-[32px] text-white font-extrabold leading-[1.1] tracking-tight">
               Check your email
             </h1>
 
+            {/* Description */}
             <p className="text-[#91A4AC] font-sans text-[15px] sm:text-base leading-relaxed mt-2 mb-6">
               We sent a verification code to{' '}
               <span className="font-bold text-white">
                 {email}
               </span>
-              . Enter it below to finish creating your account.
+              . Enter it below to finish creating your
+              account.
             </p>
 
+            {/* Verification code */}
             <input
               value={confirmCode}
               onChange={(e) => {
@@ -463,34 +697,85 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               placeholder="Verification code"
               inputMode="numeric"
               autoComplete="one-time-code"
+              disabled={submitting}
               className="
-                w-full h-[56px] px-5 rounded-full bg-[#202F35] border border-[#3A4D55]
-                text-white font-sans text-base text-center tracking-[0.3em] outline-none
-                focus:border-orange transition-colors placeholder:tracking-normal
-                placeholder:font-normal placeholder:text-[#91A4AC]
+                w-full h-[56px] px-5 rounded-full
+                bg-[#202F35]
+                border border-[#3A4D55]
+                text-white
+                font-sans text-base
+                text-center
+                tracking-[0.3em]
+                outline-none
+                focus:border-orange
+                transition-colors
+                placeholder:tracking-normal
+                placeholder:font-normal
+                placeholder:text-[#91A4AC]
+                disabled:opacity-50
               "
             />
 
+            {/* General error */}
             <ErrorMessage
               message={error}
               className="mt-3 text-left"
             />
 
+            {/* Verify */}
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={!confirmCode.trim() || submitting}
+              disabled={
+                !confirmCode.trim() ||
+                submitting ||
+                resendingCode
+              }
               className={`${primaryButtonClasses} mt-4`}
             >
-              {submitting ? 'Verifying...' : 'Verify email'}
+              {submitting
+                ? 'Verifying...'
+                : 'Verify email'}
             </button>
+
+            {/* Resend section */}
+            <div className="mt-5 text-center">
+              <p className="text-[13px] sm:text-[14px] text-[#91A4AC] font-sans">
+                Didn't receive the code?
+              </p>
+
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={!canResend}
+                className="
+                  mt-1
+                  text-[13px] sm:text-[14px]
+                  font-sans font-extrabold
+                  text-orange
+                  transition-colors
+                  disabled:text-[#71858E]
+                  disabled:cursor-not-allowed
+                  hover:underline
+                  disabled:hover:no-underline
+                "
+              >
+                {resendingCode
+                  ? 'Sending...'
+                  : resendCooldown > 0
+                    ? `Resend code in ${resendCooldown}s`
+                    : 'Resend code'}
+              </button>
+            </div>
           </div>
         </main>
       </div>
     );
   }
 
-  // ── Main auth form ──────────────────────────────────────────────────────
+  // ---------------------------------------------------------------------------
+  // Main auth form
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="min-h-screen bg-[#131F24] relative overflow-x-hidden overflow-y-auto text-white">
@@ -503,22 +788,44 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
       <button
         type="button"
         onClick={() =>
-          switchMode(mode === 'signup' ? 'login' : 'signup')
+          switchMode(
+            mode === 'signup'
+              ? 'login'
+              : 'signup',
+          )
         }
         className="
-          absolute top-5 right-5 sm:top-6 sm:right-6 md:top-7 md:right-7 lg:top-8 lg:right-8 z-10
-          h-[46px] sm:h-[48px] px-5 sm:px-6 rounded-full border-2 border-[#3A4D55] bg-transparent
-          text-orange font-sans font-extrabold text-[12px] sm:text-[13px] tracking-wide
-          hover:border-orange hover:bg-white/[0.03] transition-all
+          absolute top-5 right-5
+          sm:top-6 sm:right-6
+          md:top-7 md:right-7
+          lg:top-8 lg:right-8
+          z-10
+          h-[46px] sm:h-[48px]
+          px-5 sm:px-6
+          rounded-full
+          border-2 border-[#3A4D55]
+          bg-transparent
+          text-orange
+          font-sans font-extrabold
+          text-[12px] sm:text-[13px]
+          tracking-wide
+          hover:border-orange
+          hover:bg-white/[0.03]
+          transition-all
         "
       >
-        {mode === 'signup' ? 'LOG IN' : 'SIGN UP'}
+        {mode === 'signup'
+          ? 'LOG IN'
+          : 'SIGN UP'}
       </button>
 
       <main
         className="
-          min-h-screen flex justify-center px-5 sm:px-6
-          pt-[88px] pb-8 sm:pt-[96px] sm:pb-10 md:pt-[104px] md:pb-12
+          min-h-screen flex justify-center
+          px-5 sm:px-6
+          pt-[88px] pb-8
+          sm:pt-[96px] sm:pb-10
+          md:pt-[104px] md:pb-12
         "
       >
         <div className="w-full max-w-[450px] flex flex-col">
@@ -533,8 +840,13 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
           {/* Heading */}
           <h1
             className="
-              font-display text-[30px] sm:text-[32px] text-white font-extrabold
-              leading-[1.1] tracking-tight text-center
+              font-display
+              text-[30px] sm:text-[32px]
+              text-white
+              font-extrabold
+              leading-[1.1]
+              tracking-tight
+              text-center
             "
           >
             {mode === 'signup'
@@ -545,8 +857,13 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
           {/* Subtitle */}
           <p
             className="
-              text-[#91A4AC] font-sans text-[15px] sm:text-base leading-relaxed
-              text-center mt-2 mb-6 sm:mb-7
+              text-[#91A4AC]
+              font-sans
+              text-[15px] sm:text-base
+              leading-relaxed
+              text-center
+              mt-2
+              mb-6 sm:mb-7
             "
           >
             {mode === 'signup'
@@ -597,7 +914,6 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   setPassword(value);
                   setPasswordError('');
 
-                  // Clear mismatch immediately once both values match.
                   if (
                     mode === 'signup' &&
                     confirmPassword &&
@@ -632,8 +948,6 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                     setConfirmPassword(value);
                     setConfirmPasswordError('');
 
-                    // Give immediate feedback once the user has entered
-                    // enough information to compare both passwords.
                     if (
                       value &&
                       password &&
@@ -646,7 +960,9 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   }}
                   placeholder="Confirm password"
                   autoComplete="new-password"
-                  error={Boolean(confirmPasswordError)}
+                  error={Boolean(
+                    confirmPasswordError,
+                  )}
                   disabled={isBusy}
                 />
 
@@ -668,8 +984,15 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                   setError('');
                 }}
                 className="
-                  text-[12px] text-[#91A4AC] font-sans font-extrabold uppercase tracking-wide
-                  hover:text-white hover:underline transition-colors
+                  text-[12px]
+                  text-[#91A4AC]
+                  font-sans
+                  font-extrabold
+                  uppercase
+                  tracking-wide
+                  hover:text-white
+                  hover:underline
+                  transition-colors
                 "
               >
                 Forgot password?
@@ -724,20 +1047,30 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
               type="button"
               onClick={() =>
                 switchMode(
-                  mode === 'signup' ? 'login' : 'signup',
+                  mode === 'signup'
+                    ? 'login'
+                    : 'signup',
                 )
               }
               className="text-orange font-bold hover:underline transition-colors"
             >
-              {mode === 'signup' ? 'Log in' : 'Sign up'}
+              {mode === 'signup'
+                ? 'Log in'
+                : 'Sign up'}
             </button>
           </p>
 
           {/* Legal */}
           <p
             className="
-              text-center text-[10px] sm:text-[11px] text-[#647981] font-sans leading-[1.5]
-              max-w-[390px] mx-auto mt-3
+              text-center
+              text-[10px] sm:text-[11px]
+              text-[#647981]
+              font-sans
+              leading-[1.5]
+              max-w-[390px]
+              mx-auto
+              mt-3
             "
           >
             By{' '}
@@ -748,7 +1081,12 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
             <Link
               to="/terms"
-              className="text-[#91A4AC] font-bold hover:text-white hover:underline"
+              className="
+                text-[#91A4AC]
+                font-bold
+                hover:text-white
+                hover:underline
+              "
             >
               Terms of Service
             </Link>{' '}
@@ -757,7 +1095,12 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
 
             <Link
               to="/privacy"
-              className="text-[#91A4AC] font-bold hover:text-white hover:underline"
+              className="
+                text-[#91A4AC]
+                font-bold
+                hover:text-white
+                hover:underline
+              "
             >
               Privacy Policy
             </Link>
