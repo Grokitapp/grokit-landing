@@ -8,25 +8,6 @@ import { Link, useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
 
-// ---------------------------------------------------------------------------
-// Grokit Terms of Service
-//
-// Last revised: September 8, 2026
-//
-// IMPORTANT:
-// The following company-specific legal details were not provided in the
-// current Grokit materials and must be completed before production use:
-//
-// - Legal company name
-// - Company type
-// - Governing-law country/state
-// - Court city/country
-// - Liability amount
-//
-// The Terms content below is based on the supplied Grokit Terms document.
-// Please have the final document reviewed by qualified legal counsel.
-// ---------------------------------------------------------------------------
-
 const LAST_REVISED = 'September 8, 2026';
 const CONTACT_EMAIL = 'usegrokit@gmail.com';
 
@@ -122,35 +103,48 @@ function Section({
   return (
     <section
       id={id}
-      className="scroll-mt-8 mb-14 sm:mb-16"
+      className="
+        scroll-mt-8
+        border-b
+        border-[#203442]
+        py-7
+        sm:py-8
+        last:border-b-0
+      "
     >
-      <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-4 sm:grid-cols-[44px_minmax(0,1fr)] sm:gap-5">
-        {/* Section number */}
+      <div
+        className="
+          grid
+          grid-cols-[40px_minmax(0,1fr)]
+          gap-4
+          sm:grid-cols-[44px_minmax(0,1fr)]
+          sm:gap-5
+        "
+      >
         <div
           aria-hidden="true"
           className="
-            pt-0.5
+            pt-1
             text-[20px]
-            sm:text-[22px]
             font-bold
             leading-none
             text-[#7890A8]
+            sm:text-[22px]
           "
         >
           {number}.
         </div>
 
-        {/* Section content */}
         <div className="min-w-0">
           <h2
             className="
               font-display
               text-[21px]
-              sm:text-[24px]
-              leading-[1.25]
               font-extrabold
+              leading-[1.25]
               tracking-[-0.02em]
               text-white
+              sm:text-[23px]
             "
           >
             {title}
@@ -162,9 +156,9 @@ function Section({
               space-y-4
               font-sans
               text-[15px]
-              sm:text-[16px]
-              leading-[1.75]
+              leading-[1.7]
               text-[#B8C7D5]
+              sm:text-[16px]
             "
           >
             {children}
@@ -225,8 +219,8 @@ function BulletList({
   return (
     <ul
       className="
-        space-y-1.5
         list-disc
+        space-y-2
         pl-5
         marker:text-[#FF6B00]
       "
@@ -259,54 +253,45 @@ export default function Terms() {
     [],
   );
 
-  // -------------------------------------------------------------------------
-  // Track the section currently visible in the viewport.
-  // -------------------------------------------------------------------------
-
   useEffect(() => {
-    const observers: IntersectionObserver[] = [];
-
-    sectionIds.forEach((id) => {
-      const element = document.getElementById(id);
-
-      if (!element) return;
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          const visibleEntries = entries
-            .filter((entry) => entry.isIntersecting)
-            .sort(
-              (a, b) =>
-                a.boundingClientRect.top -
-                b.boundingClientRect.top,
-            );
-
-          if (visibleEntries.length > 0) {
-            setActiveSection(
-              visibleEntries[0].target.id,
-            );
-          }
-        },
-        {
-          rootMargin: '-12% 0px -70% 0px',
-          threshold: 0,
-        },
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter(
+        (element): element is HTMLElement =>
+          element !== null,
       );
 
-      observer.observe(element);
-      observers.push(observer);
-    });
+    if (!elements.length) return;
 
-    return () => {
-      observers.forEach((observer) =>
-        observer.disconnect(),
-      );
-    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort(
+            (a, b) =>
+              a.boundingClientRect.top -
+              b.boundingClientRect.top,
+          );
+
+        if (visible.length > 0) {
+          setActiveSection(
+            visible[0].target.id,
+          );
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-15% 0px -70% 0px',
+        threshold: 0,
+      },
+    );
+
+    elements.forEach((element) =>
+      observer.observe(element),
+    );
+
+    return () => observer.disconnect();
   }, [sectionIds]);
-
-  // -------------------------------------------------------------------------
-  // Smooth-scroll to a section when clicking the right-side navigation.
-  // -------------------------------------------------------------------------
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -321,9 +306,9 @@ export default function Terms() {
 
   return (
     <div className="min-h-[100dvh] bg-[#06131D] text-white">
-      {/* =================================================================== */}
-      {/* HEADER                                                              */}
-      {/* =================================================================== */}
+      {/* ================================================================= */}
+      {/* HEADER                                                            */}
+      {/* ================================================================= */}
 
       <header
         className="
@@ -332,14 +317,13 @@ export default function Terms() {
           w-full
           max-w-[1440px]
           items-center
-          px-5
-          pt-5
+          px-6
+          pt-6
           sm:px-8
-          sm:pt-6
+          sm:pt-7
           lg:px-10
         "
       >
-        {/* Back button */}
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -347,55 +331,58 @@ export default function Terms() {
           className="
             group
             flex
-            h-11
-            w-11
+            h-[52px]
+            w-[52px]
             shrink-0
             items-center
             justify-center
             rounded-full
             border
-            border-[#203544]
-            bg-[#0C1C27]
-            text-[#D7E2EA]
-            shadow-[0_8px_30px_rgba(0,0,0,0.18)]
+            border-[#263D4B]
+            bg-[#0B1B26]
+            text-[#C8D5DE]
             transition-all
             duration-200
-            hover:border-[#355064]
-            hover:bg-[#112631]
+            hover:border-[#3A5261]
+            hover:bg-[#102631]
             hover:text-white
             focus:outline-none
             focus:ring-2
-            focus:ring-[#FF6B00]/50
+            focus:ring-[#FF6B00]/40
           "
         >
           <ArrowLeft
             className="
-              h-5
-              w-5
+              h-[23px]
+              w-[23px]
               transition-transform
               duration-200
               group-hover:-translate-x-0.5
             "
-            strokeWidth={2}
+            strokeWidth={1.8}
           />
         </button>
 
-        {/* Grokit logo */}
         <Link
           to="/"
           aria-label="Grokit home"
-          className="ml-5 flex items-center"
+          className="
+            ml-6
+            flex
+            shrink-0
+            items-center
+          "
         >
           <GrokitLogo
-            size={42}
+            size={52}
             className="text-[#FF6B00]"
           />
         </Link>
       </header>
 
-      {/* =================================================================== */}
-      {/* MAIN                                                                */}
-      {/* =================================================================== */}
+      {/* ================================================================= */}
+      {/* MAIN                                                              */}
+      {/* ================================================================= */}
 
       <main
         className="
@@ -408,7 +395,7 @@ export default function Terms() {
           sm:px-8
           sm:pt-12
           lg:px-10
-          lg:pt-8
+          lg:pt-9
         "
       >
         <div
@@ -416,20 +403,17 @@ export default function Terms() {
             grid
             grid-cols-1
             gap-14
-            lg:grid-cols-[minmax(0,720px)_240px]
-            lg:gap-20
+            lg:grid-cols-[minmax(0,700px)_250px]
+            lg:items-start
+            lg:gap-14
           "
         >
-          {/* ================================================================= */}
-          {/* TERMS CONTENT                                                     */}
-          {/* ================================================================= */}
+          {/* ============================================================= */}
+          {/* CONTENT                                                       */}
+          {/* ============================================================= */}
 
           <article className="min-w-0">
-            {/* ----------------------------------------------------------------- */}
-            {/* TITLE                                                             */}
-            {/* ----------------------------------------------------------------- */}
-
-            <div className="mb-12">
+            <div className="mb-7">
               <h1
                 className="
                   font-display
@@ -450,8 +434,8 @@ export default function Terms() {
                   mt-3
                   font-sans
                   text-[15px]
-                  sm:text-[16px]
                   text-[#8FA4B7]
+                  sm:text-[16px]
                 "
               >
                 Last revised on {LAST_REVISED}
@@ -463,9 +447,9 @@ export default function Terms() {
                   max-w-[700px]
                   font-sans
                   text-[15px]
-                  sm:text-[16px]
-                  leading-[1.75]
+                  leading-[1.7]
                   text-[#C0CDD8]
+                  sm:text-[16px]
                 "
               >
                 Please read these Terms of Service carefully
@@ -478,10 +462,6 @@ export default function Terms() {
                 .
               </p>
             </div>
-
-            {/* ================================================================= */}
-            {/* 1. AGREEMENT                                                      */}
-            {/* ================================================================= */}
 
             <Section
               id="agreement"
@@ -518,10 +498,6 @@ export default function Terms() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 2. WHO CAN USE                                                     */}
-            {/* ================================================================= */}
-
             <Section
               id="who-can-use"
               number={2}
@@ -542,10 +518,6 @@ export default function Terms() {
                 Terms.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 3. ACCOUNT                                                         */}
-            {/* ================================================================= */}
 
             <Section
               id="account"
@@ -570,10 +542,6 @@ export default function Terms() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 4. WHAT GROKIT DOES                                               */}
-            {/* ================================================================= */}
-
             <Section
               id="what-grokit-does"
               number={4}
@@ -595,10 +563,6 @@ export default function Terms() {
                 waitlist.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 5. AI CONTENT                                                      */}
-            {/* ================================================================= */}
 
             <Section
               id="ai-content"
@@ -659,10 +623,6 @@ export default function Terms() {
                 Service.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 6. ACCEPTABLE USE                                                 */}
-            {/* ================================================================= */}
 
             <Section
               id="acceptable-use"
@@ -736,10 +696,6 @@ export default function Terms() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 7. YOUR CONTENT                                                   */}
-            {/* ================================================================= */}
-
             <Section
               id="your-content"
               number={7}
@@ -789,10 +745,6 @@ export default function Terms() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 8. GENERATED CONTENT RIGHTS                                        */}
-            {/* ================================================================= */}
-
             <Section
               id="generated-content-rights"
               number={8}
@@ -817,10 +769,6 @@ export default function Terms() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 9. THIRD-PARTY SERVICES                                            */}
-            {/* ================================================================= */}
-
             <Section
               id="third-party"
               number={9}
@@ -839,10 +787,6 @@ export default function Terms() {
                 for details.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 10. PLANS / WAITLIST / PAYMENTS                                    */}
-            {/* ================================================================= */}
 
             <Section
               id="plans"
@@ -888,10 +832,6 @@ export default function Terms() {
               </BulletList>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 11. FEEDBACK                                                       */}
-            {/* ================================================================= */}
-
             <Section
               id="feedback"
               number={11}
@@ -902,10 +842,6 @@ export default function Terms() {
                 them without obligation or payment to you.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 12. COPYRIGHT                                                      */}
-            {/* ================================================================= */}
 
             <Section
               id="copyright"
@@ -927,10 +863,6 @@ export default function Terms() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 13. DISCLAIMERS                                                    */}
-            {/* ================================================================= */}
-
             <Section
               id="disclaimers"
               number={13}
@@ -950,10 +882,6 @@ export default function Terms() {
                 learning outcomes, grades, jobs, or results.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 14. LIMITATION OF LIABILITY                                        */}
-            {/* ================================================================= */}
 
             <Section
               id="liability"
@@ -981,10 +909,6 @@ export default function Terms() {
                 law.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 15. TERMINATION / GOVERNING LAW / CONTACT                        */}
-            {/* ================================================================= */}
 
             <Section
               id="termination"
@@ -1039,24 +963,14 @@ export default function Terms() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* SEE ALSO                                                           */}
-            {/* ================================================================= */}
-
-            <div
-              className="
-                border-t
-                border-[#203442]
-                pt-8
-              "
-            >
+            <div className="pt-8">
               <p
                 className="
                   font-sans
                   text-[15px]
-                  sm:text-[16px]
                   leading-7
                   text-[#AEBECB]
+                  sm:text-[16px]
                 "
               >
                 See also our{' '}
@@ -1068,32 +982,45 @@ export default function Terms() {
             </div>
           </article>
 
-          {/* ================================================================= */}
-          {/* ON THIS PAGE                                                       */}
-          {/* ================================================================= */}
+          {/* ============================================================= */}
+          {/* SIDEBAR                                                       */}
+          {/* ============================================================= */}
 
-          <aside className="hidden lg:block">
+          <aside
+            className="
+              hidden
+              lg:block
+              lg:self-start
+            "
+          >
             <div
               className="
                 sticky
-                top-10
+                top-8
+                max-h-[calc(100dvh-64px)]
+                overflow-y-auto
+                overscroll-contain
                 border-l
                 border-[#203442]
                 pl-7
+                pr-2
+
+                [scrollbar-width:thin]
+                [scrollbar-color:#304552_transparent]
               "
             >
               <p
                 className="
                   mb-5
                   font-sans
-                  text-[12px]
-                  font-semibold
+                  text-[13px]
+                  font-medium
                   uppercase
-                  tracking-[0.04em]
+                  tracking-[0.02em]
                   text-[#8EA2B4]
                 "
               >
-                On this page
+                ON THIS PAGE
               </p>
 
               <nav aria-label="Terms of Service sections">
@@ -1116,24 +1043,34 @@ export default function Terms() {
                             items-start
                             gap-4
                             border-l-2
-                            py-1.5
+                            py-2
                             pl-4
                             text-left
                             transition-all
                             duration-150
+
                             ${
                               isActive
-                                ? 'border-[#FF6B00] text-[#FF6B00]'
-                                : 'border-transparent text-[#B4C1CC] hover:border-[#40515E] hover:text-white'
+                                ? `
+                                  border-[#FF6B00]
+                                  text-[#FF6B00]
+                                `
+                                : `
+                                  border-transparent
+                                  text-[#B4C1CC]
+                                  hover:border-[#40515E]
+                                  hover:text-white
+                                `
                             }
                           `}
                         >
                           <span
                             className={`
-                              w-5
+                              w-6
                               shrink-0
                               text-[14px]
                               leading-6
+
                               ${
                                 isActive
                                   ? 'font-semibold text-[#FF6B00]'
@@ -1148,6 +1085,7 @@ export default function Terms() {
                             className={`
                               text-[14px]
                               leading-6
+
                               ${
                                 isActive
                                   ? 'font-semibold'

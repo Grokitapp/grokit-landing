@@ -8,27 +8,6 @@ import { Link, useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
 
-// ---------------------------------------------------------------------------
-// Grokit Privacy Policy
-//
-// Last revised: September 8, 2026
-//
-// IMPORTANT:
-// The following company/legal details must be completed before production:
-//
-// - Legal company name
-// - Registered address
-// - AWS region(s)
-// - Analytics provider, if any
-// - Email/waitlist provider, if any
-// - Verified Anthropic data-handling language
-// - Actual account-deletion timeline
-// - Data Protection / Grievance Officer details, if required
-// - EU/UK representative details, if required
-//
-// Please have the final Privacy Policy reviewed by qualified legal counsel.
-// ---------------------------------------------------------------------------
-
 const LAST_REVISED = 'September 8, 2026';
 const CONTACT_EMAIL = 'usegrokit@gmail.com';
 
@@ -121,13 +100,11 @@ function Section({
       id={id}
       className="
         scroll-mt-8
-        mb-0
         border-b
         border-[#203442]
         py-7
-        first:pt-0
-        last:border-b-0
         sm:py-8
+        last:border-b-0
       "
     >
       <div
@@ -139,7 +116,6 @@ function Section({
           sm:gap-5
         "
       >
-        {/* Section number */}
         <div
           aria-hidden="true"
           className="
@@ -154,7 +130,6 @@ function Section({
           {number}.
         </div>
 
-        {/* Section content */}
         <div className="min-w-0">
           <h2
             className="
@@ -172,14 +147,13 @@ function Section({
 
           <div
             className="
-              mt-2
-              space-y-3
+              mt-3
+              space-y-4
               font-sans
               text-[15px]
-              leading-[1.65]
+              leading-[1.7]
               text-[#B8C7D5]
               sm:text-[16px]
-              sm:leading-[1.7]
             "
           >
             {children}
@@ -241,7 +215,7 @@ function BulletList({
     <ul
       className="
         list-disc
-        space-y-1.5
+        space-y-2
         pl-5
         marker:text-[#FF6B00]
       "
@@ -274,54 +248,45 @@ export default function PrivacyPolicy() {
     [],
   );
 
-  // -------------------------------------------------------------------------
-  // Track the section currently visible in the viewport.
-  // -------------------------------------------------------------------------
-
   useEffect(() => {
-    const observers: IntersectionObserver[] = [];
-
-    sectionIds.forEach((id) => {
-      const element = document.getElementById(id);
-
-      if (!element) return;
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          const visibleEntries = entries
-            .filter((entry) => entry.isIntersecting)
-            .sort(
-              (a, b) =>
-                a.boundingClientRect.top -
-                b.boundingClientRect.top,
-            );
-
-          if (visibleEntries.length > 0) {
-            setActiveSection(
-              visibleEntries[0].target.id,
-            );
-          }
-        },
-        {
-          rootMargin: '-12% 0px -70% 0px',
-          threshold: 0,
-        },
+    const elements = sectionIds
+      .map((id) => document.getElementById(id))
+      .filter(
+        (element): element is HTMLElement =>
+          element !== null,
       );
 
-      observer.observe(element);
-      observers.push(observer);
-    });
+    if (!elements.length) return;
 
-    return () => {
-      observers.forEach((observer) =>
-        observer.disconnect(),
-      );
-    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort(
+            (a, b) =>
+              a.boundingClientRect.top -
+              b.boundingClientRect.top,
+          );
+
+        if (visible.length > 0) {
+          setActiveSection(
+            visible[0].target.id,
+          );
+        }
+      },
+      {
+        root: null,
+        rootMargin: '-15% 0px -70% 0px',
+        threshold: 0,
+      },
+    );
+
+    elements.forEach((element) =>
+      observer.observe(element),
+    );
+
+    return () => observer.disconnect();
   }, [sectionIds]);
-
-  // -------------------------------------------------------------------------
-  // Smooth-scroll to a section.
-  // -------------------------------------------------------------------------
 
   const scrollToSection = (id: string) => {
     const element = document.getElementById(id);
@@ -336,9 +301,9 @@ export default function PrivacyPolicy() {
 
   return (
     <div className="min-h-[100dvh] bg-[#06131D] text-white">
-      {/* =================================================================== */}
-      {/* HEADER                                                              */}
-      {/* =================================================================== */}
+      {/* ================================================================= */}
+      {/* HEADER                                                            */}
+      {/* ================================================================= */}
 
       <header
         className="
@@ -347,14 +312,13 @@ export default function PrivacyPolicy() {
           w-full
           max-w-[1440px]
           items-center
-          px-5
-          pt-5
+          px-6
+          pt-6
           sm:px-8
-          sm:pt-6
+          sm:pt-7
           lg:px-10
         "
       >
-        {/* Back button */}
         <button
           type="button"
           onClick={() => navigate(-1)}
@@ -362,55 +326,58 @@ export default function PrivacyPolicy() {
           className="
             group
             flex
-            h-11
-            w-11
+            h-[52px]
+            w-[52px]
             shrink-0
             items-center
             justify-center
             rounded-full
             border
-            border-[#203544]
-            bg-[#0C1C27]
-            text-[#D7E2EA]
-            shadow-[0_8px_30px_rgba(0,0,0,0.18)]
+            border-[#263D4B]
+            bg-[#0B1B26]
+            text-[#C8D5DE]
             transition-all
             duration-200
-            hover:border-[#355064]
-            hover:bg-[#112631]
+            hover:border-[#3A5261]
+            hover:bg-[#102631]
             hover:text-white
             focus:outline-none
             focus:ring-2
-            focus:ring-[#FF6B00]/50
+            focus:ring-[#FF6B00]/40
           "
         >
           <ArrowLeft
             className="
-              h-5
-              w-5
+              h-[23px]
+              w-[23px]
               transition-transform
               duration-200
               group-hover:-translate-x-0.5
             "
-            strokeWidth={2}
+            strokeWidth={1.8}
           />
         </button>
 
-        {/* Grokit logo */}
         <Link
           to="/"
           aria-label="Grokit home"
-          className="ml-5 flex items-center"
+          className="
+            ml-6
+            flex
+            shrink-0
+            items-center
+          "
         >
           <GrokitLogo
-            size={42}
+            size={52}
             className="text-[#FF6B00]"
           />
         </Link>
       </header>
 
-      {/* =================================================================== */}
-      {/* MAIN                                                                */}
-      {/* =================================================================== */}
+      {/* ================================================================= */}
+      {/* MAIN                                                              */}
+      {/* ================================================================= */}
 
       <main
         className="
@@ -423,7 +390,7 @@ export default function PrivacyPolicy() {
           sm:px-8
           sm:pt-12
           lg:px-10
-          lg:pt-8
+          lg:pt-9
         "
       >
         <div
@@ -431,19 +398,16 @@ export default function PrivacyPolicy() {
             grid
             grid-cols-1
             gap-14
-            lg:grid-cols-[minmax(0,700px)_240px]
+            lg:grid-cols-[minmax(0,700px)_250px]
+            lg:items-start
             lg:gap-14
           "
         >
-          {/* ================================================================= */}
-          {/* PRIVACY POLICY CONTENT                                             */}
-          {/* ================================================================= */}
+          {/* ============================================================= */}
+          {/* CONTENT                                                       */}
+          {/* ============================================================= */}
 
           <article className="min-w-0">
-            {/* ----------------------------------------------------------------- */}
-            {/* TITLE                                                             */}
-            {/* ----------------------------------------------------------------- */}
-
             <div className="mb-7">
               <h1
                 className="
@@ -478,10 +442,9 @@ export default function PrivacyPolicy() {
                   max-w-[700px]
                   font-sans
                   text-[15px]
-                  leading-[1.65]
+                  leading-[1.7]
                   text-[#C0CDD8]
                   sm:text-[16px]
-                  sm:leading-[1.7]
                 "
               >
                 At Grokit, we value your privacy. This Privacy
@@ -491,10 +454,6 @@ export default function PrivacyPolicy() {
                 agree to the practices described in this policy.
               </p>
             </div>
-
-            {/* ================================================================= */}
-            {/* 1. OVERVIEW                                                       */}
-            {/* ================================================================= */}
 
             <Section
               id="overview"
@@ -519,10 +478,6 @@ export default function PrivacyPolicy() {
                 also apply.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 2. INFORMATION WE COLLECT                                         */}
-            {/* ================================================================= */}
 
             <Section
               id="information-we-collect"
@@ -620,10 +575,6 @@ export default function PrivacyPolicy() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 3. HOW WE USE YOUR INFORMATION                                    */}
-            {/* ================================================================= */}
-
             <Section
               id="how-we-use"
               number={3}
@@ -682,10 +633,6 @@ export default function PrivacyPolicy() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 4. HOW AI IS INVOLVED                                             */}
-            {/* ================================================================= */}
-
             <Section
               id="ai-involved"
               number={4}
@@ -724,10 +671,6 @@ export default function PrivacyPolicy() {
                 significant effects on you.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 5. SHARING OF INFORMATION                                         */}
-            {/* ================================================================= */}
 
             <Section
               id="sharing"
@@ -797,10 +740,6 @@ export default function PrivacyPolicy() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 6. WHERE YOUR DATA IS STORED                                      */}
-            {/* ================================================================= */}
-
             <Section
               id="where-data-stored"
               number={6}
@@ -817,10 +756,6 @@ export default function PrivacyPolicy() {
                 clauses or equivalent protections.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 7. YOUR CHOICES AND RIGHTS                                        */}
-            {/* ================================================================= */}
 
             <Section
               id="rights"
@@ -913,10 +848,6 @@ export default function PrivacyPolicy() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 8. DATA RETENTION                                                 */}
-            {/* ================================================================= */}
-
             <Section
               id="retention"
               number={8}
@@ -935,10 +866,6 @@ export default function PrivacyPolicy() {
                 kept until you unsubscribe or the waitlist ends.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 9. SECURITY                                                        */}
-            {/* ================================================================= */}
 
             <Section
               id="security"
@@ -959,10 +886,6 @@ export default function PrivacyPolicy() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 10. CHILDREN'S PRIVACY                                             */}
-            {/* ================================================================= */}
-
             <Section
               id="children"
               number={10}
@@ -980,10 +903,6 @@ export default function PrivacyPolicy() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 11. THIRD-PARTY LINKS AND SIGN-IN                                 */}
-            {/* ================================================================= */}
-
             <Section
               id="third-party"
               number={11}
@@ -998,10 +917,6 @@ export default function PrivacyPolicy() {
               </p>
             </Section>
 
-            {/* ================================================================= */}
-            {/* 12. DO NOT TRACK                                                  */}
-            {/* ================================================================= */}
-
             <Section
               id="do-not-track"
               number={12}
@@ -1013,10 +928,6 @@ export default function PrivacyPolicy() {
                 Not Track signals.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 13. CHANGES TO THIS POLICY                                        */}
-            {/* ================================================================= */}
 
             <Section
               id="changes"
@@ -1031,10 +942,6 @@ export default function PrivacyPolicy() {
                 policy.
               </p>
             </Section>
-
-            {/* ================================================================= */}
-            {/* 14. CONTACT US                                                    */}
-            {/* ================================================================= */}
 
             <Section
               id="contact"
@@ -1060,10 +967,6 @@ export default function PrivacyPolicy() {
               </div>
             </Section>
 
-            {/* ================================================================= */}
-            {/* SEE ALSO                                                           */}
-            {/* ================================================================= */}
-
             <div className="pt-8">
               <p
                 className="
@@ -1083,32 +986,45 @@ export default function PrivacyPolicy() {
             </div>
           </article>
 
-          {/* ================================================================= */}
-          {/* ON THIS PAGE                                                       */}
-          {/* ================================================================= */}
+          {/* ============================================================= */}
+          {/* SIDEBAR                                                       */}
+          {/* ============================================================= */}
 
-          <aside className="hidden lg:block">
+          <aside
+            className="
+              hidden
+              lg:block
+              lg:self-start
+            "
+          >
             <div
               className="
                 sticky
-                top-10
+                top-8
+                max-h-[calc(100dvh-64px)]
+                overflow-y-auto
+                overscroll-contain
                 border-l
                 border-[#203442]
                 pl-7
+                pr-2
+
+                [scrollbar-width:thin]
+                [scrollbar-color:#304552_transparent]
               "
             >
               <p
                 className="
                   mb-5
                   font-sans
-                  text-[12px]
-                  font-semibold
+                  text-[13px]
+                  font-medium
                   uppercase
-                  tracking-[0.04em]
+                  tracking-[0.02em]
                   text-[#8EA2B4]
                 "
               >
-                On this page
+                ON THIS PAGE
               </p>
 
               <nav aria-label="Privacy Policy sections">
@@ -1131,24 +1047,34 @@ export default function PrivacyPolicy() {
                             items-start
                             gap-4
                             border-l-2
-                            py-1.5
+                            py-2
                             pl-4
                             text-left
                             transition-all
                             duration-150
+
                             ${
                               isActive
-                                ? 'border-[#FF6B00] text-[#FF6B00]'
-                                : 'border-transparent text-[#B4C1CC] hover:border-[#40515E] hover:text-white'
+                                ? `
+                                  border-[#FF6B00]
+                                  text-[#FF6B00]
+                                `
+                                : `
+                                  border-transparent
+                                  text-[#B4C1CC]
+                                  hover:border-[#40515E]
+                                  hover:text-white
+                                `
                             }
                           `}
                         >
                           <span
                             className={`
-                              w-5
+                              w-6
                               shrink-0
                               text-[14px]
                               leading-6
+
                               ${
                                 isActive
                                   ? 'font-semibold text-[#FF6B00]'
@@ -1163,6 +1089,7 @@ export default function PrivacyPolicy() {
                             className={`
                               text-[14px]
                               leading-6
+
                               ${
                                 isActive
                                   ? 'font-semibold'
