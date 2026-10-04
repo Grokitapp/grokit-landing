@@ -52,7 +52,6 @@ function Section({
           sm:gap-5
         "
       >
-        {/* Section number */}
         <div
           aria-hidden="true"
           className="
@@ -68,7 +67,6 @@ function Section({
           {number}.
         </div>
 
-        {/* Section content */}
         <div className="min-w-0">
           <h2
             className="
@@ -179,35 +177,59 @@ export default function Terms() {
   return (
     <div className="min-h-[100dvh] bg-[#06131D] text-white">
       {/* ================================================================= */}
-      {/* HEADER                                                            */}
+      {/* FIXED HEADER                                                      */}
       {/* ================================================================= */}
 
       <header
         className="
-          mx-auto
-          flex
-          w-full
-          max-w-[1440px]
-          items-center
-          px-6
-          pt-7
-          sm:px-10
-          sm:pt-8
-          lg:px-12
-          lg:pt-9
+          fixed
+          inset-x-0
+          top-0
+          z-50
+          h-[108px]
+          pointer-events-none
         "
       >
-        {/* Plain back button */}
+        {/* Subtle top blur / glass layer */}
+        <div
+          className="
+            absolute
+            inset-0
+            bg-[#06131D]/70
+            backdrop-blur-[10px]
+            [-webkit-backdrop-filter:blur(10px)]
+          "
+        />
+
+        {/* Very subtle fade at the bottom of the header */}
+        <div
+          className="
+            absolute
+            inset-x-0
+            bottom-0
+            h-10
+            bg-gradient-to-b
+            from-[#06131D]/10
+            to-transparent
+          "
+        />
+
+        {/* --------------------------------------------------------------- */}
+        {/* BACK BUTTON                                                      */}
+        {/* --------------------------------------------------------------- */}
+
         <button
           type="button"
           onClick={() => navigate(-1)}
           aria-label="Go back"
           className="
-            group
+            pointer-events-auto
+            absolute
+            left-6
+            top-[42px]
             flex
-            h-10
-            w-10
-            shrink-0
+            h-9
+            w-9
             items-center
             justify-center
             bg-transparent
@@ -218,6 +240,8 @@ export default function Terms() {
             hover:text-white
             focus:outline-none
             focus-visible:text-white
+            sm:left-10
+            lg:left-12
           "
         >
           <ArrowLeft
@@ -226,21 +250,29 @@ export default function Terms() {
               w-7
               transition-transform
               duration-200
-              group-hover:-translate-x-0.5
+              hover:-translate-x-0.5
             "
             strokeWidth={1.8}
           />
         </button>
 
-        {/* Large Grokit logo */}
+        {/* --------------------------------------------------------------- */}
+        {/* CENTERED GROKIT LOGO                                             */}
+        {/* --------------------------------------------------------------- */}
+
         <Link
           to="/"
           aria-label="Grokit home"
           className="
-            ml-5
+            pointer-events-auto
+            absolute
+            left-1/2
+            top-[32px]
             flex
+            -translate-x-1/2
             items-center
             transition-opacity
+            duration-200
             hover:opacity-90
           "
         >
@@ -262,11 +294,11 @@ export default function Terms() {
           max-w-[900px]
           px-6
           pb-24
-          pt-12
+          pt-[148px]
           sm:px-8
-          sm:pt-14
+          sm:pt-[154px]
           lg:px-10
-          lg:pt-16
+          lg:pt-[158px]
         "
       >
         {/* ================================================================= */}
@@ -590,8 +622,7 @@ export default function Terms() {
               to store, process, and use Your Content, including
               by sending it to our service providers, solely to
               operate, maintain, secure, and improve the Service
-              for you, for example to generate and personalize
-              your journeys.
+              for you.
             </Bullet>
 
             <Bullet>
@@ -606,13 +637,13 @@ export default function Terms() {
 
           <p>
             Please don't submit sensitive personal information
-            (such as government IDs, financial account numbers,
-            or health records) in prompts or notes.
+            such as government IDs, financial account numbers, or
+            health records in prompts or notes.
           </p>
         </Section>
 
         {/* ================================================================= */}
-        {/* 8. GENERATED CONTENT RIGHTS                                       */}
+        {/* 8. GENERATED CONTENT                                              */}
         {/* ================================================================= */}
 
         <Section
@@ -650,10 +681,10 @@ export default function Terms() {
             providers. When you use the Service, some of Your
             Content may be processed by these providers so we can
             deliver it. Your use of third-party sign-in options
-            (like Google) is also subject to that provider's
-            terms. We aren't responsible for third-party
-            services outside our control. See our Privacy Policy
-            for details.
+            like Google is also subject to that provider's terms.
+            We aren't responsible for third-party services
+            outside our control. See our Privacy Policy for
+            details.
           </p>
         </Section>
 
@@ -727,7 +758,7 @@ export default function Terms() {
           <p>
             We respect intellectual property rights. If you
             believe content on the Service infringes your
-            copyright, please contact <ContactLink /> with: your
+            copyright, please contact <ContactLink /> with your
             contact details, a description of the work, where it
             appears on the Service, a statement that you believe
             the use is not authorized, and a statement that the
@@ -803,9 +834,8 @@ export default function Terms() {
             account at any time. We may suspend or end your
             access if you violate these Terms, put the Service or
             others at risk, or if we stop providing the Service.
-            Sections that by their nature should continue (such
-            as ownership, disclaimers, and liability limits)
-            survive termination.
+            Sections that by their nature should continue survive
+            termination.
           </p>
 
           <p>

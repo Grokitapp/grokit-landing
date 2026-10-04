@@ -21,7 +21,7 @@ import type { ReactNode } from 'react';
 // - Data Protection / Grievance Officer details, if required
 // - EU/UK representative details, if required
 //
-// Please have the final document reviewed by qualified legal counsel.
+// Please have the final Privacy Policy reviewed by qualified legal counsel.
 // ---------------------------------------------------------------------------
 
 const LAST_REVISED = 'September 8, 2026';
@@ -56,7 +56,6 @@ function Section({
           sm:gap-5
         "
       >
-        {/* Section number */}
         <div
           aria-hidden="true"
           className="
@@ -72,7 +71,6 @@ function Section({
           {number}.
         </div>
 
-        {/* Section content */}
         <div className="min-w-0">
           <h2
             className="
@@ -183,35 +181,59 @@ export default function PrivacyPolicy() {
   return (
     <div className="min-h-[100dvh] bg-[#06131D] text-white">
       {/* ================================================================= */}
-      {/* HEADER                                                            */}
+      {/* FIXED HEADER                                                      */}
       {/* ================================================================= */}
 
       <header
         className="
-          mx-auto
-          flex
-          w-full
-          max-w-[1440px]
-          items-center
-          px-6
-          pt-7
-          sm:px-10
-          sm:pt-8
-          lg:px-12
-          lg:pt-9
+          fixed
+          inset-x-0
+          top-0
+          z-50
+          h-[108px]
+          pointer-events-none
         "
       >
-        {/* Plain back button */}
+        {/* Subtle top blur / glass layer */}
+        <div
+          className="
+            absolute
+            inset-0
+            bg-[#06131D]/70
+            backdrop-blur-[10px]
+            [-webkit-backdrop-filter:blur(10px)]
+          "
+        />
+
+        {/* Very subtle fade at the bottom */}
+        <div
+          className="
+            absolute
+            inset-x-0
+            bottom-0
+            h-10
+            bg-gradient-to-b
+            from-[#06131D]/10
+            to-transparent
+          "
+        />
+
+        {/* --------------------------------------------------------------- */}
+        {/* BACK BUTTON                                                      */}
+        {/* --------------------------------------------------------------- */}
+
         <button
           type="button"
           onClick={() => navigate(-1)}
           aria-label="Go back"
           className="
-            group
+            pointer-events-auto
+            absolute
+            left-6
+            top-[42px]
             flex
-            h-10
-            w-10
-            shrink-0
+            h-9
+            w-9
             items-center
             justify-center
             bg-transparent
@@ -222,6 +244,8 @@ export default function PrivacyPolicy() {
             hover:text-white
             focus:outline-none
             focus-visible:text-white
+            sm:left-10
+            lg:left-12
           "
         >
           <ArrowLeft
@@ -230,21 +254,29 @@ export default function PrivacyPolicy() {
               w-7
               transition-transform
               duration-200
-              group-hover:-translate-x-0.5
+              hover:-translate-x-0.5
             "
             strokeWidth={1.8}
           />
         </button>
 
-        {/* Large Grokit logo */}
+        {/* --------------------------------------------------------------- */}
+        {/* CENTERED GROKIT LOGO                                             */}
+        {/* --------------------------------------------------------------- */}
+
         <Link
           to="/"
           aria-label="Grokit home"
           className="
-            ml-5
+            pointer-events-auto
+            absolute
+            left-1/2
+            top-[32px]
             flex
+            -translate-x-1/2
             items-center
             transition-opacity
+            duration-200
             hover:opacity-90
           "
         >
@@ -266,11 +298,11 @@ export default function PrivacyPolicy() {
           max-w-[900px]
           px-6
           pb-24
-          pt-12
+          pt-[148px]
           sm:px-8
-          sm:pt-14
+          sm:pt-[154px]
           lg:px-10
-          lg:pt-16
+          lg:pt-[158px]
         "
       >
         {/* ================================================================= */}
