@@ -1758,12 +1758,12 @@ export function CompleteStep({
             }}
             className="
               mb-6
-              h-[120px]
-              w-[120px]
+              h-[140px]
+              w-[140px]
               object-contain
               sm:mb-7
-              sm:h-[130px]
-              sm:w-[130px]
+              sm:h-[150px]
+              sm:w-[150px]
             "
           />
 
