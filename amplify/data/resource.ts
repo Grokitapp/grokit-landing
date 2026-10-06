@@ -2,9 +2,9 @@ import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { generateOutline } from '../functions/generate-outline/resource';
 import { generateLesson } from '../functions/generate-lesson/resource';
 
-const schema = a
-  .schema({
-    Course: a.model({
+const schema = a.schema({
+  Course: a
+    .model({
       owner: a.string(),
       title: a.string().required(),
       topic: a.string().required(),
@@ -27,7 +27,8 @@ const schema = a
         .identityClaim('sub'),
     ]),
 
-    Phase: a.model({
+  Phase: a
+    .model({
       owner: a.string(),
       courseId: a.id().required(),
       course: a.belongsTo('Course', 'courseId'),
@@ -42,7 +43,8 @@ const schema = a
         .identityClaim('sub'),
     ]),
 
-    Lesson: a.model({
+  Lesson: a
+    .model({
       owner: a.string(),
       courseId: a.id().required(),
       course: a.belongsTo('Course', 'courseId'),
@@ -68,47 +70,60 @@ const schema = a
         .identityClaim('sub'),
     ]),
 
-    UserProfile: a.model({
+  UserProfile: a
+    .model({
       email: a.string().required(),
+      motivations: a.string().array(),
+      interests: a.string().array(),
+      startingPreference: a.string(),
+      learningPreferences: a.string().array(),
+      comprehensionPreferences: a.string().array(),
+      desiredOutcomes: a.string().array(),
+      timeCommitment: a.string(),
       workTypes: a.string().array(),
       topics: a.string().array(),
       goals: a.string().array(),
-      timeCommitment: a.string(),
       learnPrompt: a.string(),
       onboardingCompleted: a.boolean().default(false),
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(),
+    ]),
 
-    UserProgress: a.model({
+  UserProgress: a
+    .model({
       courseId: a.id().required(),
       lessonId: a.id().required(),
       completedAt: a.datetime(),
       xp: a.integer().default(0),
     })
-    .authorization((allow) => [allow.owner()]),
+    .authorization((allow) => [
+      allow.owner(),
+    ]),
 
-    generateOutline: a
-      .mutation()
-      .arguments({
-        topic: a.string().required(),
-        personalizationProfile: a.json(),
-      })
-      .returns(a.ref('Course'))
-      .authorization((allow) => [allow.authenticated()])
-      .handler(a.handler.function(generateOutline)),
+  generateOutline: a
+    .mutation()
+    .arguments({
+      topic: a.string().required(),
+      personalizationProfile: a.json(),
+    })
+    .returns(a.ref('Course'))
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(generateOutline)),
 
-    generateLesson: a
-      .mutation()
-      .arguments({
-        lessonId: a.id().required(),
-      })
-      .returns(a.ref('Lesson'))
-      .authorization((allow) => [allow.authenticated()])
-      .handler(a.handler.function(generateLesson)),
-  })
-  .authorization((allow) => [
-    allow.resource(generateOutline),
-  ]);
+  generateLesson: a
+    .mutation()
+    .arguments({
+      lessonId: a.id().required(),
+    })
+    .returns(a.ref('Lesson'))
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(generateLesson)),
+});
 
 export type Schema = ClientSchema<typeof schema>;
 

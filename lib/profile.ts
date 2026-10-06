@@ -5,22 +5,35 @@ import type { Schema } from '../amplify/data/resource';
 const client = generateClient<Schema>();
 
 export type ProfileFields = Partial<{
+  // New learner profile
+  motivations: string[];
+  interests: string[];
+  startingPreference: string;
+  learningPreferences: string[];
+  comprehensionPreferences: string[];
+  desiredOutcomes: string[];
+  timeCommitment: string;
+
+  // Legacy profile fields
   workTypes: string[];
   topics: string[];
   goals: string[];
-  timeCommitment: string;
   learnPrompt: string;
+
+  // Onboarding state
   onboardingCompleted: boolean;
 }>;
 
-async function getEmail() {
+async function getEmail(): Promise<string> {
   const attrs = await fetchUserAttributes();
 
-  if (!attrs.email) {
+  const email = attrs.email?.trim().toLowerCase();
+
+  if (!email) {
     throw new Error('User email not found.');
   }
 
-  return attrs.email.trim().toLowerCase();
+  return email;
 }
 
 async function findExistingProfile() {
@@ -39,8 +52,7 @@ async function findExistingProfile() {
     return null;
   }
 
-  // If duplicate profiles exist for the same email,
-  // always prefer the completed profile.
+  // If duplicate profiles exist, prefer the completed profile.
   const completedProfile = data.find(
     (profile) => profile.onboardingCompleted === true,
   );
@@ -64,16 +76,13 @@ export async function getProfileWithRetry() {
 
   let profile = null;
 
-  for (let attempt = 0; attempt < delays.length; attempt++) {
-    if (delays[attempt] > 0) {
-      await new Promise((resolve) =>
-        setTimeout(resolve, delays[attempt]),
-      );
+  for (const delay of delays) {
+    if (delay > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
 
     profile = await getProfile();
 
-    // The state we actually need has become available.
     if (profile?.onboardingCompleted === true) {
       return profile;
     }
@@ -84,7 +93,6 @@ export async function getProfileWithRetry() {
 
 export async function saveProfile(fields: ProfileFields) {
   const email = await getEmail();
-
   const existing = await findExistingProfile();
 
   if (existing) {

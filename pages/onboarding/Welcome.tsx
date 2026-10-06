@@ -55,7 +55,7 @@ export default function Welcome({
           sm:top-8
           sm:gap-5
         "
-        aria-label="Onboarding progress: step 1 of 5"
+        aria-label="Onboarding progress: step 1 of 7"
       >
         {/* Active step */}
         <span
@@ -68,6 +68,8 @@ export default function Welcome({
         />
 
         {/* Remaining steps */}
+        <span className="h-[12px] w-[12px] rounded-full bg-[#304553]" />
+        <span className="h-[12px] w-[12px] rounded-full bg-[#304553]" />
         <span className="h-[12px] w-[12px] rounded-full bg-[#304553]" />
         <span className="h-[12px] w-[12px] rounded-full bg-[#304553]" />
         <span className="h-[12px] w-[12px] rounded-full bg-[#304553]" />
@@ -212,9 +214,9 @@ export default function Welcome({
               ease: 'easeOut',
             }}
           >
-            Let&apos;s plan your{' '}
+            Welcome to{' '}
             <span className="text-orange">
-              first dive.
+              Grokit!
             </span>
           </motion.h1>
 
@@ -249,9 +251,9 @@ export default function Welcome({
               ease: 'easeOut',
             }}
           >
-            Tell Grokit what you&apos;re curious about.
+            Your AI learning companion to explore,
             <br />
-            It builds the path.
+            understand and build what you're curious about.
           </motion.p>
 
           {/* ---------------------------------------------------------------- */}

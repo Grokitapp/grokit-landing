@@ -1,18 +1,24 @@
 import {
   useEffect,
   useState,
-  type Dispatch,
-  type SetStateAction,
 } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+
+import {
+  AnimatePresence,
+  motion,
+} from 'framer-motion';
+
 import { ArrowLeft } from 'lucide-react';
+
 import { useNavigate } from 'react-router';
 
-import { WaitlistModal } from '../components/Waitlistmodal';
 import {
   GrokitMascot,
-  type MascotPose,
 } from '../components/Grokitmascot';
+
+import AuthScreen from './auth/AuthScreen';
+
+import { getAuthenticatedUser } from './auth/authService';
 
 import Welcome from './onboarding/Welcome';
 
@@ -21,126 +27,129 @@ import {
   saveProfile,
 } from '../lib/profile';
 
-import AuthScreen from './auth/AuthScreen';
-import { getAuthenticatedUser } from './auth/authService';
-
 import {
   BACK_STEP,
   DISCORD_INVITE_URL,
   PROGRESS_BY_STEP,
   STEP,
-  TOTAL_QUESTIONS,
-  lessonsPerWeekFor,
   type Step,
 } from './onboarding/constants';
 
 import {
   ProgressBar,
-  TransitionScreen,
 } from './onboarding/shared';
 
 import {
-  GoalsStep,
-  IntroStep,
-  LoadingStep,
+  ComprehensionStep,
+  CompleteStep,
+  InterestsStep,
+  MotivationStep,
+  OutcomesStep,
+  StartingPreferenceStep,
   TimeStep,
-  TopicsStep,
-  WorkTypeStep,
 } from './onboarding/steps';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+/* -------------------------------------------------------------------------- */
+/* HELPERS                                                                    */
+/* -------------------------------------------------------------------------- */
 
-interface TransitionConfig {
-  pose: MascotPose;
-  heading: string;
-  sub: string;
-  note?: string;
-  next: Step;
+function toStringArray(
+  values:
+    | readonly (string | null | undefined)[]
+    | null
+    | undefined,
+): string[] {
+  return (values ?? []).filter(
+    (value): value is string =>
+      typeof value === 'string',
+  );
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+/**
+ * Converts internal save failures into a safe,
+ * user-facing message.
+ *
+ * Technical details are intentionally kept out
+ * of the UI. The original error is still logged
+ * to the browser console for debugging.
+ */
+function getSafeProfileSaveMessage(
+  error: unknown,
+): string {
+  if (
+    typeof navigator !== 'undefined' &&
+    navigator.onLine === false
+  ) {
+    return 'Please check your internet connection and try again.';
+  }
 
-const STATIC_TRANSITIONS: Partial<Record<Step, TransitionConfig>> = {
-  [STEP.T_PERSONALIZED]: {
-    pose: 'thinking',
-    heading: 'Personalized learning for you',
-    sub: "We'll use examples relevant to your role and expertise when it's helpful.",
-    note: 'You can update this anytime in your settings.',
-    next: STEP.TOPICS,
-  },
+  if (
+    error instanceof Error &&
+    /timeout|network|fetch|connection/i.test(
+      error.message,
+    )
+  ) {
+    return 'Something went wrong while saving your profile. Please check your connection and try again.';
+  }
 
-  [STEP.T_PERFECT]: {
-    pose: 'celebrate',
-    heading:
-      "Perfect choice! We'll use this to find the best courses for you",
-    sub:
-      'You can also build your own course for any topic you want to learn.',
-    next: STEP.GOALS,
-  },
+  return 'We couldn’t save your learning profile right now. Please try again.';
+}
 
-  [STEP.T_GREAT]: {
-    pose: 'wave',
-    heading:
-      "Great! We'll help you learn what you thought you didn't have time for",
-    sub:
-      "Finally learn the things you've always wanted to learn.",
-    next: STEP.TIME,
-  },
-};
-
-const DARK_STEPS = new Set<Step>([
-  STEP.INTRO,
-  STEP.WORK_TYPE,
-  STEP.T_PERSONALIZED,
-  STEP.TOPICS,
-  STEP.T_PERFECT,
-  STEP.GOALS,
-  STEP.T_GREAT,
-  STEP.TIME,
-  STEP.T_BOOKS,
-  STEP.LOADING,
-]);
-
-const canvasBaseClasses =
-  'min-h-[100dvh] h-[100dvh] flex flex-col overflow-hidden';
-
-const navBaseClasses =
-  'relative z-30 w-full shrink-0 px-5 sm:px-6 pt-4 sm:pt-5 pb-1 flex items-start';
-
-const contentBaseClasses =
-  'flex-1 min-h-0 flex flex-col';
-
-const backButtonBaseClasses =
-  'p-2 -ml-2 shrink-0 rounded-full transition-colors';
-
-// ─── Main component ───────────────────────────────────────────────────────────
+/* -------------------------------------------------------------------------- */
+/* MAIN COMPONENT                                                             */
+/* -------------------------------------------------------------------------- */
 
 export default function Onboarding() {
   const navigate = useNavigate();
 
-  const [initializing, setInitializing] = useState(true);
-  const [step, setStep] = useState<Step>(STEP.AUTH);
+  /* ------------------------------------------------------------------------ */
+  /* Initialization                                                           */
+  /* ------------------------------------------------------------------------ */
 
-  // Profile state
-  const [workTypes, setWorkTypes] = useState<string[]>([]);
-  const [otherWorkType, setOtherWorkType] = useState('');
-  const [isOtherWorkTypeSelected, setIsOtherWorkTypeSelected] =
+  const [initializing, setInitializing] =
+    useState(true);
+
+  const [step, setStep] = useState<Step>(
+    STEP.AUTH,
+  );
+
+  /* ------------------------------------------------------------------------ */
+  /* Learner profile                                                          */
+  /* ------------------------------------------------------------------------ */
+
+  const [motivations, setMotivations] =
+    useState<string[]>([]);
+
+  const [interests, setInterests] =
+    useState<string[]>([]);
+
+  const [startingPreference, setStartingPreference] =
+    useState<string | null>(null);
+
+  const [
+    comprehensionPreferences,
+    setComprehensionPreferences,
+  ] = useState<string[]>([]);
+
+  const [desiredOutcomes, setDesiredOutcomes] =
+    useState<string[]>([]);
+
+  const [timeCommitment, setTimeCommitment] =
+    useState<string | null>(null);
+
+  /* ------------------------------------------------------------------------ */
+  /* UI state                                                                 */
+  /* ------------------------------------------------------------------------ */
+
+  const [isSavingProfile, setIsSavingProfile] =
     useState(false);
 
-  const [topics, setTopics] = useState<string[]>([]);
-  const [otherTopic, setOtherTopic] = useState('');
+  const [savingError, setSavingError] =
+    useState<string | null>(null);
 
-  const [goals, setGoals] = useState<string[]>([]);
-  const [otherGoal, setOtherGoal] = useState('');
-
-  const [timeId, setTimeId] = useState<string | null>(null);
-
-  // UI state
-  const [isWaitlistOpen, setIsWaitlistOpen] = useState(false);
-  const [savingError, setSavingError] = useState<string | null>(null);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
-  // ── Initial authentication/profile check ─────────────────────────────────
+  /* ------------------------------------------------------------------------ */
+  /* Initial authentication + profile load                                    */
+  /* ------------------------------------------------------------------------ */
 
   useEffect(() => {
     let mounted = true;
@@ -149,19 +158,57 @@ export default function Onboarding() {
       try {
         await getAuthenticatedUser();
 
-        // Use the same retry-aware profile lookup as AuthGuard.
-        const profile = await getProfileWithRetry();
+        const profile =
+          await getProfileWithRetry();
 
-        if (!mounted) return;
-
-        if (profile?.onboardingCompleted === true) {
-          navigate('/learn', { replace: true });
+        if (!mounted) {
           return;
         }
 
+        if (
+          profile?.onboardingCompleted === true
+        ) {
+          navigate('/learn', {
+            replace: true,
+          });
+
+          return;
+        }
+
+        setMotivations(
+          toStringArray(profile?.motivations),
+        );
+
+        setInterests(
+          toStringArray(profile?.interests),
+        );
+
+        setStartingPreference(
+          profile?.startingPreference ?? null,
+        );
+
+        setComprehensionPreferences(
+          toStringArray(
+            profile?.comprehensionPreferences,
+          ),
+        );
+
+        setDesiredOutcomes(
+          toStringArray(
+            profile?.desiredOutcomes,
+          ),
+        );
+
+        setTimeCommitment(
+          profile?.timeCommitment ?? null,
+        );
+
         setStep(STEP.WELCOME);
       } catch (error) {
-        console.error('Failed to initialize onboarding:', error);
+        console.error(
+          'Failed to initialize onboarding:',
+          error,
+        );
 
         if (mounted) {
           setStep(STEP.AUTH);
@@ -180,313 +227,334 @@ export default function Onboarding() {
     };
   }, [navigate]);
 
-  // ── Helpers ──────────────────────────────────────────────────────────────
+  /* ------------------------------------------------------------------------ */
+  /* Selection helpers                                                        */
+  /* ------------------------------------------------------------------------ */
 
-  const toggleItem = (
-    setList: Dispatch<SetStateAction<string[]>>,
-    item: string,
-  ) => {
-    setList((current) =>
-      current.includes(item)
-        ? current.filter((value) => value !== item)
-        : [...current, item],
-    );
-  };
-
-  const addOther = (
+  const toggleMultiSelect = (
+    selected: string[],
     value: string,
-    setList: Dispatch<SetStateAction<string[]>>,
-    clear: () => void,
+    maxSelections: number,
+    setter: (
+      value:
+        | string[]
+        | ((current: string[]) => string[]),
+    ) => void,
   ) => {
-    const trimmed = value.trim();
+    if (selected.includes(value)) {
+      setter(
+        selected.filter(
+          (item) => item !== value,
+        ),
+      );
 
-    if (!trimmed) return;
+      return;
+    }
 
-    setList((current) =>
-      current.includes(trimmed)
-        ? current
-        : [...current, trimmed],
-    );
+    if (selected.length >= maxSelections) {
+      return;
+    }
 
-    clear();
+    setter([
+      ...selected,
+      value,
+    ]);
   };
 
-  // ── Derived state ────────────────────────────────────────────────────────
-
-  const hasOtherWorkType =
-    isOtherWorkTypeSelected &&
-    otherWorkType.trim().length > 0;
-
-  const finalWorkTypes = hasOtherWorkType
-    ? [
-        ...workTypes,
-        ...(workTypes.includes(otherWorkType.trim())
-          ? []
-          : [otherWorkType.trim()]),
-      ]
-    : workTypes;
+  /* ------------------------------------------------------------------------ */
+  /* Question validation                                                      */
+  /* ------------------------------------------------------------------------ */
 
   const canContinue =
-    step === STEP.WORK_TYPE
-      ? finalWorkTypes.length > 0
-      : step === STEP.TOPICS
-        ? topics.length > 0
-        : step === STEP.GOALS
-          ? goals.length > 0
-          : step === STEP.TIME
-            ? timeId !== null
-            : true;
+    step === STEP.MOTIVATION
+      ? motivations.length > 0
+      : step === STEP.INTERESTS
+        ? interests.length > 0
+        : step === STEP.STARTING_PREFERENCE
+          ? startingPreference !== null
+          : step === STEP.COMPREHENSION
+            ? comprehensionPreferences.length > 0
+            : step === STEP.OUTCOMES
+              ? desiredOutcomes.length > 0
+              : step === STEP.TIME
+                ? timeCommitment !== null
+                : true;
 
-  const prevStep = BACK_STEP[step];
-  const progress = PROGRESS_BY_STEP[step];
+  /* ------------------------------------------------------------------------ */
+  /* Navigation                                                               */
+  /* ------------------------------------------------------------------------ */
 
-  // ── Final onboarding save ────────────────────────────────────────────────
+  const goBack = () => {
+    const previousStep = BACK_STEP[step];
 
-  useEffect(() => {
-    if (step !== STEP.LOADING) return;
+    if (previousStep !== undefined) {
+      setStep(previousStep);
+    }
+  };
 
-    let cancelled = false;
+  /* ------------------------------------------------------------------------ */
+  /* Save final profile                                                       */
+  /* ------------------------------------------------------------------------ */
 
-    const finalizeOnboarding = async () => {
-      setIsSavingProfile(true);
-      setSavingError(null);
+  const completeOnboarding = async () => {
+    if (isSavingProfile) {
+      return;
+    }
 
-      if (!timeId) {
-        setSavingError(
-          'Your learning time preference is missing.',
-        );
-        setIsSavingProfile(false);
-        return;
-      }
+    setIsSavingProfile(true);
+    setSavingError(null);
 
-      try {
-        // Save the complete onboarding profile.
-        const savedProfile = await saveProfile({
-          workTypes: finalWorkTypes,
-          topics,
-          goals,
-          timeCommitment: timeId,
-          onboardingCompleted: true,
-        });
+    try {
+      const savedProfile = await saveProfile({
+        motivations,
+        interests,
+        startingPreference:
+          startingPreference ?? undefined,
+        comprehensionPreferences,
+        desiredOutcomes,
+        timeCommitment:
+          timeCommitment ?? undefined,
+        onboardingCompleted: true,
+      });
 
-        if (cancelled) return;
-
-        // Make sure the write returned successfully before navigating.
-        if (!savedProfile?.data) {
-          throw new Error(
-            'The onboarding profile was not saved.',
-          );
-        }
-
-        /*
-         * Confirm that the completed profile is readable before
-         * sending the user into the protected learning area.
-         *
-         * This prevents AuthGuard from racing the profile write.
-         */
-        const profile = await getProfileWithRetry();
-
-        if (cancelled) return;
-
-        if (!profile?.onboardingCompleted) {
-          throw new Error(
-            'Onboarding was saved, but the completed profile is not yet readable.',
-          );
-        }
-
-        navigate('/learn', { replace: true });
-      } catch (error) {
+      /*
+       * A successful mutation should contain the
+       * created/updated profile.
+       *
+       * We intentionally do NOT call getProfileWithRetry()
+       * here. A read immediately after a successful write
+       * can temporarily return stale data and incorrectly
+       * make a successful save look like a failure.
+       */
+      if (!savedProfile?.data) {
         console.error(
-          'Failed to finalize onboarding profile:',
-          error,
+          'Learning profile save returned no profile:',
+          savedProfile?.errors,
         );
 
-        if (!cancelled) {
-          setSavingError(
-            'We could not finish setting up your learning profile.',
-          );
-          setIsSavingProfile(false);
-        }
+        throw new Error(
+          'PROFILE_SAVE_FAILED',
+        );
       }
-    };
 
-    const timer = window.setTimeout(
-      finalizeOnboarding,
-      1200,
-    );
+      /*
+       * Save succeeded.
+       * Go directly to the learning experience.
+       */
+      navigate('/learn', {
+        replace: true,
+      });
+    } catch (error) {
+      /*
+       * Keep the real technical error available
+       * for development/debugging only.
+       */
+      console.error(
+        'Failed to save learning profile:',
+        error,
+      );
 
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [
-    step,
-    timeId,
-    finalWorkTypes,
-    topics,
-    goals,
-    navigate,
-  ]);
+      /*
+       * Only show a safe, understandable message
+       * to the user.
+       */
+      setSavingError(
+        getSafeProfileSaveMessage(error),
+      );
 
-  // ── Render step ──────────────────────────────────────────────────────────
+      setIsSavingProfile(false);
+    }
+  };
+
+  /* ------------------------------------------------------------------------ */
+  /* Render individual step                                                  */
+  /* ------------------------------------------------------------------------ */
 
   const renderStep = () => {
     switch (step) {
+      /* -------------------------------------------------------------------- */
+      /* AUTH                                                                 */
+      /* -------------------------------------------------------------------- */
+
       case STEP.AUTH:
         return (
           <AuthScreen
             onAuthenticated={async () => {
-              const profile = await getProfileWithRetry();
+              const profile =
+                await getProfileWithRetry();
 
-              if (profile?.onboardingCompleted === true) {
-                navigate('/learn', { replace: true });
-              } else {
-                setStep(STEP.WELCOME);
+              if (
+                profile?.onboardingCompleted ===
+                true
+              ) {
+                navigate('/learn', {
+                  replace: true,
+                });
+
+                return;
               }
+
+              setStep(STEP.WELCOME);
             }}
           />
         );
+
+      /* -------------------------------------------------------------------- */
+      /* WELCOME                                                              */
+      /* -------------------------------------------------------------------- */
 
       case STEP.WELCOME:
         return (
           <Welcome
-            onContinue={() => setStep(STEP.INTRO)}
-            discordInviteUrl={DISCORD_INVITE_URL}
-          />
-        );
-
-      case STEP.INTRO:
-        return (
-          <IntroStep
-            onContinue={() => setStep(STEP.WORK_TYPE)}
-          />
-        );
-
-      case STEP.WORK_TYPE:
-        return (
-          <WorkTypeStep
-            selected={workTypes}
-            onToggle={(type) =>
-              toggleItem(setWorkTypes, type)
-            }
-            otherSelected={isOtherWorkTypeSelected}
-            otherValue={otherWorkType}
-            onToggleOther={() =>
-              setIsOtherWorkTypeSelected((value) => !value)
-            }
-            onOtherChange={setOtherWorkType}
-            canContinue={canContinue}
             onContinue={() =>
-              setStep(STEP.T_PERSONALIZED)
+              setStep(STEP.MOTIVATION)
+            }
+            discordInviteUrl={
+              DISCORD_INVITE_URL
             }
           />
         );
 
-      case STEP.T_PERSONALIZED:
-      case STEP.T_PERFECT:
-      case STEP.T_GREAT: {
-        const transition = STATIC_TRANSITIONS[step];
+      /* -------------------------------------------------------------------- */
+      /* Q1 — MOTIVATION                                                      */
+      /* -------------------------------------------------------------------- */
 
-        if (!transition) return null;
-
+      case STEP.MOTIVATION:
         return (
-          <TransitionScreen
-            pose={transition.pose}
-            heading={transition.heading}
-            sub={transition.sub}
-            note={transition.note}
-            onContinue={() =>
-              setStep(transition.next)
-            }
-          />
-        );
-      }
-
-      case STEP.TOPICS:
-        return (
-          <TopicsStep
-            selected={topics}
-            onToggle={(topic) =>
-              toggleItem(setTopics, topic)
-            }
-            otherValue={otherTopic}
-            onOtherChange={setOtherTopic}
-            onAddOther={() =>
-              addOther(
-                otherTopic,
-                setTopics,
-                () => setOtherTopic(''),
+          <MotivationStep
+            selected={motivations}
+            onToggle={(value: string) =>
+              toggleMultiSelect(
+                motivations,
+                value,
+                3,
+                setMotivations,
               )
             }
             canContinue={canContinue}
             onContinue={() =>
-              setStep(STEP.T_PERFECT)
+              setStep(STEP.INTERESTS)
             }
           />
         );
 
-      case STEP.GOALS:
+      /* -------------------------------------------------------------------- */
+      /* Q2 — INTERESTS                                                       */
+      /* -------------------------------------------------------------------- */
+
+      case STEP.INTERESTS:
         return (
-          <GoalsStep
-            selected={goals}
-            onToggle={(goal) =>
-              toggleItem(setGoals, goal)
-            }
-            otherValue={otherGoal}
-            onOtherChange={setOtherGoal}
-            onAddOther={() =>
-              addOther(
-                otherGoal,
-                setGoals,
-                () => setOtherGoal(''),
+          <InterestsStep
+            selected={interests}
+            onToggle={(value: string) =>
+              toggleMultiSelect(
+                interests,
+                value,
+                3,
+                setInterests,
               )
             }
             canContinue={canContinue}
             onContinue={() =>
-              setStep(STEP.T_GREAT)
+              setStep(
+                STEP.STARTING_PREFERENCE,
+              )
             }
           />
         );
+
+      /* -------------------------------------------------------------------- */
+      /* Q3 — STARTING PREFERENCE                                             */
+      /* -------------------------------------------------------------------- */
+
+      case STEP.STARTING_PREFERENCE:
+        return (
+          <StartingPreferenceStep
+            selected={startingPreference}
+            onSelect={
+              setStartingPreference
+            }
+            canContinue={canContinue}
+            onContinue={() =>
+              setStep(STEP.COMPREHENSION)
+            }
+          />
+        );
+
+      /* -------------------------------------------------------------------- */
+      /* Q4 — COMPREHENSION                                                   */
+      /* -------------------------------------------------------------------- */
+
+      case STEP.COMPREHENSION:
+        return (
+          <ComprehensionStep
+            selected={
+              comprehensionPreferences
+            }
+            onToggle={(value: string) =>
+              toggleMultiSelect(
+                comprehensionPreferences,
+                value,
+                4,
+                setComprehensionPreferences,
+              )
+            }
+            canContinue={canContinue}
+            onContinue={() =>
+              setStep(STEP.OUTCOMES)
+            }
+          />
+        );
+
+      /* -------------------------------------------------------------------- */
+      /* Q5 — OUTCOMES                                                        */
+      /* -------------------------------------------------------------------- */
+
+      case STEP.OUTCOMES:
+        return (
+          <OutcomesStep
+            selected={desiredOutcomes}
+            onToggle={(value: string) =>
+              toggleMultiSelect(
+                desiredOutcomes,
+                value,
+                3,
+                setDesiredOutcomes,
+              )
+            }
+            canContinue={canContinue}
+            onContinue={() =>
+              setStep(STEP.TIME)
+            }
+          />
+        );
+
+      /* -------------------------------------------------------------------- */
+      /* Q6 — TIME                                                            */
+      /* -------------------------------------------------------------------- */
 
       case STEP.TIME:
         return (
           <TimeStep
-            timeId={timeId}
-            onSelect={setTimeId}
+            selected={timeCommitment}
+            onSelect={setTimeCommitment}
             canContinue={canContinue}
-            onContinue={() => {
-              if (!timeId) return;
-
-              setStep(STEP.T_BOOKS);
-            }}
-          />
-        );
-
-      case STEP.T_BOOKS:
-        return (
-          <TransitionScreen
-            pose="celebrate"
-            heading={`${lessonsPerWeekFor(timeId)} lessons in your first week`}
-            sub="You're on your way to building a lasting learning habit!"
             onContinue={() =>
-              setStep(STEP.LOADING)
+              setStep(STEP.COMPLETE)
             }
           />
         );
 
-      case STEP.LOADING:
+      /* -------------------------------------------------------------------- */
+      /* COMPLETE                                                             */
+      /* -------------------------------------------------------------------- */
+
+      case STEP.COMPLETE:
         return (
-          <LoadingStep
+          <CompleteStep
+            isSaving={isSavingProfile}
             error={savingError}
-            onRetry={
-              savingError
-                ? () => {
-                    setSavingError(null);
-                    setIsSavingProfile(false);
-                    setStep(STEP.LOADING);
-                  }
-                : undefined
-            }
+            onContinue={completeOnboarding}
           />
         );
 
@@ -495,24 +563,19 @@ export default function Onboarding() {
     }
   };
 
-  // ── Canvas ───────────────────────────────────────────────────────────────
-
-  const isDarkOnboarding = DARK_STEPS.has(step);
-
-  const canvasBg = isDarkOnboarding
-    ? 'bg-[#131F24]'
-    : 'bg-surface';
-
-  const backButtonColor = isDarkOnboarding
-    ? 'text-[#91A4AC] hover:text-white hover:bg-white/5'
-    : 'text-body hover:text-ink';
-
-  // ── Initialization screen ───────────────────────────────────────────────
+  /* ------------------------------------------------------------------------ */
+  /* Initialization screen                                                   */
+  /* ------------------------------------------------------------------------ */
 
   if (initializing) {
     return (
-      <div className="min-h-screen bg-[#131F24] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-5">
+      <div className="
+        flex min-h-screen items-center
+        justify-center bg-[#131F24]
+      ">
+        <div className="
+          flex flex-col items-center gap-5
+        ">
           <GrokitMascot
             pose="thinking"
             size={120}
@@ -522,7 +585,9 @@ export default function Onboarding() {
             {[0, 1, 2].map((index) => (
               <motion.span
                 key={index}
-                className="w-2 h-2 rounded-full bg-orange"
+                className="
+                  h-2 w-2 rounded-full bg-orange
+                "
                 animate={{
                   y: [0, -5, 0],
                 }}
@@ -535,7 +600,9 @@ export default function Onboarding() {
             ))}
           </div>
 
-          <p className="text-[#91A4AC] font-semibold text-lg">
+          <p className="
+            text-lg font-semibold text-[#91A4AC]
+          ">
             Preparing your learning space...
           </p>
         </div>
@@ -543,39 +610,61 @@ export default function Onboarding() {
     );
   }
 
-  // ── Page ─────────────────────────────────────────────────────────────────
+  /* ------------------------------------------------------------------------ */
+  /* Back button + progress                                                  */
+  /* ------------------------------------------------------------------------ */
+
+  const previousStep = BACK_STEP[step];
+
+  const progressPosition =
+    PROGRESS_BY_STEP[step];
+
+  const showNavigation =
+    previousStep !== undefined;
+
+  /* ------------------------------------------------------------------------ */
+  /* Page                                                                     */
+  /* ------------------------------------------------------------------------ */
 
   return (
-    <div
-      className={`${canvasBaseClasses} ${canvasBg}`}
-    >
-      {/* Navigation + progress */}
-      {prevStep !== undefined && (
-        <div
-          className={`${navBaseClasses} ${canvasBg}`}
-        >
-          <button
-            type="button"
-            onClick={() => setStep(prevStep)}
-            className={`${backButtonBaseClasses} ${backButtonColor}`}
-            aria-label="Back"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+    <div className="
+      flex h-[100dvh] min-h-[100dvh]
+      flex-col overflow-hidden
+      bg-[#131F24] text-white
+    ">
+      {showNavigation && (
+        <>
+          {/* Back button keeps the existing visual. */}
+          <div className="
+            relative z-30 w-full shrink-0
+            bg-[#131F24]
+            px-5 pb-1 pt-4
+            sm:px-6 sm:pt-5
+          ">
+            <button
+              type="button"
+              onClick={goBack}
+              className="
+                -ml-2 shrink-0 rounded-full p-2
+                text-[#91A4AC]
+                transition-colors
+                hover:bg-white/5
+                hover:text-white
+              "
+              aria-label="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+          </div>
 
-          {progress !== undefined && (
-            <div className="flex-1 min-w-0">
-              <ProgressBar
-                value={
-                  progress / TOTAL_QUESTIONS
-                }
-              />
-            </div>
+          {progressPosition !== undefined && (
+            <ProgressBar
+              value={progressPosition}
+            />
           )}
-        </div>
+        </>
       )}
 
-      {/* Step content */}
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
@@ -592,20 +681,17 @@ export default function Onboarding() {
             x: -20,
           }}
           transition={{
-            duration: 0.3,
+            duration: 0.15,
+            ease: 'easeOut',
           }}
-          className={`${contentBaseClasses} ${canvasBg}`}
+          className="
+            flex min-h-0 flex-1 flex-col
+            overflow-hidden bg-[#131F24]
+          "
         >
           {renderStep()}
         </motion.div>
       </AnimatePresence>
-
-      <WaitlistModal
-        isOpen={isWaitlistOpen}
-        onClose={() =>
-          setIsWaitlistOpen(false)
-        }
-      />
     </div>
   );
 }

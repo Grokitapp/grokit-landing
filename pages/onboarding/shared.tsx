@@ -1,43 +1,129 @@
 import { motion } from 'framer-motion';
+
 import { ArrowRight, Check, Plus } from 'lucide-react';
+
 import type { KeyboardEvent } from 'react';
+
 import { GrokitMascot, type MascotPose } from '../../components/Grokitmascot';
 
-// ─── Shared styles ────────────────────────────────────────────────────────────
+/* -------------------------------------------------------------------------- */
+/* PROGRESS                                                                   */
+/* -------------------------------------------------------------------------- */
 
-const selectedDarkClasses = 'bg-orange/15 border-orange text-white';
-const selectedLightClasses = 'bg-orange/10 border-orange text-ink';
-const unselectedDarkClasses = 'bg-[#202F35] border-[#37464F] text-white hover:border-orange/50 hover:bg-[#26383F]';
-const unselectedLightClasses = 'bg-surface-alt border-line text-ink hover:border-orange/30';
+/**
+ * Matches the Welcome screen exactly.
+ *
+ * Mobile:
+ *   top: 28px
+ *   gap: 16px
+ *
+ * sm+:
+ *   top: 32px
+ *   gap: 20px
+ *
+ * Active:
+ *   32 x 12px
+ *
+ * Inactive:
+ *   12 x 12px
+ */
+export function ProgressBar({ value }: { value: number }) {
+  const activeStep = Math.min(7, Math.max(1, Math.round(value)));
 
-const selectableClasses = (selected: boolean, dark: boolean) =>
-  selected
-    ? dark ? selectedDarkClasses : selectedLightClasses
-    : dark ? unselectedDarkClasses : unselectedLightClasses;
+  return (
+    <div
+      className="
+        absolute
+        left-1/2
+        top-7
+        z-40
+        flex
+        -translate-x-1/2
+        items-center
+        gap-4
+        sm:top-8
+        sm:gap-5
+      "
+      aria-label={`Onboarding progress: step ${activeStep} of 7`}
+    >
+      {Array.from({ length: 7 }, (_, index) => {
+        const isActive = index + 1 === activeStep;
 
-const optionRowClasses = 'w-full text-left px-4 sm:px-5 py-4 rounded-2xl border-2 font-sans font-bold transition-all duration-150';
-const checkboxClasses = 'w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-all';
-const pillClasses = 'inline-flex items-center gap-2 px-5 py-3 rounded-full border-2 font-sans font-bold text-sm sm:text-base transition-all duration-150';
-const otherInputWrapperClasses = 'flex items-center gap-2 px-4 sm:px-5 py-3 rounded-full border-2 border-[#37464F] bg-[#202F35] focus-within:border-orange/60 transition-colors';
-const otherInputFieldClasses = 'flex-1 min-w-0 bg-transparent outline-none text-white font-sans placeholder:text-[#60757E]';
-const addButtonClasses = 'w-8 h-8 shrink-0 rounded-full bg-orange text-white flex items-center justify-center disabled:opacity-30 hover:brightness-105 active:scale-95 transition-all';
-const transitionScreenClasses = 'relative flex-1 min-h-0 flex flex-col items-center justify-center px-5 sm:px-6 py-8 sm:py-10 text-center bg-[#131F24] overflow-hidden';
-const transitionHeadingClasses = 'font-display text-[28px] leading-[1.12] sm:text-3xl md:text-[38px] text-white font-extrabold tracking-[-0.02em] mb-3 max-w-[760px]';
-const transitionSubClasses = 'text-[#91A4AC] font-sans font-medium text-[15px] sm:text-base md:text-[17px] leading-relaxed max-w-[680px]';
-const transitionNoteClasses = 'text-[#60757E] font-sans text-sm sm:text-[15px] mt-2';
+        return (
+          <span
+            key={index}
+            aria-hidden="true"
+            className={
+              isActive
+                ? 'block h-[12px] w-[32px] shrink-0 rounded-full bg-orange'
+                : 'block h-[12px] w-[12px] shrink-0 rounded-full bg-[#304553]'
+            }
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* CONTINUE                                                                   */
+/* -------------------------------------------------------------------------- */
+
 const continueButtonClasses = `
-  group w-full min-h-[58px] px-8 py-4 rounded-full bg-orange text-white font-sans font-extrabold
-  text-base sm:text-lg flex items-center justify-center gap-2 shadow-[0_4px_0_#C94713]
-  hover:brightness-105 active:translate-y-[2px] active:shadow-none transition-all duration-150
+  group
+  w-full
+  min-h-[58px]
+  px-8
+  py-4
+  rounded-full
+  bg-orange
+  text-white
+  font-sans
+  font-extrabold
+  text-base
+  sm:text-lg
+  flex
+  items-center
+  justify-center
+  gap-2
+  shadow-[0_4px_0_#C94713]
+  hover:brightness-105
+  active:translate-y-[2px]
+  active:shadow-none
+  transition-all
+  duration-150
+  disabled:opacity-40
+  disabled:pointer-events-none
 `;
 
-const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  transition: { delay, duration: 0.35 },
-});
+interface ContinueButtonProps {
+  onContinue: () => void;
+  disabled?: boolean;
+  className?: string;
+}
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+export function ContinueButton({
+  onContinue,
+  disabled = false,
+  className = '',
+}: ContinueButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onContinue}
+      disabled={disabled}
+      className={`${continueButtonClasses} ${className}`}
+    >
+      <span>Continue</span>
+
+      <ArrowRight className="h-5 w-5 transition-transform duration-150 group-hover:translate-x-0.5" />
+    </button>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* OPTION ROW                                                                 */
+/* -------------------------------------------------------------------------- */
 
 interface SelectableProps {
   label: string;
@@ -46,131 +132,468 @@ interface SelectableProps {
   dark?: boolean;
 }
 
-interface OtherInputProps {
-  value: string;
-  onChange: (v: string) => void;
-  onAdd: () => void;
-  placeholder: string;
-}
+/*
+ * Selected:
+ * - Orange border
+ * - Warm, subtle dark-orange background
+ * - Orange text
+ *
+ * The background is intentionally subtle so the orange text/check remain
+ * the visual focus without making the whole card too bright.
+ */
+const selectedDarkClasses =
+  'border-orange bg-[#29241F] text-orange';
 
-interface TransitionScreenProps {
-  pose: MascotPose;
-  heading: string;
-  sub: string;
-  note?: string;
-  onContinue: () => void;
-}
+const selectedLightClasses =
+  'border-orange bg-orange/[0.08] text-orange';
 
-// ─── Components ───────────────────────────────────────────────────────────────
+const unselectedDarkClasses =
+  'border-[#37464F] bg-[#202F35] text-white hover:border-orange/40 hover:bg-[#26383F]';
 
-export function ProgressBar({ value }: { value: number }) {
+const unselectedLightClasses =
+  'border-line bg-surface-alt text-ink hover:border-orange/30';
+
+const selectableClasses = (selected: boolean, dark: boolean) =>
+  selected
+    ? dark
+      ? selectedDarkClasses
+      : selectedLightClasses
+    : dark
+      ? unselectedDarkClasses
+      : unselectedLightClasses;
+
+/**
+ * Selectable option row.
+ *
+ * Selected state:
+ * - Orange text
+ * - Orange border
+ * - Subtle warm background
+ * - Rounded orange check container on the right
+ */
+export function OptionRow({
+  label,
+  selected,
+  onClick,
+  dark = true,
+}: SelectableProps) {
   return (
-    <div className="w-full px-4 sm:px-6 pt-5 sm:pt-6 pb-2">
-      <div className="max-w-3xl mx-auto h-2.5 rounded-full bg-[#202F35] border border-[#37464F] overflow-hidden">
-        <motion.div
-          className="h-full rounded-full bg-gradient-to-r from-orange to-amber"
-          initial={false}
-          animate={{ width: `${value * 100}%` }}
-          transition={{ duration: 0.4, ease: 'easeInOut' }}
-        />
-      </div>
-    </div>
-  );
-}
-
-export function OptionRow({ label, selected, onClick, dark = true }: SelectableProps) {
-  const checkboxColor = selected
-    ? 'bg-orange border-orange'
-    : dark ? 'border-[#52656D]' : 'border-line';
-
-  return (
-    <button type="button" onClick={onClick} className={`${optionRowClasses} ${selectableClasses(selected, dark)}`}>
-      <span className="flex items-center gap-3">
-        <span className={`${checkboxClasses} ${checkboxColor}`}>
-          {selected && <Check className="w-3.5 h-3.5 text-white" />}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`
+        w-full
+        text-left
+        rounded-2xl
+        border-2
+        px-4
+        py-4
+        sm:px-5
+        font-sans
+        text-[15px]
+        font-extrabold
+        transition-all
+        duration-150
+        ${selectableClasses(selected, dark)}
+      `}
+    >
+      <span className="flex items-center justify-between gap-4">
+        <span className="min-w-0 flex-1">
+          {label}
         </span>
-        <span>{label}</span>
+
+        <span
+          className={`
+            flex
+            h-7
+            w-7
+            shrink-0
+            items-center
+            justify-center
+            rounded-full
+            transition-all
+            duration-150
+            ${
+              selected
+                ? 'bg-orange text-white'
+                : 'bg-transparent'
+            }
+          `}
+          aria-hidden="true"
+        >
+          {selected && (
+            <Check className="h-4 w-4 stroke-[3]" />
+          )}
+        </span>
       </span>
     </button>
   );
 }
 
-export function PillOption({ label, selected, onClick, dark = true }: SelectableProps) {
+/* -------------------------------------------------------------------------- */
+/* PILL OPTION                                                                */
+/* -------------------------------------------------------------------------- */
+
+export function PillOption({
+  label,
+  selected,
+  onClick,
+  dark = true,
+}: SelectableProps) {
   return (
-    <button type="button" onClick={onClick} className={`${pillClasses} ${selectableClasses(selected, dark)}`}>
-      {selected && <Check className="w-4 h-4 text-orange shrink-0" />}
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`
+        inline-flex
+        items-center
+        rounded-full
+        border-2
+        px-5
+        py-3
+        font-sans
+        text-sm
+        font-bold
+        transition-all
+        duration-150
+        sm:text-base
+        ${selectableClasses(selected, dark)}
+      `}
+    >
       {label}
     </button>
   );
 }
 
-export function OtherInput({ value, onChange, onAdd, placeholder }: OtherInputProps) {
-  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && value.trim()) {
-      e.preventDefault();
+/* -------------------------------------------------------------------------- */
+/* OTHER INPUT                                                                */
+/* -------------------------------------------------------------------------- */
+
+interface OtherInputProps {
+  value: string;
+  onChange: (value: string) => void;
+  onAdd: () => void;
+  placeholder?: string;
+}
+
+export function OtherInput({
+  value,
+  onChange,
+  onAdd,
+  placeholder = 'Something else',
+}: OtherInputProps) {
+  const handleKeyDown = (
+    event: KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (event.key === 'Enter' && value.trim()) {
+      event.preventDefault();
       onAdd();
     }
   };
 
   return (
-    <div className={otherInputWrapperClasses}>
+    <div
+      className="
+        flex
+        min-h-[64px]
+        items-center
+        gap-3
+        rounded-2xl
+        border-2
+        border-[#37464F]
+        bg-[#202F35]
+        px-4
+        py-3
+        transition-all
+        duration-150
+        focus-within:border-orange/50
+        focus-within:bg-[#26302F]
+        sm:px-5
+      "
+    >
+      <span
+        className="
+          shrink-0
+          font-sans
+          text-[15px]
+          font-extrabold
+          text-white
+        "
+      >
+        {placeholder}
+      </span>
+
       <input
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(event) => onChange(event.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={placeholder}
-        className={otherInputFieldClasses}
+        placeholder="Type your own option..."
+        className="
+          min-w-0
+          flex-1
+          bg-transparent
+          px-1
+          py-1.5
+          font-sans
+          text-[14px]
+          font-medium
+          text-white
+          outline-none
+          placeholder:text-[#60757E]
+          sm:text-[15px]
+        "
+        aria-label="Type your own option"
       />
-      <button type="button" onClick={onAdd} disabled={!value.trim()} aria-label="Add" className={addButtonClasses}>
-        <Plus className="w-4 h-4" />
+
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={!value.trim()}
+        aria-label="Add option"
+        className="
+          flex
+          h-8
+          shrink-0
+          items-center
+          justify-center
+          rounded-full
+          bg-[#30424A]
+          px-4
+          font-sans
+          text-[12px]
+          font-extrabold
+          text-[#D8E2E6]
+          transition-all
+          duration-150
+          hover:bg-orange
+          hover:text-white
+          disabled:cursor-not-allowed
+          disabled:opacity-40
+        "
+      >
+        Add
       </button>
     </div>
   );
 }
 
-export function TransitionScreen({ pose, heading, sub, note, onContinue }: TransitionScreenProps) {
+/* -------------------------------------------------------------------------- */
+/* TRANSITION SCREEN                                                          */
+/* -------------------------------------------------------------------------- */
+
+interface TransitionScreenProps {
+  pose?: MascotPose;
+  heading: string;
+  sub?: string;
+  note?: string;
+  onContinue: () => void;
+  buttonLabel?: string;
+}
+
+export function TransitionScreen({
+  pose = 'thinking',
+  heading,
+  sub,
+  note,
+  onContinue,
+  buttonLabel = 'Continue',
+}: TransitionScreenProps) {
   return (
-    <div className={transitionScreenClasses}>
-      <div className="relative z-10 w-full max-w-[820px] flex flex-col items-center">
-        <motion.div
-          initial={{ opacity: 0, y: 14, scale: 0.94 }}
-          animate={{ opacity: 1, y: [0, -4, 0], scale: 1 }}
-          transition={{
-            opacity: { duration: 0.35 },
-            y: { duration: 3.5, repeat: Infinity, ease: 'easeInOut' },
-            scale: { duration: 0.35 },
-          }}
-          className="mb-5 sm:mb-6"
+    <motion.div
+      className="
+        flex
+        min-h-0
+        flex-1
+        flex-col
+        items-center
+        justify-center
+        bg-[#131F24]
+        px-5
+        py-8
+        text-center
+        text-white
+        sm:px-8
+      "
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.3,
+        ease: 'easeOut',
+      }}
+    >
+      <GrokitMascot
+        pose={pose}
+        size={150}
+      />
+
+      <h1
+        className="
+          mt-5
+          max-w-[680px]
+          font-display
+          text-[29px]
+          font-extrabold
+          leading-[1.12]
+          tracking-tight
+          sm:text-[37px]
+        "
+      >
+        {heading}
+      </h1>
+
+      {sub && (
+        <p
+          className="
+            mt-3
+            max-w-[560px]
+            font-sans
+            text-[15px]
+            font-medium
+            leading-relaxed
+            text-[#91A4AC]
+            sm:text-base
+          "
         >
-          <GrokitMascot size={118} pose={pose} />
-        </motion.div>
-
-        <motion.h1 {...fadeUp(0.08)} className={transitionHeadingClasses}>
-          {heading}
-        </motion.h1>
-
-        <motion.p {...fadeUp(0.14)} className={transitionSubClasses}>
           {sub}
-        </motion.p>
+        </p>
+      )}
 
-        {note && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.35 }}
-            className={transitionNoteClasses}
-          >
-            {note}
-          </motion.p>
-        )}
+      {note && (
+        <p
+          className="
+            mt-3
+            max-w-[520px]
+            font-sans
+            text-xs
+            font-medium
+            text-[#60757E]
+            sm:text-sm
+          "
+        >
+          {note}
+        </p>
+      )}
 
-        <motion.div {...fadeUp(0.22)} className="w-full max-w-[800px] mt-8 sm:mt-9">
-          <button type="button" onClick={onContinue} className={continueButtonClasses}>
-            <span>Continue</span>
-            <ArrowRight className="w-5 h-5 transition-transform duration-150 group-hover:translate-x-0.5" />
-          </button>
-        </motion.div>
-      </div>
+      <button
+        type="button"
+        onClick={onContinue}
+        className="
+          mt-7
+          flex
+          min-h-[58px]
+          w-full
+          max-w-[680px]
+          items-center
+          justify-center
+          gap-2
+          rounded-full
+          bg-orange
+          px-8
+          py-4
+          font-sans
+          text-base
+          font-extrabold
+          text-white
+          shadow-[0_4px_0_#C94713]
+          transition-all
+          duration-150
+          hover:brightness-105
+          active:translate-y-[2px]
+          active:shadow-none
+          sm:text-lg
+        "
+      >
+        {buttonLabel}
+
+        <ArrowRight className="h-5 w-5" />
+      </button>
+    </motion.div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* LEGACY EXPORTS                                                             */
+/* -------------------------------------------------------------------------- */
+
+export function OtherOption({
+  selected,
+  value,
+  onToggle,
+  onChange,
+}: {
+  selected: boolean;
+  value: string;
+  onToggle: () => void;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div
+      className={`
+        overflow-hidden
+        rounded-2xl
+        border-2
+        transition-all
+        duration-150
+        ${
+          selected
+            ? 'border-orange bg-[#29241F]'
+            : 'border-[#37464F] bg-[#202F35] hover:border-orange/40'
+        }
+      `}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={selected}
+        className="
+          w-full
+          px-5
+          py-4
+          text-left
+          font-sans
+          text-[15px]
+          font-extrabold
+          transition-colors
+        "
+      >
+        <span
+          className={
+            selected
+              ? 'text-orange'
+              : 'text-white'
+          }
+        >
+          Other
+        </span>
+      </button>
+
+      {selected && (
+        <div className="px-4 pb-4">
+          <input
+            autoFocus
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="Something else"
+            className="
+              h-12
+              w-full
+              rounded-xl
+              border
+              border-[#3D555E]
+              bg-[#16262C]
+              px-4
+              font-sans
+              text-[15px]
+              text-white
+              outline-none
+              placeholder:text-[#60757E]
+              focus:border-orange/70
+            "
+          />
+        </div>
+      )}
     </div>
   );
 }
