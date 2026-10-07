@@ -174,49 +174,4 @@ export const TIME_OPTIONS = [
   },
 ] as const;
 
-/* -------------------------------------------------------------------------- */
-/* Existing Learn page examples                                               */
-/* -------------------------------------------------------------------------- */
-
-/**
- * These examples belong to the Learn dashboard, not onboarding.
- *
- * Keep this export here because Learn.tsx already consumes it from this
- * module. The explicit type also prevents `course` from becoming `any`
- * inside EXAMPLE_COURSES.map(...).
- */
-export interface ExampleCourse {
-  readonly title: string;
-  readonly tag: string;
-  readonly author: string;
-  readonly blurb: string;
-}
-
-export const EXAMPLE_COURSES: readonly ExampleCourse[] = [
-  {
-    title: 'Artificial Intelligence',
-    tag: 'AI',
-    author: 'Grokit',
-    blurb: 'Understand how AI works, from the core ideas to modern applications.',
-  },
-  {
-    title: 'How the Stock Market Works',
-    tag: 'FINANCE',
-    author: 'Grokit',
-    blurb: 'Build a clear mental model of markets, stocks, and investing.',
-  },
-  {
-    title: 'Build a Startup',
-    tag: 'STARTUPS',
-    author: 'Grokit',
-    blurb: 'Go from an idea to understanding the fundamentals of building a business.',
-  },
-  {
-    title: 'Psychology of People',
-    tag: 'PSYCHOLOGY',
-    author: 'Grokit',
-    blurb: 'Explore the ideas behind how people think, decide, and behave.',
-  },
-] as const;
-
 export const DISCORD_INVITE_URL = 'https://discord.gg/your-invite';

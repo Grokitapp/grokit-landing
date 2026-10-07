@@ -1,99 +1,208 @@
-import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
-import { ArrowRight, BookOpen, Loader2, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Circle,
+  Lock,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Sparkles,
+  Trophy,
+} from 'lucide-react';
 import { useNavigate } from 'react-router';
 
-import { WaitlistModal } from '../components/Waitlistmodal';
-import { EXAMPLE_COURSES } from './onboarding/constants';
+import { GrokitMascot } from '../components/Grokitmascot';
 import AppShell from './learn/AppShell';
 
 import { getProfile } from '../lib/profile';
+import {
+  listLessonsForPhase,
+  listPhasesForCourse,
+  listProgressForCourse,
+} from '../lib/courseGeneration';
 import { listCourses } from '../lib/course';
 
+type Course = Awaited<ReturnType<typeof listCourses>>[number];
+type Phase = Awaited<ReturnType<typeof listPhasesForCourse>>[number];
+type Lesson = Awaited<ReturnType<typeof listLessonsForPhase>>[number];
+type Progress = Awaited<
+  ReturnType<typeof listProgressForCourse>
+>[number];
+
+/*
+ * Amplify's generated Phase type contains a `lessons`
+ * relationship accessor. Learn loads lessons separately,
+ * so the UI needs a concrete Lesson[] instead.
+ */
+type PhaseWithLessons = Omit<Phase, 'lessons'> & {
+  lessons: Lesson[];
+};
+
+type LessonState =
+  | 'completed'
+  | 'current'
+  | 'locked';
+
+type CourseStatus =
+  | 'DRAFT'
+  | 'GENERATING'
+  | 'READY'
+  | 'FAILED'
+  | null
+  | undefined;
+
 const pageClasses =
-  'min-h-[100dvh] w-full px-4 sm:px-6 lg:px-8 xl:px-10 py-6 sm:py-8 lg:py-10';
+  'min-h-[100dvh] w-full px-4 pb-10 pt-5 sm:px-6 sm:pb-12 sm:pt-7 lg:px-8 lg:pt-8 xl:px-10';
 
 const contentClasses =
-  'w-full max-w-[1180px] mx-auto';
+  'mx-auto w-full max-w-[1120px]';
 
-const heroClasses =
-  'relative overflow-hidden rounded-[28px] border border-[#2D3C43] bg-[#18272D] px-5 py-7 sm:px-8 sm:py-9 lg:px-10 lg:py-10 mb-6';
+const primaryButtonClasses = [
+  'group inline-flex min-h-[46px] items-center justify-center gap-2',
+  'rounded-2xl bg-orange px-5 py-3',
+  'font-sans text-sm font-extrabold text-white',
+  'shadow-[0_4px_0_#C94713]',
+  'transition-all duration-150',
+  'hover:brightness-105',
+  'active:translate-y-[2px] active:shadow-none',
+  'disabled:pointer-events-none disabled:opacity-40',
+].join(' ');
 
-const badgeClasses =
-  'inline-flex items-center gap-2 px-3.5 py-2 rounded-full border border-[#34474F] bg-[#202F35] text-[#A9BAC0] font-sans font-bold text-xs sm:text-sm';
+const secondaryButtonClasses = [
+  'inline-flex min-h-[44px] items-center justify-center gap-2',
+  'rounded-2xl border border-[#334951]',
+  'bg-[#192A31] px-4',
+  'font-sans text-sm font-extrabold text-[#D7E0E3]',
+  'transition-all duration-150',
+  'hover:border-[#526A73] hover:bg-[#1D3037]',
+].join(' ');
 
-const headingClasses =
-  'mt-4 font-display text-[30px] sm:text-[38px] lg:text-[46px] leading-[1.04] font-extrabold tracking-[-0.025em] text-white';
+function getCourseStatusLabel(status: CourseStatus) {
+  switch (status) {
+    case 'GENERATING':
+      return 'Building your journey';
 
-const subtitleClasses =
-  'mt-3 max-w-[700px] text-[#91A4AC] font-sans text-[15px] sm:text-base lg:text-[17px] leading-relaxed';
+    case 'FAILED':
+      return 'Journey needs attention';
 
-const createCardClasses =
-  'relative overflow-hidden rounded-[28px] border border-[#37464F] bg-[#202F35] p-4 sm:p-5 lg:p-6';
+    case 'DRAFT':
+      return 'Draft journey';
 
-const textareaClasses =
-  'w-full min-h-[145px] sm:min-h-[160px] lg:min-h-[175px] bg-transparent outline-none resize-none text-white font-sans text-[15px] sm:text-base leading-relaxed placeholder:text-[#60757E]';
+    default:
+      return 'Learning journey';
+  }
+}
 
-const createButtonClasses =
-  'group w-full sm:w-auto min-h-[50px] px-6 py-3 rounded-2xl bg-orange text-white font-sans font-extrabold text-[14px] sm:text-[15px] flex items-center justify-center gap-2 shadow-[0_4px_0_#C94713] hover:brightness-105 active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-40 disabled:pointer-events-none';
+function getPhaseLabel(index: number) {
+  const labels = [
+    'Shallows',
+    'Reef',
+    'Deep',
+    'Abyss',
+  ];
 
-const sectionHeaderClasses =
-  'flex items-center justify-between mb-3';
+  return labels[index] ?? `Depth ${index + 1}`;
+}
 
-const sectionLabelClasses =
-  'text-white font-sans font-extrabold text-[15px] sm:text-base';
+/**
+ * Lesson progression is intentionally strict.
+ *
+ * Completed:
+ *   The learner can revisit it.
+ *
+ * Current:
+ *   The first incomplete lesson in the first unlocked
+ *   phase that still has unfinished lessons.
+ *
+ * Locked:
+ *   Everything after the current lesson, plus every
+ *   lesson inside a locked phase.
+ */
+function getLessonState(
+  lesson: Lesson,
+  phaseLocked: boolean,
+  completedIds: Set<string>,
+  currentLessonId: string | null,
+): LessonState {
+  if (completedIds.has(lesson.id)) {
+    return 'completed';
+  }
 
-const sectionSubLabelClasses =
-  'text-[#60757E] font-sans font-semibold text-xs';
+  if (phaseLocked) {
+    return 'locked';
+  }
 
-const courseCardClasses =
-  'group relative w-full overflow-hidden rounded-[24px] border border-[#33464E] bg-[#1C2B31] p-4 sm:p-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-[#52666E] hover:bg-[#203239] hover:shadow-[0_12px_30px_rgba(0,0,0,0.18)]';
+  if (currentLessonId === lesson.id) {
+    return 'current';
+  }
 
-const exampleCardClasses =
-  'group w-full flex items-center gap-3 sm:gap-4 rounded-2xl border border-[#2D3C43] bg-[#18272D] p-3 sm:p-4 text-left transition-all duration-200 hover:border-orange/30 hover:bg-[#1D2D33]';
+  return 'locked';
+}
 
-const tagClasses =
-  'flex h-12 w-12 sm:h-14 sm:w-14 shrink-0 items-center justify-center rounded-2xl bg-orange/10 border border-orange/10 text-[11px] font-extrabold text-orange text-center px-1';
+function clamp(
+  value: number,
+  min: number,
+  max: number,
+) {
+  return Math.min(Math.max(value, min), max);
+}
 
-const titleClasses =
-  'block font-display font-extrabold text-white text-sm sm:text-[15px]';
+function getCompletionPercent(
+  completed: number,
+  total: number,
+) {
+  if (!total) return 0;
 
-const authorClasses =
-  'block mt-0.5 text-xs text-[#60757E] font-sans font-semibold';
-
-const blurbClasses =
-  'block mt-1 text-xs sm:text-sm text-[#91A4AC] font-sans leading-relaxed';
-
-type Course = Awaited<ReturnType<typeof listCourses>>[number];
+  return Math.round(
+    clamp((completed / total) * 100, 0, 100),
+  );
+}
 
 export default function Learn() {
   const navigate = useNavigate();
 
-  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingCourses, setLoadingCourses] =
+    useState(true);
 
   const [courses, setCourses] = useState<Course[]>([]);
 
   const [courseError, setCourseError] =
     useState<string | null>(null);
 
-  const [learnPrompt, setLearnPrompt] = useState('');
+  const [profileLoading, setProfileLoading] =
+    useState(true);
 
-  const [isWaitlistOpen, setIsWaitlistOpen] =
+  const [selectedCourseId, setSelectedCourseId] =
+    useState<string | null>(null);
+
+  const [phases, setPhases] =
+    useState<PhaseWithLessons[]>([]);
+
+  const [progress, setProgress] =
+    useState<Progress[]>([]);
+
+  const [loadingPath, setLoadingPath] =
+    useState(false);
+
+  const [pathError, setPathError] =
+    useState<string | null>(null);
+
+  const [courseMenuOpen, setCourseMenuOpen] =
     useState(false);
 
   /*
-   * Profile/onboarding verification intentionally does NOT
-   * block rendering the dashboard.
-   *
-   * AuthGuard already protects /learn at the authentication
-   * level. This check only verifies that onboarding has been
-   * completed and redirects if necessary.
+   * Verify onboarding without introducing another
+   * full-screen loading wall.
    */
   useEffect(() => {
     let mounted = true;
 
     const verifyAccess = async () => {
       try {
+        setProfileLoading(true);
+
         const profile = await getProfile();
 
         if (!mounted) return;
@@ -102,12 +211,18 @@ export default function Learn() {
           navigate('/onboarding', {
             replace: true,
           });
+
+          return;
         }
       } catch {
+        if (!mounted) return;
+
+        navigate('/onboarding', {
+          replace: true,
+        });
+      } finally {
         if (mounted) {
-          navigate('/onboarding', {
-            replace: true,
-          });
+          setProfileLoading(false);
         }
       }
     };
@@ -120,72 +235,258 @@ export default function Learn() {
   }, [navigate]);
 
   /*
-   * Courses load independently from profile verification.
-   *
-   * This means:
-   * - Home opens immediately.
-   * - The dashboard does not disappear behind a full-screen loader.
-   * - Course loading is shown only inside the course section.
+   * Load the user's actual courses.
    */
-  useEffect(() => {
-    let cancelled = false;
+  const loadCourses = async () => {
+    try {
+      setLoadingCourses(true);
+      setCourseError(null);
 
-    const loadCourses = async () => {
-      try {
-        setLoadingCourses(true);
-        setCourseError(null);
+      const existingCourses = await listCourses();
 
-        const existingCourses = await listCourses();
+      setCourses(existingCourses);
 
-        if (!cancelled) {
-          setCourses(existingCourses);
+      setSelectedCourseId((current) => {
+        if (
+          current &&
+          existingCourses.some(
+            (course) => course.id === current,
+          )
+        ) {
+          return current;
         }
-      } catch (error) {
-        if (!cancelled) {
-          setCourseError(
-            error instanceof Error
-              ? error.message
-              : 'Failed to load your courses.',
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setLoadingCourses(false);
-        }
-      }
-    };
 
-    void loadCourses();
+        const firstReady = existingCourses.find(
+          (course) => course.status === 'READY',
+        );
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const hasPrompt =
-    learnPrompt.trim().length > 0;
-
-  const handleCreate = () => {
-    const prompt = learnPrompt.trim();
-
-    if (!prompt) return;
-
-    navigate('/learn/personalize', {
-      state: {
-        prompt,
-      },
-    });
+        return (
+          firstReady?.id ??
+          existingCourses[0]?.id ??
+          null
+        );
+      });
+    } catch (error) {
+      setCourseError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load your learning journeys.',
+      );
+    } finally {
+      setLoadingCourses(false);
+    }
   };
 
-  const handleExampleClick = (title: string) => {
-    setLearnPrompt(
-      `I want to learn about ${title}`,
-    );
+  useEffect(() => {
+    void loadCourses();
+  }, []);
 
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
+  const selectedCourse = useMemo(
+    () =>
+      courses.find(
+        (course) => course.id === selectedCourseId,
+      ) ?? null,
+    [courses, selectedCourseId],
+  );
+
+  /*
+   * Load phases, lessons and progress for the
+   * currently selected course.
+   */
+  const loadPath = async () => {
+    if (!selectedCourseId) {
+      setPhases([]);
+      setProgress([]);
+      return;
+    }
+
+    try {
+      setLoadingPath(true);
+      setPathError(null);
+
+      const [
+        coursePhases,
+        courseProgress,
+      ] = await Promise.all([
+        listPhasesForCourse(selectedCourseId),
+        listProgressForCourse(selectedCourseId),
+      ]);
+
+      const phasesWithLessons =
+        await Promise.all(
+          coursePhases.map(async (phase) => {
+            const lessons =
+              await listLessonsForPhase(
+                phase.id,
+              );
+
+            return {
+              ...phase,
+              lessons,
+            };
+          }),
+        );
+
+      /*
+       * Keep phase ordering deterministic even if
+       * the backend returns records in another order.
+       *
+       * Lesson ordering is already normalized by
+       * listLessonsForPhase().
+       */
+      phasesWithLessons.sort(
+        (a, b) => a.order - b.order,
+      );
+
+      setPhases(phasesWithLessons);
+      setProgress(courseProgress);
+    } catch (error) {
+      setPathError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to load your learning path.',
+      );
+
+      setPhases([]);
+      setProgress([]);
+    } finally {
+      setLoadingPath(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadPath();
+  }, [selectedCourseId]);
+
+  const completedLessonIds = useMemo(
+    () =>
+      new Set(
+        progress
+          .filter(
+            (item) => Boolean(item.completedAt),
+          )
+          .map((item) => item.lessonId),
+      ),
+    [progress],
+  );
+
+  const allLessons = useMemo(
+    () =>
+      phases.flatMap(
+        (phase) => phase.lessons,
+      ),
+    [phases],
+  );
+
+  const completedCount =
+    completedLessonIds.size;
+
+  const totalLessonCount =
+    allLessons.length;
+
+  const overallProgress = useMemo(
+    () =>
+      getCompletionPercent(
+        completedCount,
+        totalLessonCount,
+      ),
+    [completedCount, totalLessonCount],
+  );
+
+  /*
+   * Current lesson:
+   *
+   * Find the first unlocked phase with an incomplete
+   * lesson, then take the first incomplete lesson
+   * inside that phase.
+   *
+   * This creates the strict sequence:
+   *
+   * Lesson 1 -> Lesson 2 -> Lesson 3
+   *
+   * and never allows Lesson 3 to become available
+   * before Lesson 2 is complete.
+   */
+  const currentLessonId = useMemo(() => {
+    for (const phase of phases) {
+      if (phase.locked) continue;
+
+      const nextLesson = phase.lessons.find(
+        (lesson) =>
+          !completedLessonIds.has(
+            lesson.id,
+          ),
+      );
+
+      if (nextLesson) {
+        return nextLesson.id;
+      }
+    }
+
+    return null;
+  }, [phases, completedLessonIds]);
+
+  const currentLesson = useMemo(
+    () =>
+      allLessons.find(
+        (lesson) =>
+          lesson.id === currentLessonId,
+      ) ?? null,
+    [allLessons, currentLessonId],
+  );
+
+  const currentPhase = useMemo(
+    () =>
+      phases.find((phase) =>
+        phase.lessons.some(
+          (lesson) =>
+            lesson.id === currentLessonId,
+        ),
+      ) ?? null,
+    [phases, currentLessonId],
+  );
+
+  const hasCompletedEverything =
+    totalLessonCount > 0 &&
+    completedCount >= totalLessonCount;
+
+  const selectedCourseStatus =
+    selectedCourse?.status as CourseStatus;
+
+  const isCourseBuilding =
+    selectedCourseStatus === 'GENERATING' ||
+    selectedCourseStatus === 'DRAFT';
+
+  const isCourseFailed =
+    selectedCourseStatus === 'FAILED';
+
+  const handleCreateJourney = () => {
+    navigate('/learn/personalize');
+  };
+
+  const handleLessonClick = (
+    lesson: Lesson,
+    state: LessonState,
+  ) => {
+    /*
+     * Only completed and current lessons are
+     * navigable.
+     *
+     * Future lessons remain inaccessible even if
+     * someone somehow triggers the click handler.
+     */
+    if (
+      state !== 'completed' &&
+      state !== 'current'
+    ) {
+      return;
+    }
+
+    if (!selectedCourseId) return;
+
+    navigate(
+      `/learn/course/${selectedCourseId}/lesson/${lesson.id}`,
+    );
   };
 
   return (
@@ -198,315 +499,1109 @@ export default function Learn() {
     >
       <div className={pageClasses}>
         <div className={contentClasses}>
+          {/* ============================================================
+              LOADING PROFILE / COURSES
+          ============================================================ */}
 
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* Hero                                                       */}
-          {/* ─────────────────────────────────────────────────────────── */}
+          {(profileLoading ||
+            loadingCourses) && (
+            <section className="flex min-h-[620px] items-center justify-center">
+              <div className="flex flex-col items-center text-center">
+                <div className="relative">
+                  <div className="absolute -inset-10 rounded-full bg-orange/[0.055] blur-3xl" />
 
-          <section className={heroClasses}>
-            <div className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-orange/10 blur-3xl" />
-
-            <div className="pointer-events-none absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-[#4B8A98]/10 blur-3xl" />
-
-            <div className="relative">
-              <div className={badgeClasses}>
-                <Sparkles className="h-3.5 w-3.5 text-orange" />
-                Your learning space
-              </div>
-
-              <h1 className={headingClasses}>
-                What do you want to learn?
-              </h1>
-
-              <p className={subtitleClasses}>
-                Tell Grokit what you're curious about.
-                We'll turn your idea into a structured,
-                personalized learning path.
-              </p>
-            </div>
-          </section>
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* Create learning path                                      */}
-          {/* ─────────────────────────────────────────────────────────── */}
-
-          <section className={createCardClasses}>
-            <div className="pointer-events-none absolute -right-16 -top-20 h-48 w-48 rounded-full bg-orange/5 blur-3xl" />
-
-            <div className="relative">
-              <div className="mb-3 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange/10 text-orange">
-                  <Sparkles className="h-4 w-4" />
+                  <GrokitMascot
+                    size={118}
+                    pose="idle"
+                    className="relative opacity-90"
+                  />
                 </div>
 
-                <div>
-                  <p className="font-sans text-sm font-extrabold text-white">
-                    Create a new learning path
-                  </p>
+                <p className="mt-5 font-display text-lg font-extrabold text-white">
+                  Getting your path ready
+                </p>
 
-                  <p className="text-[11px] font-medium text-[#60757E]">
-                    Be as specific or as broad as you want.
-                  </p>
+                <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-[#60757E]">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Loading your journeys
                 </div>
-              </div>
-
-              <textarea
-                value={learnPrompt}
-                onChange={(event) =>
-                  setLearnPrompt(event.target.value)
-                }
-                onKeyDown={(event) => {
-                  if (
-                    (event.metaKey || event.ctrlKey) &&
-                    event.key === 'Enter'
-                  ) {
-                    event.preventDefault();
-                    handleCreate();
-                  }
-                }}
-                placeholder="I want to learn about..."
-                aria-label="Learning prompt"
-                className={textareaClasses}
-              />
-
-              <div className="mt-3 flex flex-col gap-3 border-t border-[#37464F] pt-3 sm:flex-row sm:items-center sm:justify-between">
-                <p className="hidden sm:block text-xs font-medium text-[#60757E]">
-                  Press Ctrl + Enter to continue
-                </p>
-
-                <button
-                  type="button"
-                  onClick={handleCreate}
-                  disabled={!hasPrompt}
-                  className={createButtonClasses}
-                >
-                  Create my learning path
-
-                  <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* Existing courses                                          */}
-          {/* ─────────────────────────────────────────────────────────── */}
-
-          {loadingCourses && (
-            <section className="mt-8">
-              <div className={sectionHeaderClasses}>
-                <p className={sectionLabelClasses}>
-                  Your learning
-                </p>
-
-                <Loader2 className="h-4 w-4 animate-spin text-[#60757E]" />
-              </div>
-
-              <div className="grid gap-3">
-                <CourseSkeleton />
-                <CourseSkeleton />
               </div>
             </section>
           )}
 
-          {!loadingCourses &&
-            courses.length > 0 && (
-              <section className="mt-8">
-                <div className={sectionHeaderClasses}>
-                  <div>
-                    <p className={sectionLabelClasses}>
-                      Continue learning
-                    </p>
+          {/* ============================================================
+              EMPTY LEARN
+          ============================================================ */}
 
-                    <p className="mt-0.5 text-xs font-medium text-[#60757E]">
-                      Pick up where you left off.
-                    </p>
-                  </div>
+          {!profileLoading &&
+            !loadingCourses &&
+            courses.length === 0 && (
+              <EmptyLearnState
+                onCreate={handleCreateJourney}
+              />
+            )}
 
-                  <span className={sectionSubLabelClasses}>
-                    {courses.length}{' '}
-                    {courses.length === 1
-                      ? 'course'
-                      : 'courses'}
-                  </span>
-                </div>
+          {/* ============================================================
+              COURSE SELECTION FALLBACK
+          ============================================================ */}
 
-                <div className="grid gap-3">
-                  {courses.map((course, index) => (
-                    <button
-                      key={course.id}
-                      type="button"
-                      onClick={() =>
-                        navigate(
-                          `/learn/course/${course.id}`,
-                        )
-                      }
-                      className={courseCardClasses}
-                    >
-                      <div className="flex items-center gap-4">
+          {!profileLoading &&
+            !loadingCourses &&
+            courses.length > 0 &&
+            !selectedCourse && (
+              <section className="rounded-[28px] border border-[#2D4149] bg-[#17262C] p-8 text-center">
+                <p className="font-display text-xl font-extrabold text-white">
+                  Choose a journey to begin.
+                </p>
 
-                        {/* Course visual */}
-                        <div className="relative flex h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-orange/10">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedCourseId(
+                      courses[0]?.id ?? null,
+                    )
+                  }
+                  className={`${primaryButtonClasses} mt-5`}
+                >
+                  Open journey
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </section>
+            )}
 
-                          {course.heroImageUrl ? (
+          {/* ============================================================
+              MAIN LEARN
+          ============================================================ */}
+
+          {!profileLoading &&
+            !loadingCourses &&
+            selectedCourse && (
+              <main>
+                {/* ======================================================
+                    HEADER
+                ====================================================== */}
+
+                <section className="mb-6">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="font-sans text-[11px] font-extrabold uppercase tracking-[0.16em] text-orange">
+                          Your dive path
+                        </span>
+
+                        {currentPhase && (
+                          <>
+                            <span className="text-[#40545C]">
+                              /
+                            </span>
+
+                            <span className="truncate font-sans text-[11px] font-bold uppercase tracking-[0.12em] text-[#71868F]">
+                              {currentPhase.title}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      <h1 className="max-w-[720px] font-display text-[34px] font-extrabold leading-[1.05] tracking-[-0.03em] text-white sm:text-[46px]">
+                        {hasCompletedEverything
+                          ? 'You made it all the way down.'
+                          : 'Keep going deeper.'}
+                      </h1>
+
+                      <p className="mt-3 max-w-[680px] font-sans text-sm font-medium leading-6 text-[#7F939B] sm:text-base">
+                        {hasCompletedEverything
+                          ? 'Your journey is complete. You can revisit any lesson whenever you want.'
+                          : currentLesson
+                            ? `Next up: ${currentLesson.title}`
+                            : 'Choose a lesson and continue your journey.'}
+                      </p>
+                    </div>
+
+                    {/* Journey selector */}
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setCourseMenuOpen(
+                            (open) => !open,
+                          )
+                        }
+                        className="flex min-h-[48px] max-w-full items-center gap-3 rounded-2xl border border-[#334951] bg-[#18282F] px-3.5 text-left transition-colors hover:border-[#4C626B]"
+                        aria-expanded={
+                          courseMenuOpen
+                        }
+                      >
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-orange/10">
+                          {selectedCourse.heroImageUrl ? (
                             <img
-                              src={course.heroImageUrl}
+                              src={
+                                selectedCourse.heroImageUrl
+                              }
                               alt=""
                               className="h-full w-full object-cover"
                             />
                           ) : (
-                            <BookOpen className="h-7 w-7 text-orange" />
+                            <Sparkles className="h-4 w-4 text-orange" />
+                          )}
+                        </div>
+
+                        <span className="min-w-0 max-w-[190px]">
+                          <span className="block truncate font-sans text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#60757E]">
+                            Current journey
+                          </span>
+
+                          <span className="mt-0.5 block truncate font-display text-sm font-extrabold text-white">
+                            {selectedCourse.title}
+                          </span>
+                        </span>
+
+                        <ChevronDown
+                          className={[
+                            'h-4 w-4 shrink-0 text-[#71868F]',
+                            'transition-transform',
+                            courseMenuOpen
+                              ? 'rotate-180'
+                              : '',
+                          ].join(' ')}
+                        />
+                      </button>
+
+                      {courseMenuOpen && (
+                        <div className="absolute right-0 top-[calc(100%+8px)] z-30 w-[280px] overflow-hidden rounded-2xl border border-[#344A53] bg-[#18282F] p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
+                          {courses.map(
+                            (course) => {
+                              const active =
+                                course.id ===
+                                selectedCourseId;
+
+                              return (
+                                <button
+                                  key={course.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCourseId(
+                                      course.id,
+                                    );
+
+                                    setCourseMenuOpen(
+                                      false,
+                                    );
+                                  }}
+                                  className={[
+                                    'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left',
+                                    'transition-colors',
+                                    active
+                                      ? 'bg-orange/10'
+                                      : 'hover:bg-[#203239]',
+                                  ].join(' ')}
+                                >
+                                  <div
+                                    className={[
+                                      'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
+                                      active
+                                        ? 'bg-orange/15 text-orange'
+                                        : 'bg-[#21343B] text-[#71868F]',
+                                    ].join(' ')}
+                                  >
+                                    {active ? (
+                                      <Check className="h-4 w-4" />
+                                    ) : (
+                                      <Circle className="h-3.5 w-3.5" />
+                                    )}
+                                  </div>
+
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate font-sans text-sm font-bold text-white">
+                                      {course.title}
+                                    </span>
+
+                                    <span className="mt-0.5 block font-sans text-[10px] font-semibold uppercase tracking-[0.08em] text-[#60757E]">
+                                      {getCourseStatusLabel(
+                                        course.status as CourseStatus,
+                                      )}
+                                    </span>
+                                  </span>
+                                </button>
+                              );
+                            },
                           )}
 
-                          <span className="absolute bottom-1.5 right-1.5 rounded-md bg-[#131F24]/80 px-1.5 py-0.5 text-[9px] font-extrabold text-[#D6E0E3] backdrop-blur-sm">
-                            {String(index + 1).padStart(2, '0')}
-                          </span>
+                          <div className="my-1.5 h-px bg-[#2B4048]" />
+
+                          <button
+                            type="button"
+                            onClick={
+                              handleCreateJourney
+                            }
+                            className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors hover:bg-[#203239]"
+                          >
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange/10 text-orange">
+                              <Plus className="h-4 w-4" />
+                            </div>
+
+                            <span className="font-sans text-sm font-extrabold text-[#D7E0E3]">
+                              Create another journey
+                            </span>
+                          </button>
                         </div>
+                      )}
+                    </div>
+                  </div>
+                </section>
 
-                        {/* Course information */}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate font-display text-[15px] sm:text-base font-extrabold text-white">
-                            {course.title}
-                          </span>
+                {/* ======================================================
+                    COURSE BUILDING
+                ====================================================== */}
 
-                          <span className="mt-0.5 block truncate text-xs font-semibold text-[#60757E]">
-                            {course.topic}
-                          </span>
+                {isCourseBuilding && (
+                  <CourseBuildingState
+                    course={selectedCourse}
+                  />
+                )}
 
-                          <span className="mt-1.5 block line-clamp-2 text-xs sm:text-sm leading-relaxed text-[#91A4AC]">
-                            {course.description ||
-                              'Continue learning from where you left off.'}
-                          </span>
-                        </span>
+                {/* ======================================================
+                    COURSE FAILED
+                ====================================================== */}
 
-                        {/* Arrow */}
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#202F35] text-[#60757E] transition-all group-hover:bg-orange group-hover:text-white">
-                          <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
-                        </span>
-                      </div>
+                {isCourseFailed && (
+                  <CourseFailedState
+                    course={selectedCourse}
+                    onRetry={() =>
+                      void loadCourses()
+                    }
+                    onCreate={
+                      handleCreateJourney
+                    }
+                  />
+                )}
 
-                      {/* Progress placeholder / course state */}
-                      <div className="mt-4 flex items-center gap-3">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#2B3C43]">
-                          <div className="h-full w-0 rounded-full bg-orange transition-all" />
+                {/* ======================================================
+                    ACTUAL DIVE PATH
+                ====================================================== */}
+
+                {!isCourseBuilding &&
+                  !isCourseFailed && (
+                    <>
+                      <section className="mb-6 overflow-hidden rounded-[30px] border border-[#2D4149] bg-[#14232A]">
+                        <div className="relative px-5 py-5 sm:px-7 sm:py-6">
+                          <div className="pointer-events-none absolute -right-32 -top-40 h-[420px] w-[420px] rounded-full bg-orange/[0.045] blur-[100px]" />
+
+                          <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange/10 text-orange">
+                                  <Trophy className="h-4 w-4" />
+                                </div>
+
+                                <div>
+                                  <p className="font-sans text-[10px] font-extrabold uppercase tracking-[0.12em] text-[#60757E]">
+                                    Journey progress
+                                  </p>
+
+                                  <p className="mt-0.5 font-display text-base font-extrabold text-white">
+                                    {completedCount}{' '}
+                                    of{' '}
+                                    {totalLessonCount}{' '}
+                                    lessons complete
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex min-w-[220px] items-center gap-3 sm:min-w-[280px]">
+                              <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#293D44]">
+                                <div
+                                  className="h-full rounded-full bg-orange transition-[width] duration-500"
+                                  style={{
+                                    width: `${overallProgress}%`,
+                                  }}
+                                />
+                              </div>
+
+                              <span className="w-10 text-right font-sans text-xs font-extrabold text-[#A9BAC0]">
+                                {overallProgress}%
+                              </span>
+                            </div>
+                          </div>
                         </div>
+                      </section>
 
-                        <span className="text-[10px] font-extrabold uppercase tracking-wide text-[#60757E]">
-                          Start
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </section>
+                      {loadingPath && (
+                        <div className="flex min-h-[420px] items-center justify-center">
+                          <div className="flex flex-col items-center text-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-orange" />
+
+                            <p className="mt-4 font-sans text-sm font-bold text-[#71868F]">
+                              Mapping your journey
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {!loadingPath &&
+                        pathError && (
+                          <PathErrorState
+                            message={pathError}
+                            onRetry={() =>
+                              void loadPath()
+                            }
+                          />
+                        )}
+
+                      {!loadingPath &&
+                        !pathError &&
+                        phases.length === 0 && (
+                          <EmptyPathState
+                            onCreate={
+                              handleCreateJourney
+                            }
+                          />
+                        )}
+
+                      {!loadingPath &&
+                        !pathError &&
+                        phases.length > 0 && (
+                          <DivePath
+                            phases={phases}
+                            completedLessonIds={
+                              completedLessonIds
+                            }
+                            currentLessonId={
+                              currentLessonId
+                            }
+                            onLessonClick={
+                              handleLessonClick
+                            }
+                          />
+                        )}
+                    </>
+                  )}
+              </main>
             )}
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* Course loading error                                      */}
-          {/* ─────────────────────────────────────────────────────────── */}
-
-          {courseError && !loadingCourses && (
-            <section className="mt-8">
-              <div className="rounded-2xl border border-[#4A3A32] bg-[#241F1C] px-4 py-4">
-                <div className="flex items-start gap-3">
-                  <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-orange/10 text-orange">
-                    <BookOpen className="h-4 w-4" />
-                  </div>
-
-                  <div className="min-w-0">
-                    <p className="text-sm font-extrabold text-white">
-                      We couldn't load your courses.
-                    </p>
-
-                    <p className="mt-1 break-words text-xs leading-relaxed text-[#91A4AC]">
-                      {courseError}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* ─────────────────────────────────────────────────────────── */}
-          {/* Discover                                                    */}
-          {/* ─────────────────────────────────────────────────────────── */}
-
-          <section className="mt-10 pb-8">
-            <div className={sectionHeaderClasses}>
-              <div>
-                <p className={sectionLabelClasses}>
-                  Explore something new
-                </p>
-
-                <p className="mt-0.5 text-xs font-medium text-[#60757E]">
-                  Start with an idea and make it your own.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              {EXAMPLE_COURSES.map((course) => (
-                <button
-                  key={course.title}
-                  type="button"
-                  onClick={() =>
-                    handleExampleClick(course.title)
-                  }
-                  className={exampleCardClasses}
-                >
-                  <span className={tagClasses}>
-                    {course.tag}
-                  </span>
-
-                  <span className="min-w-0 flex-1">
-                    <span className={titleClasses}>
-                      {course.title}
-                    </span>
-
-                    <span className={authorClasses}>
-                      {course.author}
-                    </span>
-
-                    <span className={blurbClasses}>
-                      {course.blurb}
-                    </span>
-                  </span>
-
-                  <ArrowRight className="h-4 w-4 shrink-0 text-[#60757E] transition-all group-hover:translate-x-1 group-hover:text-orange" />
-                </button>
-              ))}
-            </div>
-          </section>
         </div>
       </div>
-
-      <WaitlistModal
-        isOpen={isWaitlistOpen}
-        onClose={() => setIsWaitlistOpen(false)}
-      />
     </AppShell>
   );
 }
 
-// ─── Course skeleton ──────────────────────────────────────────────────────────
+/* ========================================================================
+ * EMPTY LEARN STATE
+ * ====================================================================== */
 
-function CourseSkeleton(): ReactNode {
+function EmptyLearnState({
+  onCreate,
+}: {
+  onCreate: () => void;
+}) {
   return (
-    <div className="rounded-[24px] border border-[#2D3C43] bg-[#1C2B31] p-4 sm:p-5">
-      <div className="flex items-center gap-4">
-        <div className="h-16 w-16 sm:h-[72px] sm:w-[72px] shrink-0 animate-pulse rounded-2xl bg-[#26373D]" />
+    <section className="relative overflow-hidden rounded-[32px] border border-[#2D4149] bg-[#17262C]">
+      <div className="pointer-events-none absolute -right-32 -top-32 h-[420px] w-[420px] rounded-full bg-orange/[0.08] blur-[100px]" />
 
-        <div className="min-w-0 flex-1 space-y-2">
-          <div className="h-4 w-2/3 animate-pulse rounded bg-[#26373D]" />
-          <div className="h-3 w-1/3 animate-pulse rounded bg-[#26373D]" />
-          <div className="h-3 w-full animate-pulse rounded bg-[#26373D]" />
-          <div className="h-3 w-4/5 animate-pulse rounded bg-[#26373D]" />
+      <div className="pointer-events-none absolute -bottom-40 left-[30%] h-[300px] w-[300px] rounded-full bg-[#3FD0C9]/[0.025] blur-[90px]" />
+
+      <div className="relative grid min-h-[650px] lg:grid-cols-[1fr_330px]">
+        <div className="flex flex-col justify-center px-5 py-12 sm:px-9 lg:px-12">
+          <div className="max-w-[680px]">
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#344A53] bg-[#1D3037] px-3.5 py-2">
+              <Sparkles className="h-4 w-4 text-orange" />
+
+              <span className="font-sans text-xs font-bold text-[#A9BAC0] sm:text-sm">
+                Your first journey
+              </span>
+            </div>
+
+            <h1 className="font-display text-[40px] font-extrabold leading-[1.03] tracking-[-0.035em] text-white sm:text-[52px] lg:text-[58px]">
+              Start with something you want to understand.
+            </h1>
+
+            <p className="mt-5 max-w-[610px] font-sans text-[15px] font-medium leading-7 text-[#91A4AC] sm:text-[17px]">
+              Tell Grokit what you're curious about.
+              We'll turn it into a structured learning
+              journey built around you.
+            </p>
+
+            <button
+              type="button"
+              onClick={onCreate}
+              className={`${primaryButtonClasses} mt-8`}
+            >
+              Create my first journey
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
         </div>
 
-        <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-[#26373D]" />
+        <div className="relative hidden items-center justify-center border-l border-[#2D4149] bg-[#142229] lg:flex">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,107,0,0.12),transparent_58%)]" />
+
+          <div className="relative flex flex-col items-center px-8 text-center">
+            <div className="absolute -inset-12 rounded-full bg-orange/[0.055] blur-3xl" />
+
+            <GrokitMascot
+              size={205}
+              pose="idle"
+              className="relative"
+            />
+
+            <div className="relative mt-5 max-w-[240px]">
+              <p className="font-display text-lg font-extrabold text-white">
+                One idea is enough.
+              </p>
+
+              <p className="mt-2 font-sans text-sm font-medium leading-6 text-[#71868F]">
+                We'll take you deeper from there.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative flex items-center justify-center border-t border-[#2D4149] bg-[#142229] py-8 lg:hidden">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,107,0,0.1),transparent_60%)]" />
+
+          <GrokitMascot
+            size={125}
+            pose="idle"
+            className="relative"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ========================================================================
+ * COURSE BUILDING
+ * ====================================================================== */
+
+function CourseBuildingState({
+  course,
+}: {
+  course: Course;
+}) {
+  return (
+    <section className="relative overflow-hidden rounded-[30px] border border-[#2D4149] bg-[#17262C]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(255,107,0,0.08),transparent_48%)]" />
+
+      <div className="relative flex min-h-[580px] flex-col items-center justify-center px-6 py-12 text-center">
+        <div className="relative">
+          <div className="absolute -inset-14 rounded-full bg-orange/[0.055] blur-3xl" />
+
+          <GrokitMascot
+            size={145}
+            pose="thinking"
+            className="relative"
+          />
+        </div>
+
+        <p className="mt-7 font-sans text-[10px] font-extrabold uppercase tracking-[0.16em] text-orange">
+          Building your journey
+        </p>
+
+        <h2 className="mt-2 max-w-[600px] font-display text-[30px] font-extrabold tracking-[-0.025em] text-white sm:text-[38px]">
+          {course.title}
+        </h2>
+
+        <p className="mt-3 max-w-[540px] font-sans text-sm leading-6 text-[#71868F]">
+          Your learning path is being prepared. Come
+          back here once the journey is ready.
+        </p>
+
+        <div className="mt-7 flex items-center gap-2 rounded-full border border-[#344A53] bg-[#1B2C32] px-4 py-2.5 text-xs font-bold text-[#91A4AC]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-orange" />
+          Preparing your first lessons
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ========================================================================
+ * COURSE FAILED
+ * ====================================================================== */
+
+function CourseFailedState({
+  course,
+  onRetry,
+  onCreate,
+}: {
+  course: Course;
+  onRetry: () => void;
+  onCreate: () => void;
+}) {
+  const generationError =
+    course.generationError?.trim();
+
+  return (
+    <section className="rounded-[30px] border border-[#4A3A32] bg-[#211D1A] px-6 py-10 sm:px-10">
+      <div className="flex flex-col items-center text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange/10 text-orange">
+          <RefreshCw className="h-5 w-5" />
+        </div>
+
+        <h2 className="mt-5 font-display text-2xl font-extrabold text-white">
+          This journey needs another try.
+        </h2>
+
+        <p className="mt-2 max-w-[560px] font-sans text-sm leading-6 text-[#91A4AC]">
+          We couldn't finish building this journey.
+          You can refresh the journey list or start a
+          new one.
+        </p>
+
+        {generationError && (
+          <p className="mt-4 max-w-[680px] break-words rounded-xl border border-[#493B34] bg-[#181615] px-4 py-3 text-left font-mono text-[11px] leading-5 text-[#8E7F77]">
+            {generationError}
+          </p>
+        )}
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onRetry}
+            className={`${secondaryButtonClasses} shrink-0`}
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+
+          <button
+            type="button"
+            onClick={onCreate}
+            className={primaryButtonClasses}
+          >
+            Create a new journey
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ========================================================================
+ * PATH ERROR
+ * ====================================================================== */
+
+function PathErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
+  return (
+    <section className="rounded-[28px] border border-[#493A33] bg-[#211D1A] px-5 py-7 sm:px-7">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-display text-base font-extrabold text-white">
+            We couldn't map this journey.
+          </p>
+
+          <p className="mt-1 break-words font-sans text-xs leading-5 text-[#8E7F77]">
+            {message}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onRetry}
+          className={`${secondaryButtonClasses} shrink-0`}
+        >
+          <RefreshCw className="h-4 w-4" />
+          Try again
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/* ========================================================================
+ * EMPTY PATH
+ * ====================================================================== */
+
+function EmptyPathState({
+  onCreate,
+}: {
+  onCreate: () => void;
+}) {
+  return (
+    <section className="rounded-[30px] border border-[#2D4149] bg-[#17262C] px-6 py-12 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-orange/10 text-orange">
+        <Sparkles className="h-5 w-5" />
       </div>
 
-      <div className="mt-4 h-1.5 animate-pulse rounded-full bg-[#26373D]" />
+      <h2 className="mt-5 font-display text-2xl font-extrabold text-white">
+        Your path is still taking shape.
+      </h2>
+
+      <p className="mx-auto mt-2 max-w-[520px] font-sans text-sm leading-6 text-[#71868F]">
+        This journey doesn't have any lessons available
+        yet.
+      </p>
+
+      <button
+        type="button"
+        onClick={onCreate}
+        className={`${primaryButtonClasses} mt-6`}
+      >
+        Create another journey
+        <ArrowRight className="h-4 w-4" />
+      </button>
+    </section>
+  );
+}
+
+/* ========================================================================
+ * DIVE PATH
+ * ====================================================================== */
+
+function DivePath({
+  phases,
+  completedLessonIds,
+  currentLessonId,
+  onLessonClick,
+}: {
+  phases: PhaseWithLessons[];
+  completedLessonIds: Set<string>;
+  currentLessonId: string | null;
+  onLessonClick: (
+    lesson: Lesson,
+    state: LessonState,
+  ) => void;
+}) {
+  return (
+    <section className="relative overflow-hidden rounded-[32px] border border-[#2D4149] bg-[#101F25]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,107,0,0.045),transparent_38%)]" />
+
+      <div className="relative px-4 py-8 sm:px-8 sm:py-10 lg:px-12">
+        <div className="mx-auto max-w-[760px]">
+          {phases.map(
+            (phase, phaseIndex) => (
+              <PathPhase
+                key={phase.id}
+                phase={phase}
+                phaseIndex={phaseIndex}
+                isLast={
+                  phaseIndex ===
+                  phases.length - 1
+                }
+                completedLessonIds={
+                  completedLessonIds
+                }
+                currentLessonId={
+                  currentLessonId
+                }
+                onLessonClick={
+                  onLessonClick
+                }
+              />
+            ),
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ========================================================================
+ * PATH PHASE
+ * ====================================================================== */
+
+function PathPhase({
+  phase,
+  phaseIndex,
+  isLast,
+  completedLessonIds,
+  currentLessonId,
+  onLessonClick,
+}: {
+  phase: PhaseWithLessons;
+  phaseIndex: number;
+  isLast: boolean;
+  completedLessonIds: Set<string>;
+  currentLessonId: string | null;
+  onLessonClick: (
+    lesson: Lesson,
+    state: LessonState,
+  ) => void;
+}) {
+  const completedCount =
+    phase.lessons.filter(
+      (lesson) =>
+        completedLessonIds.has(
+          lesson.id,
+        ),
+    ).length;
+
+  const progress = getCompletionPercent(
+    completedCount,
+    phase.lessons.length,
+  );
+
+  return (
+    <div
+      className={[
+        'relative',
+        isLast
+          ? ''
+          : 'pb-14 sm:pb-20',
+      ].join(' ')}
+    >
+      <div className="mb-6 flex items-end justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-sans text-[10px] font-extrabold uppercase tracking-[0.16em] text-orange">
+              {getPhaseLabel(phaseIndex)}
+            </span>
+
+            {phase.locked && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#1D2D33] px-2 py-1 font-sans text-[9px] font-extrabold uppercase tracking-[0.08em] text-[#60757E]">
+                <Lock className="h-2.5 w-2.5" />
+                Locked
+              </span>
+            )}
+          </div>
+
+          <h2 className="mt-1 font-display text-xl font-extrabold tracking-[-0.02em] text-white sm:text-2xl">
+            {phase.title}
+          </h2>
+        </div>
+
+        <div className="shrink-0 text-right">
+          <p className="font-sans text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#60757E]">
+            {completedCount}/
+            {phase.lessons.length}
+          </p>
+
+          <div className="mt-2 h-1.5 w-20 overflow-hidden rounded-full bg-[#293D44] sm:w-28">
+            <div
+              className="h-full rounded-full bg-orange transition-[width] duration-500"
+              style={{
+                width: `${progress}%`,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {phase.lessons.length > 0 ? (
+        <div className="relative">
+          <PathLine
+            lessonCount={
+              phase.lessons.length
+            }
+            completedCount={
+              completedCount
+            }
+            phaseLocked={Boolean(
+              phase.locked,
+            )}
+          />
+
+          <div className="relative space-y-4 sm:space-y-5">
+            {phase.lessons.map(
+              (lesson, lessonIndex) => {
+                const state =
+                  getLessonState(
+                    lesson,
+                    Boolean(
+                      phase.locked,
+                    ),
+                    completedLessonIds,
+                    currentLessonId,
+                  );
+
+                return (
+                  <LessonNode
+                    key={lesson.id}
+                    lesson={lesson}
+                    index={lessonIndex}
+                    state={state}
+                    onClick={() =>
+                      onLessonClick(
+                        lesson,
+                        state,
+                      )
+                    }
+                  />
+                );
+              },
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-[#334951] bg-[#15262C] px-5 py-7 text-center">
+          <p className="font-sans text-sm font-bold text-[#71868F]">
+            Lessons are being prepared for
+            this depth.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ========================================================================
+ * PATH LINE
+ * ====================================================================== */
+
+function PathLine({
+  lessonCount,
+  completedCount,
+  phaseLocked,
+}: {
+  lessonCount: number;
+  completedCount: number;
+  phaseLocked: boolean;
+}) {
+  const height =
+    Math.max(
+      lessonCount - 1,
+      1,
+    ) *
+      100 +
+    60;
+
+  /*
+   * The orange line represents only completed
+   * progression. The current lesson itself is not
+   * treated as completed.
+   */
+  const completedRatio =
+    lessonCount > 1
+      ? clamp(
+          completedCount /
+            Math.max(
+              lessonCount - 1,
+              1,
+            ),
+          0,
+          1,
+        )
+      : completedCount > 0
+        ? 1
+        : 0;
+
+  const pathD =
+    lessonCount <= 1
+      ? 'M 50 20 C 45 45, 55 75, 50 110'
+      : `M 50 20
+         C 20 75, 80 125, 50 170
+         C 20 215, 80 265, 50 310
+         C 20 355, 80 405, 50 ${height}`;
+
+  return (
+    <svg
+      className="pointer-events-none absolute left-1/2 top-0 z-0 hidden -translate-x-1/2 sm:block"
+      width="180"
+      height={height}
+      viewBox={`0 0 180 ${height}`}
+      fill="none"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path
+        d={pathD}
+        stroke={
+          phaseLocked
+            ? '#263940'
+            : '#293D44'
+        }
+        strokeWidth="22"
+        strokeLinecap="round"
+        vectorEffect="non-scaling-stroke"
+      />
+
+      {!phaseLocked && (
+        <path
+          d={pathD}
+          stroke="#FF6B00"
+          strokeWidth="22"
+          strokeLinecap="round"
+          strokeDasharray={`${height}`}
+          strokeDashoffset={`${
+            height *
+            (1 - completedRatio)
+          }`}
+          opacity="0.9"
+          vectorEffect="non-scaling-stroke"
+        />
+      )}
+
+      <path
+        d={pathD}
+        stroke={
+          phaseLocked
+            ? '#33474F'
+            : '#172A30'
+        }
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeDasharray="5 8"
+        opacity="0.65"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
+
+/* ========================================================================
+ * LESSON NODE
+ * ====================================================================== */
+
+function LessonNode({
+  lesson,
+  index,
+  state,
+  onClick,
+}: {
+  lesson: Lesson;
+  index: number;
+  state: LessonState;
+  onClick: () => void;
+}) {
+  const isCurrent =
+    state === 'current';
+
+  const isCompleted =
+    state === 'completed';
+
+  const isLocked =
+    state === 'locked';
+
+  const offsetClasses = [
+    'sm:ml-auto sm:mr-0',
+    'sm:mr-auto sm:ml-0',
+    'sm:mx-auto',
+    'sm:ml-auto sm:mr-12',
+    'sm:mr-auto sm:ml-12',
+  ];
+
+  const offset =
+    offsetClasses[
+      index % offsetClasses.length
+    ];
+
+  return (
+    <div
+      className={[
+        'relative z-10 flex',
+        'sm:w-[min(100%,_620px)]',
+        offset,
+      ].join(' ')}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={isLocked}
+        aria-disabled={isLocked}
+        aria-current={
+          isCurrent
+            ? 'step'
+            : undefined
+        }
+        className={[
+          'group flex w-full items-center gap-4 rounded-[24px] border p-3 text-left',
+          'transition-all duration-200',
+          isCurrent
+            ? 'border-orange/60 bg-[#1D2D33] shadow-[0_12px_40px_rgba(255,107,0,0.1)]'
+            : isCompleted
+              ? 'border-[#40545C] bg-[#17272D] hover:border-orange/40'
+              : 'cursor-not-allowed border-[#293B42] bg-[#142329] opacity-65',
+        ].join(' ')}
+      >
+        <div className="relative shrink-0">
+          {isCurrent && (
+            <div className="absolute -inset-2 rounded-full bg-orange/10 blur-md" />
+          )}
+
+          <div
+            className={[
+              'relative flex h-[68px] w-[68px] items-center justify-center rounded-full border-4',
+              'transition-all duration-200',
+              isCurrent
+                ? 'border-orange bg-orange/15'
+                : isCompleted
+                  ? 'border-orange/60 bg-orange/10'
+                  : 'border-[#33474F] bg-[#1C2D33]',
+            ].join(' ')}
+          >
+            {isCurrent ? (
+              <GrokitMascot
+                size={56}
+                pose="idle"
+              />
+            ) : isCompleted ? (
+              <Check className="h-6 w-6 text-orange" />
+            ) : (
+              <Lock className="h-5 w-5 text-[#60757E]" />
+            )}
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1 py-1">
+          <div className="flex items-center gap-2">
+            <span
+              className={[
+                'font-sans text-[9px] font-extrabold uppercase tracking-[0.12em]',
+                isCurrent
+                  ? 'text-orange'
+                  : isCompleted
+                    ? 'text-[#80939B]'
+                    : 'text-[#60757E]',
+              ].join(' ')}
+            >
+              {isCurrent
+                ? 'Continue'
+                : isCompleted
+                  ? 'Completed'
+                  : 'Locked'}
+            </span>
+          </div>
+
+          <h3
+            className={[
+              'mt-1 font-display text-base font-extrabold leading-5 sm:text-lg',
+              isLocked
+                ? 'text-[#64767D]'
+                : 'text-white',
+            ].join(' ')}
+          >
+            {lesson.title}
+          </h3>
+
+          {lesson.hook && (
+            <p
+              className={[
+                'mt-1.5 line-clamp-2 font-sans text-xs leading-5',
+                isLocked
+                  ? 'text-[#52656D]'
+                  : 'text-[#71868F]',
+              ].join(' ')}
+            >
+              {lesson.hook}
+            </p>
+          )}
+        </div>
+
+        <div
+          className={[
+            'hidden h-9 w-9 shrink-0 items-center justify-center rounded-full sm:flex',
+            isCurrent
+              ? 'bg-orange text-white'
+              : 'bg-[#21333A] text-[#71868F]',
+            !isLocked
+              ? 'group-hover:bg-orange group-hover:text-white'
+              : '',
+          ].join(' ')}
+        >
+          {isLocked ? (
+            <Lock className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          )}
+        </div>
+      </button>
     </div>
   );
 }

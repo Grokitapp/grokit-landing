@@ -1,104 +1,174 @@
 import { lazy, Suspense } from 'react';
-import { Routes, Route } from 'react-router';
 
-import AuthGuard from './auth/AuthGuard';
-import { GrokitMascot } from '../components/Grokitmascot';
+import {
+  Navigate,
+  Route,
+  Routes,
+} from 'react-router-dom';
 
-// Keep the lightweight/public entry points eager.
 import Index from './Index';
+import Onboarding from './Onboarding';
+import AuthGuard from './auth/AuthGuard';
+
 import Terms from './Terms';
 import PrivacyPolicy from './Privacypolicy';
-import NotFound from './NotFound';
 
-// Load heavier application pages only when their route is visited.
-const Onboarding = lazy(() => import('./Onboarding'));
-const Learn = lazy(() => import('./Learn'));
-const Personalize = lazy(() => import('./learn/Personalize'));
-const Generating = lazy(() => import('./learn/Generating'));
-const CourseOverview = lazy(() => import('./learn/CourseOverview'));
-const PhaseDetail = lazy(() => import('./learn/PhaseDetail'));
+// ─── Lazy-loaded learning pages ─────────────────────────────────────────────
 
-function RouteLoading() {
+const Learn = lazy(
+  () => import('./Learn'),
+);
+
+const Personalize = lazy(
+  () => import('./learn/Personalize'),
+);
+
+const Generating = lazy(
+  () => import('./learn/Generating'),
+);
+
+const CourseOverview = lazy(
+  () => import('./learn/CourseOverview'),
+);
+
+const PhaseDetail = lazy(
+  () => import('./learn/PhaseDetail'),
+);
+
+const LessonPlayer = lazy(
+  () => import('./learn/LessonPlayer'),
+);
+
+// ─── Loading fallback ───────────────────────────────────────────────────────
+
+function PageLoader() {
   return (
-    <div className="min-h-screen bg-[#131F24] flex items-center justify-center">
-      <div className="flex flex-col items-center gap-5">
-        <GrokitMascot pose="thinking" size={96} />
-
-        <p className="text-[#91A4AC] font-semibold">
-          Loading...
-        </p>
-      </div>
+    <div className="flex min-h-[100dvh] items-center justify-center bg-[#131F24]">
+      <div className="h-7 w-7 animate-spin rounded-full border-2 border-[#304553] border-t-orange" />
     </div>
   );
 }
 
+// ─── Protected learning route ──────────────────────────────────────────────
+
+function ProtectedLearningPage({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <AuthGuard>
+      <Suspense fallback={<PageLoader />}>
+        {children}
+      </Suspense>
+    </AuthGuard>
+  );
+}
+
+// ─── App ────────────────────────────────────────────────────────────────────
+
 export default function App() {
   return (
-    <Suspense fallback={<RouteLoading />}>
-      <Routes>
-        {/* ================================================================
-            PUBLIC ROUTES
-            ================================================================ */}
+    <Routes>
+      {/* ──────────────────────────────────────────────────────────────── */}
+      {/* Public routes                                                     */}
+      {/* ──────────────────────────────────────────────────────────────── */}
 
-        <Route path="/" element={<Index />} />
+      <Route
+        path="/"
+        element={<Index />}
+      />
 
-        <Route path="/onboarding" element={<Onboarding />} />
+      <Route
+        path="/onboarding"
+        element={<Onboarding />}
+      />
 
-        <Route path="/terms" element={<Terms />} />
+      <Route
+        path="/terms"
+        element={<Terms />}
+      />
 
-        <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route
+        path="/privacy"
+        element={<PrivacyPolicy />}
+      />
 
-        {/* ================================================================
-            AUTHENTICATED LEARNING ROUTES
-            ================================================================ */}
+      {/* ──────────────────────────────────────────────────────────────── */}
+      {/* Protected learning routes                                        */}
+      {/* ──────────────────────────────────────────────────────────────── */}
 
-        <Route
-          path="/learn"
-          element={
-            <AuthGuard>
-              <Learn />
-            </AuthGuard>
-          }
-        />
+      <Route
+        path="/learn"
+        element={
+          <ProtectedLearningPage>
+            <Learn />
+          </ProtectedLearningPage>
+        }
+      />
 
-        <Route
-          path="/learn/personalize"
-          element={
-            <AuthGuard>
-              <Personalize />
-            </AuthGuard>
-          }
-        />
+      <Route
+        path="/learn/personalize"
+        element={
+          <ProtectedLearningPage>
+            <Personalize />
+          </ProtectedLearningPage>
+        }
+      />
 
-        <Route
-          path="/learn/generating"
-          element={
-            <AuthGuard>
-              <Generating />
-            </AuthGuard>
-          }
-        />
+      <Route
+        path="/learn/generating"
+        element={
+          <ProtectedLearningPage>
+            <Generating />
+          </ProtectedLearningPage>
+        }
+      />
 
-        <Route
-          path="/learn/course/:courseId"
-          element={
-            <AuthGuard>
-              <CourseOverview />
-            </AuthGuard>
-          }
-        />
+      <Route
+        path="/learn/course/:courseId"
+        element={
+          <ProtectedLearningPage>
+            <CourseOverview />
+          </ProtectedLearningPage>
+        }
+      />
 
-        <Route
-          path="/learn/course/:courseId/phase/:phaseId"
-          element={
-            <AuthGuard>
-              <PhaseDetail />
-            </AuthGuard>
-          }
-        />
+      <Route
+        path="/learn/course/:courseId/phase/:phaseId"
+        element={
+          <ProtectedLearningPage>
+            <PhaseDetail />
+          </ProtectedLearningPage>
+        }
+      />
 
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+      {/* ──────────────────────────────────────────────────────────────── */}
+      {/* Lesson Player                                                     */}
+      {/* ──────────────────────────────────────────────────────────────── */}
+
+      <Route
+        path="/learn/course/:courseId/lesson/:lessonId"
+        element={
+          <ProtectedLearningPage>
+            <LessonPlayer />
+          </ProtectedLearningPage>
+        }
+      />
+
+      {/* ──────────────────────────────────────────────────────────────── */}
+      {/* Fallback                                                          */}
+      {/* ──────────────────────────────────────────────────────────────── */}
+
+      <Route
+        path="*"
+        element={
+          <Navigate
+            to="/"
+            replace
+          />
+        }
+      />
+    </Routes>
   );
 }
