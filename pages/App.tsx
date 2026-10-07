@@ -4,7 +4,7 @@ import {
   Navigate,
   Route,
   Routes,
-} from 'react-router-dom';
+} from 'react-router';
 
 import Index from './Index';
 import Onboarding from './Onboarding';
