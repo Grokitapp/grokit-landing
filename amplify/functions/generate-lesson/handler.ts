@@ -7,10 +7,9 @@ import { Amplify } from "aws-amplify";
 import { generateClient } from "aws-amplify/data";
 import { getAmplifyDataClientConfig } from "@aws-amplify/backend/function/runtime";
 
-const { resourceConfig, libraryOptions } =
-  await getAmplifyDataClientConfig(
-    process.env as Parameters<typeof getAmplifyDataClientConfig>[0]
-  );
+const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
+  process.env as Parameters<typeof getAmplifyDataClientConfig>[0]
+);
 
 Amplify.configure(resourceConfig, libraryOptions);
 
@@ -47,112 +46,44 @@ export const handler: Handler = async (event, context) => {
   const { lessonId } = event.arguments;
   const requestId = context.awsRequestId;
 
-  if (!lessonId?.trim()) {
-    throw new Error("LESSON_ID_REQUIRED");
-  }
+  if (!lessonId?.trim()) throw new Error("LESSON_ID_REQUIRED");
+  if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY_NOT_CONFIGURED");
 
-  if (!ANTHROPIC_API_KEY) {
-    throw new Error("ANTHROPIC_API_KEY_NOT_CONFIGURED");
-  }
-
-  console.info("Starting lesson generation", {
-    requestId,
-    lessonId,
-  });
+  console.info("Starting lesson generation", { requestId, lessonId });
 
   let lessonExists = false;
 
   try {
-    /**
-     * ----------------------------------------------------------
-     * 1. Load the lesson
-     * ----------------------------------------------------------
-     */
-
-    const lessonResult = await client.models.Lesson.get({
-      id: lessonId,
-    });
-
-    if (lessonResult.errors?.length) {
-      throw new Error(
-        `LESSON_LOAD_FAILED: ${formatDataErrors(
-          lessonResult.errors
-        )}`
-      );
-    }
+    /** 1. Load the lesson */
+    const lessonResult = await client.models.Lesson.get({ id: lessonId });
+    assertNoErrors(lessonResult.errors, "LESSON_LOAD_FAILED");
 
     const lesson = lessonResult.data;
-
-    if (!lesson) {
-      throw new Error("LESSON_NOT_FOUND");
-    }
+    if (!lesson) throw new Error("LESSON_NOT_FOUND");
 
     lessonExists = true;
 
-    /**
-     * ----------------------------------------------------------
-     * 2. Do not regenerate an already completed lesson
-     * ----------------------------------------------------------
-     */
-
+    /** 2. Do not regenerate an already completed lesson */
     if (lesson.status === "READY") {
-      console.info("Lesson already generated", {
-        requestId,
-        lessonId,
-      });
-
+      console.info("Lesson already generated", { requestId, lessonId });
       return lesson;
     }
 
-    /**
-     * ----------------------------------------------------------
-     * 3. Mark lesson as GENERATING
-     * ----------------------------------------------------------
-     *
-     * This also clears a previous generation error so a retry
-     * starts from a clean state.
-     */
-
+    /** 3. Mark lesson as GENERATING (clears any previous error for a clean retry) */
     const generatingResult = await client.models.Lesson.update({
       id: lessonId,
       status: "GENERATING",
       generationError: undefined,
     });
+    assertNoErrors(generatingResult.errors, "LESSON_GENERATING_UPDATE_FAILED");
 
-    if (generatingResult.errors?.length) {
-      throw new Error(
-        `LESSON_GENERATING_UPDATE_FAILED: ${formatDataErrors(
-          generatingResult.errors
-        )}`
-      );
-    }
-
-    /**
-     * ----------------------------------------------------------
-     * 4. Load the course context
-     * ----------------------------------------------------------
-     */
-
-    const courseResult = await client.models.Course.get({
-      id: lesson.courseId,
-    });
-
-    if (courseResult.errors?.length) {
-      throw new Error(
-        `COURSE_LOAD_FAILED: ${formatDataErrors(
-          courseResult.errors
-        )}`
-      );
-    }
+    /** 4. Load the course context */
+    const courseResult = await client.models.Course.get({ id: lesson.courseId });
+    assertNoErrors(courseResult.errors, "COURSE_LOAD_FAILED");
 
     const course = courseResult.data;
 
-    /**
-     * ----------------------------------------------------------
-     * 5. Generate the lesson with Claude
-     * ----------------------------------------------------------
-     */
-
+    /** 5. Generate the lesson with Claude */
     const content = await callClaudeForLesson({
       courseTitle: course?.title ?? "",
       courseTopic: course?.topic ?? "",
@@ -160,12 +91,7 @@ export const handler: Handler = async (event, context) => {
       hook: lesson.hook ?? "",
     });
 
-    /**
-     * ----------------------------------------------------------
-     * 6. Save validated lesson content
-     * ----------------------------------------------------------
-     */
-
+    /** 6. Save validated lesson content */
     const updatedResult = await client.models.Lesson.update({
       id: lessonId,
       coreContent: content.coreContent,
@@ -174,48 +100,24 @@ export const handler: Handler = async (event, context) => {
       status: "READY",
       generationError: undefined,
     });
-
-    if (updatedResult.errors?.length) {
-      throw new Error(
-        `LESSON_FINALIZE_FAILED: ${formatDataErrors(
-          updatedResult.errors
-        )}`
-      );
-    }
+    assertNoErrors(updatedResult.errors, "LESSON_FINALIZE_FAILED");
 
     const updatedLesson = updatedResult.data;
+    if (!updatedLesson) throw new Error("LESSON_FINALIZE_FAILED");
 
-    if (!updatedLesson) {
-      throw new Error("LESSON_FINALIZE_FAILED");
-    }
-
-    console.info("Lesson generated successfully", {
-      requestId,
-      lessonId,
-    });
-
+    console.info("Lesson generated successfully", { requestId, lessonId });
     return updatedLesson;
   } catch (error) {
     const message = getErrorMessage(error);
 
-    console.error("Lesson generation failed", {
-      requestId,
-      lessonId,
-      error: message,
-    });
+    console.error("Lesson generation failed", { requestId, lessonId, error: message });
 
     /**
-     * ----------------------------------------------------------
-     * 7. Persist FAILED state
-     * ----------------------------------------------------------
+     * 7. Persist FAILED state.
      *
-     * This is critical.
-     *
-     * Without this, an API/JSON/database failure after the
-     * GENERATING update can leave the lesson permanently stuck
-     * in GENERATING.
+     * Critical: without this, a failure after the GENERATING update
+     * can leave the lesson permanently stuck in GENERATING.
      */
-
     if (lessonExists) {
       try {
         const failureResult = await client.models.Lesson.update({
@@ -225,26 +127,18 @@ export const handler: Handler = async (event, context) => {
         });
 
         if (failureResult.errors?.length) {
-          console.error(
-            "Failed to persist lesson generation error",
-            {
-              requestId,
-              lessonId,
-              error: formatDataErrors(
-                failureResult.errors
-              ),
-            }
-          );
-        }
-      } catch (updateError) {
-        console.error(
-          "Unexpected error while marking lesson as FAILED",
-          {
+          console.error("Failed to persist lesson generation error", {
             requestId,
             lessonId,
-            error: getErrorMessage(updateError),
-          }
-        );
+            error: formatDataErrors(failureResult.errors),
+          });
+        }
+      } catch (updateError) {
+        console.error("Unexpected error while marking lesson as FAILED", {
+          requestId,
+          lessonId,
+          error: getErrorMessage(updateError),
+        });
       }
     }
 
@@ -284,24 +178,12 @@ Return ONLY valid JSON.
 
 {
   "coreContent": "The complete lesson explanation in Markdown.",
-  "keyTerms": [
-    {
-      "term": "Term",
-      "definition": "Clear, concise definition."
-    }
-  ],
-  "quiz": [
-    {
-      "question": "Question testing meaningful understanding.",
-      "options": [
-        "Option A",
-        "Option B",
-        "Option C",
-        "Option D"
-      ],
-      "correctIndex": 0
-    }
-  ]
+  "keyTerms": [{ "term": "Term", "definition": "Clear, concise definition." }],
+  "quiz": [{
+    "question": "Question testing meaningful understanding.",
+    "options": ["Option A", "Option B", "Option C", "Option D"],
+    "correctIndex": 0
+  }]
 }
 
 Requirements:
@@ -321,47 +203,30 @@ Requirements:
     `Hook: ${input.hook}`,
   ].join("\n");
 
-  const response = await fetch(
-    "https://api.anthropic.com/v1/messages",
-    {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-haiku-4-5",
-        max_tokens: 1500,
-        system: systemPrompt,
-        messages: [
-          {
-            role: "user",
-            content: userMessage,
-          },
-        ],
-      }),
-    }
-  );
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-api-key": ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: "claude-haiku-4-5",
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userMessage }],
+    }),
+  });
 
   if (!response.ok) {
     const errorBody = await response.text();
-
-    throw new Error(
-      `ANTHROPIC_API_ERROR_${response.status}: ${errorBody.slice(
-        0,
-        3000
-      )}`
-    );
+    throw new Error(`ANTHROPIC_API_ERROR_${response.status}: ${errorBody.slice(0, 3000)}`);
   }
 
   const responseBody: unknown = await response.json();
-
   const text = extractTextResponse(responseBody);
 
-  if (!text) {
-    throw new Error("ANTHROPIC_EMPTY_RESPONSE");
-  }
+  if (!text) throw new Error("ANTHROPIC_EMPTY_RESPONSE");
 
   return parseLessonContent(text);
 }
@@ -373,44 +238,25 @@ Requirements:
  */
 
 function extractTextResponse(responseBody: unknown): string {
-  if (
-    !responseBody ||
-    typeof responseBody !== "object"
-  ) {
+  if (!responseBody || typeof responseBody !== "object") {
     throw new Error("ANTHROPIC_INVALID_RESPONSE");
   }
 
-  const content = (
-    responseBody as {
-      content?: unknown;
-    }
-  ).content;
-
-  if (!Array.isArray(content)) {
-    throw new Error("ANTHROPIC_CONTENT_MISSING");
-  }
+  const content = (responseBody as { content?: unknown }).content;
+  if (!Array.isArray(content)) throw new Error("ANTHROPIC_CONTENT_MISSING");
 
   const textBlock = content.find(
-    (
-      block
-    ): block is {
-      type: "text";
-      text: string;
-    } =>
+    (block): block is { type: "text"; text: string } =>
       typeof block === "object" &&
       block !== null &&
-      (block as { type?: unknown }).type ===
-        "text" &&
-      typeof (block as { text?: unknown }).text ===
-        "string"
+      (block as { type?: unknown }).type === "text" &&
+      typeof (block as { text?: unknown }).text === "string"
   );
 
   return textBlock?.text.trim() ?? "";
 }
 
-function parseLessonContent(
-  text: string
-): LessonContent {
+function parseLessonContent(text: string): LessonContent {
   const cleaned = text
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
@@ -419,22 +265,14 @@ function parseLessonContent(
 
   try {
     const parsed: unknown = JSON.parse(cleaned);
-
     validateLessonContent(parsed);
-
     return parsed;
   } catch (error) {
-    console.error(
-      "Failed to parse or validate Claude lesson",
-      {
-        error: getErrorMessage(error),
-        responsePreview: cleaned.slice(0, 3000),
-      }
-    );
-
-    throw new Error(
-      `INVALID_AI_LESSON: ${getErrorMessage(error)}`
-    );
+    console.error("Failed to parse or validate Claude lesson", {
+      error: getErrorMessage(error),
+      responsePreview: cleaned.slice(0, 3000),
+    });
+    throw new Error(`INVALID_AI_LESSON: ${getErrorMessage(error)}`);
   }
 }
 
@@ -444,108 +282,57 @@ function parseLessonContent(
  * ==============================================================
  */
 
-function validateLessonContent(
-  value: unknown
-): asserts value is LessonContent {
-  if (
-    !value ||
-    typeof value !== "object" ||
-    Array.isArray(value)
-  ) {
+function validateLessonContent(value: unknown): asserts value is LessonContent {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new Error("LESSON_CONTENT_MUST_BE_OBJECT");
   }
 
-  const lesson =
-    value as Record<string, unknown>;
+  const lesson = value as Record<string, unknown>;
 
-  /**
-   * Core content
-   */
-
+  /** Core content */
   if (!isNonEmptyString(lesson.coreContent)) {
     throw new Error("LESSON_CORE_CONTENT_INVALID");
   }
 
-  /**
-   * Key terms
-   */
+  /** Key terms */
+  if (!Array.isArray(lesson.keyTerms)) throw new Error("LESSON_KEY_TERMS_INVALID");
 
-  if (!Array.isArray(lesson.keyTerms)) {
-    throw new Error("LESSON_KEY_TERMS_INVALID");
-  }
-
-  for (const [index, value] of lesson.keyTerms.entries()) {
-    if (
-      !value ||
-      typeof value !== "object" ||
-      Array.isArray(value)
-    ) {
-      throw new Error(
-        `LESSON_KEY_TERM_INVALID: ${index}`
-      );
+  for (const [index, item] of lesson.keyTerms.entries()) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`LESSON_KEY_TERM_INVALID: ${index}`);
     }
 
-    const term =
-      value as Record<string, unknown>;
+    const term = item as Record<string, unknown>;
 
     if (!isNonEmptyString(term.term)) {
-      throw new Error(
-        `LESSON_KEY_TERM_NAME_INVALID: ${index}`
-      );
+      throw new Error(`LESSON_KEY_TERM_NAME_INVALID: ${index}`);
     }
-
     if (!isNonEmptyString(term.definition)) {
-      throw new Error(
-        `LESSON_KEY_TERM_DEFINITION_INVALID: ${index}`
-      );
+      throw new Error(`LESSON_KEY_TERM_DEFINITION_INVALID: ${index}`);
     }
   }
 
-  /**
-   * Quiz
-   */
+  /** Quiz */
+  if (!Array.isArray(lesson.quiz)) throw new Error("LESSON_QUIZ_INVALID");
 
-  if (!Array.isArray(lesson.quiz)) {
-    throw new Error("LESSON_QUIZ_INVALID");
-  }
-
-  for (const [index, value] of lesson.quiz.entries()) {
-    if (
-      !value ||
-      typeof value !== "object" ||
-      Array.isArray(value)
-    ) {
-      throw new Error(
-        `LESSON_QUIZ_QUESTION_INVALID: ${index}`
-      );
+  for (const [index, item] of lesson.quiz.entries()) {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      throw new Error(`LESSON_QUIZ_QUESTION_INVALID: ${index}`);
     }
 
-    const question =
-      value as Record<string, unknown>;
+    const question = item as Record<string, unknown>;
 
     if (!isNonEmptyString(question.question)) {
-      throw new Error(
-        `LESSON_QUIZ_QUESTION_TEXT_INVALID: ${index}`
-      );
+      throw new Error(`LESSON_QUIZ_QUESTION_TEXT_INVALID: ${index}`);
     }
 
-    if (!Array.isArray(question.options)) {
-      throw new Error(
-        `LESSON_QUIZ_OPTIONS_INVALID: ${index}`
-      );
-    }
-
-    if (question.options.length !== 4) {
-      throw new Error(
-        `LESSON_QUIZ_OPTIONS_COUNT_INVALID: ${index}`
-      );
+    if (!Array.isArray(question.options) || question.options.length !== 4) {
+      throw new Error(`LESSON_QUIZ_OPTIONS_COUNT_INVALID: ${index}`);
     }
 
     for (const option of question.options) {
       if (!isNonEmptyString(option)) {
-        throw new Error(
-          `LESSON_QUIZ_OPTION_INVALID: ${index}`
-        );
+        throw new Error(`LESSON_QUIZ_OPTION_INVALID: ${index}`);
       }
     }
 
@@ -555,9 +342,7 @@ function validateLessonContent(
       question.correctIndex < 0 ||
       question.correctIndex > 3
     ) {
-      throw new Error(
-        `LESSON_QUIZ_CORRECT_INDEX_INVALID: ${index}`
-      );
+      throw new Error(`LESSON_QUIZ_CORRECT_INDEX_INVALID: ${index}`);
     }
   }
 }
@@ -568,58 +353,34 @@ function validateLessonContent(
  * ==============================================================
  */
 
-function isNonEmptyString(
-  value: unknown
-): value is string {
-  return (
-    typeof value === "string" &&
-    value.trim().length > 0
-  );
+function assertNoErrors(
+  errors: readonly unknown[] | undefined,
+  code: string
+): void {
+  if (errors?.length) {
+    throw new Error(`${code}: ${formatDataErrors(errors)}`);
+  }
 }
 
-function formatDataErrors(
-  errors: readonly unknown[]
-): string {
-  return errors
-    .map((error) => {
-      if (
-        error &&
-        typeof error === "object" &&
-        "message" in error
-      ) {
-        return String(
-          (
-            error as {
-              message?: unknown;
-            }
-          ).message
-        );
-      }
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
 
-      return String(error);
-    })
+function formatDataErrors(errors: readonly unknown[]): string {
+  return errors
+    .map((error) =>
+      error && typeof error === "object" && "message" in error
+        ? String((error as { message?: unknown }).message)
+        : String(error)
+    )
     .join("; ");
 }
 
-function getErrorMessage(
-  error: unknown
-): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
 
-  if (
-    typeof error === "object" &&
-    error !== null &&
-    "message" in error
-  ) {
-    return String(
-      (
-        error as {
-          message?: unknown;
-        }
-      ).message
-    );
+  if (typeof error === "object" && error !== null && "message" in error) {
+    return String((error as { message?: unknown }).message);
   }
 
   return String(error);

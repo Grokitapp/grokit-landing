@@ -1,32 +1,13 @@
-import {
-  useEffect,
-  useState,
-} from 'react';
-
-import {
-  AnimatePresence,
-  motion,
-} from 'framer-motion';
-
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
-
 import { useNavigate } from 'react-router';
 
-import {
-  GrokitMascot,
-} from '../components/Grokitmascot';
-
+import { GrokitMascot } from '../components/Grokitmascot';
 import AuthScreen from './auth/AuthScreen';
-
 import { getAuthenticatedUser } from './auth/authService';
-
 import Welcome from './onboarding/Welcome';
-
-import {
-  getProfileWithRetry,
-  saveProfile,
-} from '../lib/profile';
-
+import { getProfileWithRetry, saveProfile } from '../lib/profile';
 import {
   BACK_STEP,
   DISCORD_INVITE_URL,
@@ -34,11 +15,7 @@ import {
   STEP,
   type Step,
 } from './onboarding/constants';
-
-import {
-  ProgressBar,
-} from './onboarding/shared';
-
+import { ProgressBar } from './onboarding/shared';
 import {
   ComprehensionStep,
   CompleteStep,
@@ -54,14 +31,10 @@ import {
 /* -------------------------------------------------------------------------- */
 
 function toStringArray(
-  values:
-    | readonly (string | null | undefined)[]
-    | null
-    | undefined,
+  values: readonly (string | null | undefined)[] | null | undefined,
 ): string[] {
   return (values ?? []).filter(
-    (value): value is string =>
-      typeof value === 'string',
+    (value): value is string => typeof value === 'string',
   );
 }
 
@@ -73,22 +46,12 @@ function toStringArray(
  * of the UI. The original error is still logged
  * to the browser console for debugging.
  */
-function getSafeProfileSaveMessage(
-  error: unknown,
-): string {
-  if (
-    typeof navigator !== 'undefined' &&
-    navigator.onLine === false
-  ) {
+function getSafeProfileSaveMessage(error: unknown): string {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return 'Please check your internet connection and try again.';
   }
 
-  if (
-    error instanceof Error &&
-    /timeout|network|fetch|connection/i.test(
-      error.message,
-    )
-  ) {
+  if (error instanceof Error && /timeout|network|fetch|connection/i.test(error.message)) {
     return 'Something went wrong while saving your profile. Please check your connection and try again.';
   }
 
@@ -106,46 +69,26 @@ export default function Onboarding() {
   /* Initialization                                                           */
   /* ------------------------------------------------------------------------ */
 
-  const [initializing, setInitializing] =
-    useState(true);
-
-  const [step, setStep] = useState<Step>(
-    STEP.AUTH,
-  );
+  const [initializing, setInitializing] = useState(true);
+  const [step, setStep] = useState<Step>(STEP.AUTH);
 
   /* ------------------------------------------------------------------------ */
   /* Learner profile                                                          */
   /* ------------------------------------------------------------------------ */
 
-  const [motivations, setMotivations] =
-    useState<string[]>([]);
-
-  const [interests, setInterests] =
-    useState<string[]>([]);
-
-  const [startingPreference, setStartingPreference] =
-    useState<string | null>(null);
-
-  const [
-    comprehensionPreferences,
-    setComprehensionPreferences,
-  ] = useState<string[]>([]);
-
-  const [desiredOutcomes, setDesiredOutcomes] =
-    useState<string[]>([]);
-
-  const [timeCommitment, setTimeCommitment] =
-    useState<string | null>(null);
+  const [motivations, setMotivations] = useState<string[]>([]);
+  const [interests, setInterests] = useState<string[]>([]);
+  const [startingPreference, setStartingPreference] = useState<string | null>(null);
+  const [comprehensionPreferences, setComprehensionPreferences] = useState<string[]>([]);
+  const [desiredOutcomes, setDesiredOutcomes] = useState<string[]>([]);
+  const [timeCommitment, setTimeCommitment] = useState<string | null>(null);
 
   /* ------------------------------------------------------------------------ */
   /* UI state                                                                 */
   /* ------------------------------------------------------------------------ */
 
-  const [isSavingProfile, setIsSavingProfile] =
-    useState(false);
-
-  const [savingError, setSavingError] =
-    useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [savingError, setSavingError] = useState<string | null>(null);
 
   /* ------------------------------------------------------------------------ */
   /* Initial authentication + profile load                                    */
@@ -158,73 +101,33 @@ export default function Onboarding() {
       try {
         await getAuthenticatedUser();
 
-        const profile =
-          await getProfileWithRetry();
+        const profile = await getProfileWithRetry();
 
-        if (!mounted) {
+        if (!mounted) return;
+
+        if (profile?.onboardingCompleted === true) {
+          navigate('/learn', { replace: true });
           return;
         }
 
-        if (
-          profile?.onboardingCompleted === true
-        ) {
-          navigate('/learn', {
-            replace: true,
-          });
-
-          return;
-        }
-
-        setMotivations(
-          toStringArray(profile?.motivations),
-        );
-
-        setInterests(
-          toStringArray(profile?.interests),
-        );
-
-        setStartingPreference(
-          profile?.startingPreference ?? null,
-        );
-
-        setComprehensionPreferences(
-          toStringArray(
-            profile?.comprehensionPreferences,
-          ),
-        );
-
-        setDesiredOutcomes(
-          toStringArray(
-            profile?.desiredOutcomes,
-          ),
-        );
-
-        setTimeCommitment(
-          profile?.timeCommitment ?? null,
-        );
+        setMotivations(toStringArray(profile?.motivations));
+        setInterests(toStringArray(profile?.interests));
+        setStartingPreference(profile?.startingPreference ?? null);
+        setComprehensionPreferences(toStringArray(profile?.comprehensionPreferences));
+        setDesiredOutcomes(toStringArray(profile?.desiredOutcomes));
+        setTimeCommitment(profile?.timeCommitment ?? null);
 
         setStep(STEP.WELCOME);
       } catch (error) {
-        console.error(
-          'Failed to initialize onboarding:',
-          error,
-        );
-
-        if (mounted) {
-          setStep(STEP.AUTH);
-        }
+        console.error('Failed to initialize onboarding:', error);
+        if (mounted) setStep(STEP.AUTH);
       } finally {
-        if (mounted) {
-          setInitializing(false);
-        }
+        if (mounted) setInitializing(false);
       }
     }
 
     initialize();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, [navigate]);
 
   /* ------------------------------------------------------------------------ */
@@ -235,30 +138,16 @@ export default function Onboarding() {
     selected: string[],
     value: string,
     maxSelections: number,
-    setter: (
-      value:
-        | string[]
-        | ((current: string[]) => string[]),
-    ) => void,
+    setter: (value: string[] | ((current: string[]) => string[])) => void,
   ) => {
     if (selected.includes(value)) {
-      setter(
-        selected.filter(
-          (item) => item !== value,
-        ),
-      );
-
+      setter(selected.filter((item) => item !== value));
       return;
     }
 
-    if (selected.length >= maxSelections) {
-      return;
-    }
+    if (selected.length >= maxSelections) return;
 
-    setter([
-      ...selected,
-      value,
-    ]);
+    setter([...selected, value]);
   };
 
   /* ------------------------------------------------------------------------ */
@@ -286,10 +175,7 @@ export default function Onboarding() {
 
   const goBack = () => {
     const previousStep = BACK_STEP[step];
-
-    if (previousStep !== undefined) {
-      setStep(previousStep);
-    }
+    if (previousStep !== undefined) setStep(previousStep);
   };
 
   /* ------------------------------------------------------------------------ */
@@ -297,9 +183,7 @@ export default function Onboarding() {
   /* ------------------------------------------------------------------------ */
 
   const completeOnboarding = async () => {
-    if (isSavingProfile) {
-      return;
-    }
+    if (isSavingProfile) return;
 
     setIsSavingProfile(true);
     setSavingError(null);
@@ -308,12 +192,10 @@ export default function Onboarding() {
       const savedProfile = await saveProfile({
         motivations,
         interests,
-        startingPreference:
-          startingPreference ?? undefined,
+        startingPreference: startingPreference ?? undefined,
         comprehensionPreferences,
         desiredOutcomes,
-        timeCommitment:
-          timeCommitment ?? undefined,
+        timeCommitment: timeCommitment ?? undefined,
         onboardingCompleted: true,
       });
 
@@ -327,47 +209,33 @@ export default function Onboarding() {
        * make a successful save look like a failure.
        */
       if (!savedProfile?.data) {
-        console.error(
-          'Learning profile save returned no profile:',
-          savedProfile?.errors,
-        );
-
-        throw new Error(
-          'PROFILE_SAVE_FAILED',
-        );
+        console.error('Learning profile save returned no profile:', savedProfile?.errors);
+        throw new Error('PROFILE_SAVE_FAILED');
       }
 
       /*
        * Save succeeded.
        * Go directly to the learning experience.
        */
-      navigate('/learn', {
-        replace: true,
-      });
+      navigate('/learn', { replace: true });
     } catch (error) {
       /*
        * Keep the real technical error available
        * for development/debugging only.
        */
-      console.error(
-        'Failed to save learning profile:',
-        error,
-      );
+      console.error('Failed to save learning profile:', error);
 
       /*
        * Only show a safe, understandable message
        * to the user.
        */
-      setSavingError(
-        getSafeProfileSaveMessage(error),
-      );
-
+      setSavingError(getSafeProfileSaveMessage(error));
       setIsSavingProfile(false);
     }
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Render individual step                                                  */
+  /* Render individual step                                                   */
   /* ------------------------------------------------------------------------ */
 
   const renderStep = () => {
@@ -380,17 +248,10 @@ export default function Onboarding() {
         return (
           <AuthScreen
             onAuthenticated={async () => {
-              const profile =
-                await getProfileWithRetry();
+              const profile = await getProfileWithRetry();
 
-              if (
-                profile?.onboardingCompleted ===
-                true
-              ) {
-                navigate('/learn', {
-                  replace: true,
-                });
-
+              if (profile?.onboardingCompleted === true) {
+                navigate('/learn', { replace: true });
                 return;
               }
 
@@ -406,12 +267,8 @@ export default function Onboarding() {
       case STEP.WELCOME:
         return (
           <Welcome
-            onContinue={() =>
-              setStep(STEP.MOTIVATION)
-            }
-            discordInviteUrl={
-              DISCORD_INVITE_URL
-            }
+            onContinue={() => setStep(STEP.MOTIVATION)}
+            discordInviteUrl={DISCORD_INVITE_URL}
           />
         );
 
@@ -423,18 +280,9 @@ export default function Onboarding() {
         return (
           <MotivationStep
             selected={motivations}
-            onToggle={(value: string) =>
-              toggleMultiSelect(
-                motivations,
-                value,
-                3,
-                setMotivations,
-              )
-            }
+            onToggle={(value: string) => toggleMultiSelect(motivations, value, 3, setMotivations)}
             canContinue={canContinue}
-            onContinue={() =>
-              setStep(STEP.INTERESTS)
-            }
+            onContinue={() => setStep(STEP.INTERESTS)}
           />
         );
 
@@ -446,20 +294,9 @@ export default function Onboarding() {
         return (
           <InterestsStep
             selected={interests}
-            onToggle={(value: string) =>
-              toggleMultiSelect(
-                interests,
-                value,
-                3,
-                setInterests,
-              )
-            }
+            onToggle={(value: string) => toggleMultiSelect(interests, value, 3, setInterests)}
             canContinue={canContinue}
-            onContinue={() =>
-              setStep(
-                STEP.STARTING_PREFERENCE,
-              )
-            }
+            onContinue={() => setStep(STEP.STARTING_PREFERENCE)}
           />
         );
 
@@ -471,13 +308,9 @@ export default function Onboarding() {
         return (
           <StartingPreferenceStep
             selected={startingPreference}
-            onSelect={
-              setStartingPreference
-            }
+            onSelect={setStartingPreference}
             canContinue={canContinue}
-            onContinue={() =>
-              setStep(STEP.COMPREHENSION)
-            }
+            onContinue={() => setStep(STEP.COMPREHENSION)}
           />
         );
 
@@ -488,21 +321,12 @@ export default function Onboarding() {
       case STEP.COMPREHENSION:
         return (
           <ComprehensionStep
-            selected={
-              comprehensionPreferences
-            }
+            selected={comprehensionPreferences}
             onToggle={(value: string) =>
-              toggleMultiSelect(
-                comprehensionPreferences,
-                value,
-                4,
-                setComprehensionPreferences,
-              )
+              toggleMultiSelect(comprehensionPreferences, value, 4, setComprehensionPreferences)
             }
             canContinue={canContinue}
-            onContinue={() =>
-              setStep(STEP.OUTCOMES)
-            }
+            onContinue={() => setStep(STEP.OUTCOMES)}
           />
         );
 
@@ -514,18 +338,9 @@ export default function Onboarding() {
         return (
           <OutcomesStep
             selected={desiredOutcomes}
-            onToggle={(value: string) =>
-              toggleMultiSelect(
-                desiredOutcomes,
-                value,
-                3,
-                setDesiredOutcomes,
-              )
-            }
+            onToggle={(value: string) => toggleMultiSelect(desiredOutcomes, value, 3, setDesiredOutcomes)}
             canContinue={canContinue}
-            onContinue={() =>
-              setStep(STEP.TIME)
-            }
+            onContinue={() => setStep(STEP.TIME)}
           />
         );
 
@@ -539,9 +354,7 @@ export default function Onboarding() {
             selected={timeCommitment}
             onSelect={setTimeCommitment}
             canContinue={canContinue}
-            onContinue={() =>
-              setStep(STEP.COMPLETE)
-            }
+            onContinue={() => setStep(STEP.COMPLETE)}
           />
         );
 
@@ -564,45 +377,27 @@ export default function Onboarding() {
   };
 
   /* ------------------------------------------------------------------------ */
-  /* Initialization screen                                                   */
+  /* Initialization screen                                                    */
   /* ------------------------------------------------------------------------ */
 
   if (initializing) {
     return (
-      <div className="
-        flex min-h-screen items-center
-        justify-center bg-[#131F24]
-      ">
-        <div className="
-          flex flex-col items-center gap-5
-        ">
-          <GrokitMascot
-            pose="thinking"
-            size={120}
-          />
+      <div className="flex min-h-screen items-center justify-center bg-[#131F24]">
+        <div className="flex flex-col items-center gap-5">
+          <GrokitMascot pose="thinking" size={120} />
 
           <div className="flex gap-1">
             {[0, 1, 2].map((index) => (
               <motion.span
                 key={index}
-                className="
-                  h-2 w-2 rounded-full bg-orange
-                "
-                animate={{
-                  y: [0, -5, 0],
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 0.6,
-                  delay: index * 0.2,
-                }}
+                className="h-2 w-2 rounded-full bg-orange"
+                animate={{ y: [0, -5, 0] }}
+                transition={{ repeat: Infinity, duration: 0.6, delay: index * 0.2 }}
               />
             ))}
           </div>
 
-          <p className="
-            text-lg font-semibold text-[#91A4AC]
-          ">
+          <p className="text-lg font-semibold text-[#91A4AC]">
             Preparing your learning space...
           </p>
         </div>
@@ -611,83 +406,45 @@ export default function Onboarding() {
   }
 
   /* ------------------------------------------------------------------------ */
-  /* Back button + progress                                                  */
+  /* Back button + progress                                                   */
   /* ------------------------------------------------------------------------ */
 
   const previousStep = BACK_STEP[step];
-
-  const progressPosition =
-    PROGRESS_BY_STEP[step];
-
-  const showNavigation =
-    previousStep !== undefined;
+  const progressPosition = PROGRESS_BY_STEP[step];
+  const showNavigation = previousStep !== undefined;
 
   /* ------------------------------------------------------------------------ */
   /* Page                                                                     */
   /* ------------------------------------------------------------------------ */
 
   return (
-    <div className="
-      flex h-[100dvh] min-h-[100dvh]
-      flex-col overflow-hidden
-      bg-[#131F24] text-white
-    ">
+    <div className="flex h-[100dvh] min-h-[100dvh] flex-col overflow-hidden bg-[#131F24] text-white">
       {showNavigation && (
         <>
           {/* Back button keeps the existing visual. */}
-          <div className="
-            relative z-30 w-full shrink-0
-            bg-[#131F24]
-            px-5 pb-1 pt-4
-            sm:px-6 sm:pt-5
-          ">
+          <div className="relative z-30 w-full shrink-0 bg-[#131F24] px-5 pb-1 pt-4 sm:px-6 sm:pt-5">
             <button
               type="button"
               onClick={goBack}
-              className="
-                -ml-2 shrink-0 rounded-full p-2
-                text-[#91A4AC]
-                transition-colors
-                hover:bg-white/5
-                hover:text-white
-              "
+              className="-ml-2 shrink-0 rounded-full p-2 text-[#91A4AC] transition-colors hover:bg-white/5 hover:text-white"
               aria-label="Back"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
           </div>
 
-          {progressPosition !== undefined && (
-            <ProgressBar
-              value={progressPosition}
-            />
-          )}
+          {progressPosition !== undefined && <ProgressBar value={progressPosition} />}
         </>
       )}
 
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
-          initial={{
-            opacity: 0,
-            x: 20,
-          }}
-          animate={{
-            opacity: 1,
-            x: 0,
-          }}
-          exit={{
-            opacity: 0,
-            x: -20,
-          }}
-          transition={{
-            duration: 0.15,
-            ease: 'easeOut',
-          }}
-          className="
-            flex min-h-0 flex-1 flex-col
-            overflow-hidden bg-[#131F24]
-          "
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{ duration: 0.15, ease: 'easeOut' }}
+          className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#131F24]"
         >
           {renderStep()}
         </motion.div>

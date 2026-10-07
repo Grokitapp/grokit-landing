@@ -3,15 +3,13 @@ declare const process: {
 };
 
 import type { Schema } from '../../data/resource';
-
 import { Amplify } from 'aws-amplify';
 import { generateClient } from 'aws-amplify/data';
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime';
 
-const { resourceConfig, libraryOptions } =
-  await getAmplifyDataClientConfig(
-    process.env as Parameters<typeof getAmplifyDataClientConfig>[0],
-  );
+const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
+  process.env as Parameters<typeof getAmplifyDataClientConfig>[0],
+);
 
 Amplify.configure(resourceConfig, libraryOptions);
 
@@ -65,59 +63,30 @@ const OUTLINE_SCHEMA = {
   type: 'object',
   additionalProperties: false,
   properties: {
-    title: {
-      type: 'string',
-      description: 'Clear, concise course title.',
-    },
-
+    title: { type: 'string', description: 'Clear, concise course title.' },
     description: {
       type: 'string',
-      description:
-        'Short description explaining what the learner will understand or be able to do.',
+      description: 'Short description explaining what the learner will understand or be able to do.',
     },
-
     phases: {
       type: 'array',
-      description:
-        'The four progressive phases of the learning course.',
+      description: 'The four progressive phases of the learning course.',
       items: {
         type: 'object',
         additionalProperties: false,
         properties: {
-          order: {
-            type: 'integer',
-            description: 'Sequential phase number starting at 1.',
-          },
-
-          title: {
-            type: 'string',
-            description: 'Concise phase title.',
-          },
-
+          order: { type: 'integer', description: 'Sequential phase number starting at 1.' },
+          title: { type: 'string', description: 'Concise phase title.' },
           lessons: {
             type: 'array',
-            description:
-              'The three lessons belonging to this phase.',
+            description: 'The three lessons belonging to this phase.',
             items: {
               type: 'object',
               additionalProperties: false,
               properties: {
-                order: {
-                  type: 'integer',
-                  description:
-                    'Sequential lesson number within the phase starting at 1.',
-                },
-
-                title: {
-                  type: 'string',
-                  description: 'Clear lesson title.',
-                },
-
-                hook: {
-                  type: 'string',
-                  description:
-                    'Short compelling hook explaining why the lesson is interesting or useful.',
-                },
+                order: { type: 'integer', description: 'Sequential lesson number within the phase starting at 1.' },
+                title: { type: 'string', description: 'Clear lesson title.' },
+                hook: { type: 'string', description: 'Short compelling hook explaining why the lesson is interesting or useful.' },
               },
               required: ['order', 'title', 'hook'],
             },
@@ -138,14 +107,10 @@ const OUTLINE_SCHEMA = {
 
 export const handler: Handler = async (event, context) => {
   const { topic, personalizationProfile } = event.arguments;
-
   const requestId = context.awsRequestId;
-
   const normalizedTopic = topic.trim();
 
-  if (!normalizedTopic) {
-    throw new Error('COURSE_TOPIC_REQUIRED');
-  }
+  if (!normalizedTopic) throw new Error('COURSE_TOPIC_REQUIRED');
 
   const owner = getOwnerIdentity(event);
 
@@ -158,25 +123,11 @@ export const handler: Handler = async (event, context) => {
   let courseId: string | undefined;
 
   try {
-    /*
-     * ----------------------------------------------------------
-     * 1. Generate the curriculum outline
-     * ----------------------------------------------------------
-     */
-
-    const outline = await callClaudeForOutline(
-      normalizedTopic,
-      personalizationProfile,
-    );
-
+    /** 1. Generate the curriculum outline */
+    const outline = await callClaudeForOutline(normalizedTopic, personalizationProfile);
     validateCourseOutline(outline);
 
-    /*
-     * ----------------------------------------------------------
-     * 2. Create the Course
-     * ----------------------------------------------------------
-     */
-
+    /** 2. Create the Course */
     const courseResult = await client.models.Course.create({
       owner: owner.value,
       title: outline.title,
@@ -186,29 +137,14 @@ export const handler: Handler = async (event, context) => {
       status: 'GENERATING',
       generationError: undefined,
     });
-
-    if (courseResult.errors?.length) {
-      throw new Error(
-        `COURSE_CREATE_FAILED: ${formatDataErrors(
-          courseResult.errors,
-        )}`,
-      );
-    }
+    assertNoErrors(courseResult.errors, 'COURSE_CREATE_FAILED');
 
     const course = courseResult.data;
-
-    if (!course) {
-      throw new Error('COURSE_CREATE_FAILED');
-    }
+    if (!course) throw new Error('COURSE_CREATE_FAILED');
 
     courseId = course.id;
 
-    /*
-     * ----------------------------------------------------------
-     * 3. Create phases and lessons
-     * ----------------------------------------------------------
-     */
-
+    /** 3. Create phases and lessons */
     for (const phase of outline.phases) {
       const phaseResult = await client.models.Phase.create({
         owner: owner.value,
@@ -217,78 +153,40 @@ export const handler: Handler = async (event, context) => {
         title: phase.title,
         locked: phase.order !== 1,
       });
-
-      if (phaseResult.errors?.length) {
-        throw new Error(
-          `PHASE_CREATE_FAILED: ${formatDataErrors(
-            phaseResult.errors,
-          )}`,
-        );
-      }
+      assertNoErrors(phaseResult.errors, 'PHASE_CREATE_FAILED');
 
       const phaseRecord = phaseResult.data;
-
-      if (!phaseRecord) {
-        throw new Error(
-          `PHASE_CREATE_FAILED: No phase returned for "${phase.title}"`,
-        );
-      }
+      if (!phaseRecord) throw new Error(`PHASE_CREATE_FAILED: No phase returned for "${phase.title}"`);
 
       for (const lesson of phase.lessons) {
-        const lessonResult =
-          await client.models.Lesson.create({
-            owner: owner.value,
-            courseId: course.id,
-            phaseId: phaseRecord.id,
-            order: lesson.order,
-            title: lesson.title,
-            hook: lesson.hook,
-            status: 'PENDING',
-            generationError: undefined,
-          });
-
-        if (lessonResult.errors?.length) {
-          throw new Error(
-            `LESSON_CREATE_FAILED: ${formatDataErrors(
-              lessonResult.errors,
-            )}`,
-          );
-        }
+        const lessonResult = await client.models.Lesson.create({
+          owner: owner.value,
+          courseId: course.id,
+          phaseId: phaseRecord.id,
+          order: lesson.order,
+          title: lesson.title,
+          hook: lesson.hook,
+          status: 'PENDING',
+          generationError: undefined,
+        });
+        assertNoErrors(lessonResult.errors, 'LESSON_CREATE_FAILED');
 
         if (!lessonResult.data) {
-          throw new Error(
-            `LESSON_CREATE_FAILED: No lesson returned for "${lesson.title}"`,
-          );
+          throw new Error(`LESSON_CREATE_FAILED: No lesson returned for "${lesson.title}"`);
         }
       }
     }
 
-    /*
-     * ----------------------------------------------------------
-     * 4. Mark the course READY
-     * ----------------------------------------------------------
-     */
-
-    const updatedResult =
-      await client.models.Course.update({
-        id: course.id,
-        status: 'READY',
-        generationError: undefined,
-      });
-
-    if (updatedResult.errors?.length) {
-      throw new Error(
-        `COURSE_FINALIZE_FAILED: ${formatDataErrors(
-          updatedResult.errors,
-        )}`,
-      );
-    }
+    /** 4. Mark the course READY */
+    const updatedResult = await client.models.Course.update({
+      id: course.id,
+      status: 'READY',
+      generationError: undefined,
+    });
+    assertNoErrors(updatedResult.errors, 'COURSE_FINALIZE_FAILED');
 
     const updatedCourse = updatedResult.data;
-
-    if (!updatedCourse) {
-      throw new Error('COURSE_FINALIZE_FAILED');
-    }
+    if (!updatedCourse) throw new Error('COURSE_FINALIZE_FAILED');
 
     console.info('Course outline generated successfully', {
       requestId,
@@ -312,40 +210,29 @@ export const handler: Handler = async (event, context) => {
 
     /*
      * If Course creation already succeeded, persist the failure
-     * so the frontend never gets a permanently stuck GENERATING
-     * course.
+     * so the frontend never gets a permanently stuck GENERATING course.
      */
-
     if (courseId) {
       try {
-        const failureResult =
-          await client.models.Course.update({
-            id: courseId,
-            status: 'FAILED',
-            generationError: message.slice(0, 5000),
-          });
+        const failureResult = await client.models.Course.update({
+          id: courseId,
+          status: 'FAILED',
+          generationError: message.slice(0, 5000),
+        });
 
         if (failureResult.errors?.length) {
-          console.error(
-            'Failed to persist course generation error',
-            {
-              requestId,
-              courseId,
-              error: formatDataErrors(
-                failureResult.errors,
-              ),
-            },
-          );
-        }
-      } catch (updateError) {
-        console.error(
-          'Unexpected error while marking course as FAILED',
-          {
+          console.error('Failed to persist course generation error', {
             requestId,
             courseId,
-            error: getErrorMessage(updateError),
-          },
-        );
+            error: formatDataErrors(failureResult.errors),
+          });
+        }
+      } catch (updateError) {
+        console.error('Unexpected error while marking course as FAILED', {
+          requestId,
+          courseId,
+          error: getErrorMessage(updateError),
+        });
       }
     }
 
@@ -359,35 +246,18 @@ export const handler: Handler = async (event, context) => {
  * ==============================================================
  */
 
-function getOwnerIdentity(
-  event: Parameters<Handler>[0],
-): OwnerIdentity {
-  const identity = event.identity as
-    | {
-        sub?: string;
-        username?: string;
-      }
-    | null
-    | undefined;
+function getOwnerIdentity(event: Parameters<Handler>[0]): OwnerIdentity {
+  const identity = event.identity as { sub?: string; username?: string } | null | undefined;
 
   const sub = identity?.sub?.trim();
   const username = identity?.username?.trim();
 
   if (!sub) {
-    console.error('Missing Cognito sub in authenticated identity', {
-      identity,
-    });
-
-    throw new Error(
-      'COURSE_OWNER_IDENTITY_MISSING',
-    );
+    console.error('Missing Cognito sub in authenticated identity', { identity });
+    throw new Error('COURSE_OWNER_IDENTITY_MISSING');
   }
 
-  return {
-    sub,
-    username,
-    value: sub,
-  };
+  return { sub, username, value: sub };
 }
 
 /*
@@ -396,18 +266,13 @@ function getOwnerIdentity(
  * ==============================================================
  */
 
-async function callClaudeForOutline(
-  topic: string,
-  profile: unknown,
-): Promise<CourseOutline> {
+async function callClaudeForOutline(topic: string, profile: unknown): Promise<CourseOutline> {
   const systemPrompt = `
 You are Grokit's AI curriculum architect.
 
-Your job is to design a coherent, progressive learning course
-for the learner.
+Your job is to design a coherent, progressive learning course for the learner.
 
 Your curriculum should:
-
 - Start from the learner's likely starting point.
 - Build concepts progressively.
 - Introduce prerequisites before dependent concepts.
@@ -419,8 +284,7 @@ Your curriculum should:
 - Cover the requested topic meaningfully.
 - Avoid unrelated material.
 - Prefer practical understanding and examples where appropriate.
-- Avoid assuming advanced knowledge unless the learner profile
-  indicates it.
+- Avoid assuming advanced knowledge unless the learner profile indicates it.
 - Make lesson hooks interesting and useful.
 - Ensure each phase naturally prepares the learner for the next.
 
@@ -431,24 +295,15 @@ Do not generate quizzes.
 Generate the curriculum structure only.
 
 The course must contain exactly:
-
 - 4 phases.
 - 3 lessons in every phase.
 - 12 lessons total.
 
 The progression should be:
-
-Phase 1:
-Foundational concepts and mental model.
-
-Phase 2:
-Core mechanisms, principles, or processes.
-
-Phase 3:
-Deeper understanding, systems, practical reasoning, or application.
-
-Phase 4:
-Real-world application, synthesis, troubleshooting, or advanced practical understanding.
+Phase 1: Foundational concepts and mental model.
+Phase 2: Core mechanisms, principles, or processes.
+Phase 3: Deeper understanding, systems, practical reasoning, or application.
+Phase 4: Real-world application, synthesis, troubleshooting, or advanced practical understanding.
 
 Do not blindly follow those labels if the topic requires a better pedagogical progression. Adapt the actual phase titles and lesson topics to the subject.
 
@@ -460,68 +315,37 @@ Return only the requested structured JSON.
   const userMessage = [
     `Learning topic: ${topic}`,
     '',
-    profile
-      ? `Learner profile:\n${JSON.stringify(profile)}`
-      : 'Learner profile: Not provided',
+    profile ? `Learner profile:\n${JSON.stringify(profile)}` : 'Learner profile: Not provided',
   ].join('\n');
 
-  const response = await fetch(
-    'https://api.anthropic.com/v1/messages',
-    {
-      method: 'POST',
-
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-
-      body: JSON.stringify({
-        model: 'claude-sonnet-5-5',
-
-        max_tokens: 4096,
-
-        system: systemPrompt,
-
-        messages: [
-          {
-            role: 'user',
-            content: userMessage,
-          },
-        ],
-
-        output_config: {
-          effort: 'low',
-
-          format: {
-            type: 'json_schema',
-
-            schema: OUTLINE_SCHEMA,
-          },
-        },
-      }),
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
     },
-  );
+    body: JSON.stringify({
+      model: 'claude-sonnet-5-5',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+      output_config: {
+        effort: 'low',
+        format: { type: 'json_schema', schema: OUTLINE_SCHEMA },
+      },
+    }),
+  });
 
   if (!response.ok) {
     const errorBody = await response.text();
-
-    throw new Error(
-      `ANTHROPIC_API_ERROR_${response.status}: ${errorBody}`,
-    );
+    throw new Error(`ANTHROPIC_API_ERROR_${response.status}: ${errorBody}`);
   }
 
-  const responseBody: unknown =
-    await response.json();
+  const responseBody: unknown = await response.json();
+  const text = extractTextResponse(responseBody);
 
-  const text =
-    extractTextResponse(responseBody);
-
-  if (!text) {
-    throw new Error(
-      'ANTHROPIC_EMPTY_RESPONSE',
-    );
-  }
+  if (!text) throw new Error('ANTHROPIC_EMPTY_RESPONSE');
 
   return parseJsonResponse(text);
 }
@@ -532,52 +356,26 @@ Return only the requested structured JSON.
  * ==============================================================
  */
 
-function extractTextResponse(
-  responseBody: unknown,
-): string {
-  if (
-    !responseBody ||
-    typeof responseBody !== 'object'
-  ) {
-    throw new Error(
-      'ANTHROPIC_INVALID_RESPONSE',
-    );
+function extractTextResponse(responseBody: unknown): string {
+  if (!responseBody || typeof responseBody !== 'object') {
+    throw new Error('ANTHROPIC_INVALID_RESPONSE');
   }
 
-  const content = (
-    responseBody as {
-      content?: unknown;
-    }
-  ).content;
-
-  if (!Array.isArray(content)) {
-    throw new Error(
-      'ANTHROPIC_CONTENT_MISSING',
-    );
-  }
+  const content = (responseBody as { content?: unknown }).content;
+  if (!Array.isArray(content)) throw new Error('ANTHROPIC_CONTENT_MISSING');
 
   const textBlock = content.find(
-    (
-      block,
-    ): block is {
-      type: 'text';
-      text: string;
-    } =>
+    (block): block is { type: 'text'; text: string } =>
       typeof block === 'object' &&
       block !== null &&
-      (block as { type?: unknown }).type ===
-        'text' &&
-      typeof (
-        block as { text?: unknown }
-      ).text === 'string',
+      (block as { type?: unknown }).type === 'text' &&
+      typeof (block as { text?: unknown }).text === 'string',
   );
 
   return textBlock?.text.trim() ?? '';
 }
 
-function parseJsonResponse(
-  text: string,
-): CourseOutline {
+function parseJsonResponse(text: string): CourseOutline {
   const cleaned = text
     .replace(/^```json\s*/i, '')
     .replace(/^```\s*/i, '')
@@ -585,29 +383,15 @@ function parseJsonResponse(
     .trim();
 
   try {
-    const parsed: unknown =
-      JSON.parse(cleaned);
-
+    const parsed: unknown = JSON.parse(cleaned);
     validateCourseOutline(parsed);
-
     return parsed;
   } catch (error) {
-    console.error(
-      'Failed to parse or validate Claude outline',
-      {
-        error: getErrorMessage(error),
-        responsePreview: cleaned.slice(
-          0,
-          2000,
-        ),
-      },
-    );
-
-    throw new Error(
-      `INVALID_AI_OUTLINE: ${getErrorMessage(
-        error,
-      )}`,
-    );
+    console.error('Failed to parse or validate Claude outline', {
+      error: getErrorMessage(error),
+      responsePreview: cleaned.slice(0, 2000),
+    });
+    throw new Error(`INVALID_AI_OUTLINE: ${getErrorMessage(error)}`);
   }
 }
 
@@ -617,89 +401,40 @@ function parseJsonResponse(
  * ==============================================================
  */
 
-function validateCourseOutline(
-  value: unknown,
-): asserts value is CourseOutline {
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value)
-  ) {
-    throw new Error(
-      'OUTLINE_MUST_BE_OBJECT',
-    );
+function validateCourseOutline(value: unknown): asserts value is CourseOutline {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('OUTLINE_MUST_BE_OBJECT');
   }
 
-  const outline =
-    value as Record<string, unknown>;
+  const outline = value as Record<string, unknown>;
 
-  if (
-    !isNonEmptyString(outline.title)
-  ) {
-    throw new Error(
-      'OUTLINE_TITLE_INVALID',
-    );
-  }
+  if (!isNonEmptyString(outline.title)) throw new Error('OUTLINE_TITLE_INVALID');
+  if (!isNonEmptyString(outline.description)) throw new Error('OUTLINE_DESCRIPTION_INVALID');
 
-  if (
-    !isNonEmptyString(
-      outline.description,
-    )
-  ) {
-    throw new Error(
-      'OUTLINE_DESCRIPTION_INVALID',
-    );
-  }
-
-  if (!Array.isArray(outline.phases)) {
-    throw new Error(
-      'OUTLINE_PHASES_INVALID',
-    );
-  }
-
+  if (!Array.isArray(outline.phases)) throw new Error('OUTLINE_PHASES_INVALID');
   if (outline.phases.length !== 4) {
-    throw new Error(
-      `OUTLINE_PHASE_COUNT_INVALID: expected 4, received ${outline.phases.length}`,
-    );
+    throw new Error(`OUTLINE_PHASE_COUNT_INVALID: expected 4, received ${outline.phases.length}`);
   }
 
   let expectedPhaseOrder = 1;
 
   for (const phaseValue of outline.phases) {
-    if (
-      !phaseValue ||
-      typeof phaseValue !== 'object' ||
-      Array.isArray(phaseValue)
-    ) {
-      throw new Error(
-        'INVALID_PHASE_STRUCTURE',
-      );
+    if (!phaseValue || typeof phaseValue !== 'object' || Array.isArray(phaseValue)) {
+      throw new Error('INVALID_PHASE_STRUCTURE');
     }
 
-    const phase =
-      phaseValue as Record<string, unknown>;
+    const phase = phaseValue as Record<string, unknown>;
 
-    if (
-      phase.order !==
-      expectedPhaseOrder
-    ) {
-      throw new Error(
-        `PHASE_ORDER_INVALID: expected ${expectedPhaseOrder}`,
-      );
+    if (phase.order !== expectedPhaseOrder) {
+      throw new Error(`PHASE_ORDER_INVALID: expected ${expectedPhaseOrder}`);
     }
 
-    if (
-      !isNonEmptyString(phase.title)
-    ) {
-      throw new Error(
-        `PHASE_TITLE_INVALID: phase ${expectedPhaseOrder}`,
-      );
+    if (!isNonEmptyString(phase.title)) {
+      throw new Error(`PHASE_TITLE_INVALID: phase ${expectedPhaseOrder}`);
     }
 
     if (!Array.isArray(phase.lessons)) {
-      throw new Error(
-        `PHASE_LESSONS_INVALID: phase ${expectedPhaseOrder}`,
-      );
+      throw new Error(`PHASE_LESSONS_INVALID: phase ${expectedPhaseOrder}`);
     }
 
     if (phase.lessons.length !== 3) {
@@ -711,49 +446,22 @@ function validateCourseOutline(
     let expectedLessonOrder = 1;
 
     for (const lessonValue of phase.lessons) {
-      if (
-        !lessonValue ||
-        typeof lessonValue !== 'object' ||
-        Array.isArray(lessonValue)
-      ) {
-        throw new Error(
-          `INVALID_LESSON_STRUCTURE: phase ${expectedPhaseOrder}`,
-        );
+      if (!lessonValue || typeof lessonValue !== 'object' || Array.isArray(lessonValue)) {
+        throw new Error(`INVALID_LESSON_STRUCTURE: phase ${expectedPhaseOrder}`);
       }
 
-      const lesson =
-        lessonValue as Record<
-          string,
-          unknown
-        >;
+      const lesson = lessonValue as Record<string, unknown>;
 
-      if (
-        lesson.order !==
-        expectedLessonOrder
-      ) {
-        throw new Error(
-          `LESSON_ORDER_INVALID: phase ${expectedPhaseOrder}, expected ${expectedLessonOrder}`,
-        );
+      if (lesson.order !== expectedLessonOrder) {
+        throw new Error(`LESSON_ORDER_INVALID: phase ${expectedPhaseOrder}, expected ${expectedLessonOrder}`);
       }
 
-      if (
-        !isNonEmptyString(
-          lesson.title,
-        )
-      ) {
-        throw new Error(
-          `LESSON_TITLE_INVALID: phase ${expectedPhaseOrder}, lesson ${expectedLessonOrder}`,
-        );
+      if (!isNonEmptyString(lesson.title)) {
+        throw new Error(`LESSON_TITLE_INVALID: phase ${expectedPhaseOrder}, lesson ${expectedLessonOrder}`);
       }
 
-      if (
-        !isNonEmptyString(
-          lesson.hook,
-        )
-      ) {
-        throw new Error(
-          `LESSON_HOOK_INVALID: phase ${expectedPhaseOrder}, lesson ${expectedLessonOrder}`,
-        );
+      if (!isNonEmptyString(lesson.hook)) {
+        throw new Error(`LESSON_HOOK_INVALID: phase ${expectedPhaseOrder}, lesson ${expectedLessonOrder}`);
       }
 
       expectedLessonOrder += 1;
@@ -769,68 +477,35 @@ function validateCourseOutline(
  * ==============================================================
  */
 
-function isNonEmptyString(
-  value: unknown,
-): value is string {
-  return (
-    typeof value === 'string' &&
-    value.trim().length > 0
-  );
+function assertNoErrors(errors: readonly unknown[] | undefined, code: string): void {
+  if (errors?.length) {
+    throw new Error(`${code}: ${formatDataErrors(errors)}`);
+  }
 }
 
-function countLessons(
-  outline: CourseOutline,
-): number {
-  return outline.phases.reduce(
-    (total, phase) =>
-      total + phase.lessons.length,
-    0,
-  );
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
 }
 
-function formatDataErrors(
-  errors: readonly unknown[],
-): string {
+function countLessons(outline: CourseOutline): number {
+  return outline.phases.reduce((total, phase) => total + phase.lessons.length, 0);
+}
+
+function formatDataErrors(errors: readonly unknown[]): string {
   return errors
-    .map((error) => {
-      if (
-        error &&
-        typeof error === 'object' &&
-        'message' in error
-      ) {
-        return String(
-          (
-            error as {
-              message?: unknown;
-            }
-          ).message,
-        );
-      }
-
-      return String(error);
-    })
+    .map((error) =>
+      error && typeof error === 'object' && 'message' in error
+        ? String((error as { message?: unknown }).message)
+        : String(error),
+    )
     .join('; ');
 }
 
-function getErrorMessage(
-  error: unknown,
-): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
 
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error
-  ) {
-    return String(
-      (
-        error as {
-          message?: unknown;
-        }
-      ).message,
-    );
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return String((error as { message?: unknown }).message);
   }
 
   return String(error);
