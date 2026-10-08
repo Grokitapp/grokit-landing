@@ -13,11 +13,7 @@ import AuthGuard from './auth/AuthGuard';
 import Terms from './Terms';
 import PrivacyPolicy from './Privacypolicy';
 
-// ─── Lazy-loaded learning pages ─────────────────────────────────────────────
-
-const Learn = lazy(
-  () => import('./Learn'),
-);
+const Create = lazy(() => import('./Create'));
 
 const Personalize = lazy(
   () => import('./learn/Personalize'),
@@ -39,8 +35,6 @@ const LessonPlayer = lazy(
   () => import('./learn/LessonPlayer'),
 );
 
-// ─── Loading fallback ───────────────────────────────────────────────────────
-
 function PageLoader() {
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-[#131F24]">
@@ -48,8 +42,6 @@ function PageLoader() {
     </div>
   );
 }
-
-// ─── Protected learning route ──────────────────────────────────────────────
 
 function ProtectedLearningPage({
   children,
@@ -65,14 +57,9 @@ function ProtectedLearningPage({
   );
 }
 
-// ─── App ────────────────────────────────────────────────────────────────────
-
 export default function App() {
   return (
     <Routes>
-      {/* ──────────────────────────────────────────────────────────────── */}
-      {/* Public routes                                                     */}
-      {/* ──────────────────────────────────────────────────────────────── */}
 
       <Route
         path="/"
@@ -94,15 +81,11 @@ export default function App() {
         element={<PrivacyPolicy />}
       />
 
-      {/* ──────────────────────────────────────────────────────────────── */}
-      {/* Protected learning routes                                        */}
-      {/* ──────────────────────────────────────────────────────────────── */}
-
       <Route
-        path="/learn"
+        path="/create"
         element={
           <ProtectedLearningPage>
-            <Learn />
+            <Create />
           </ProtectedLearningPage>
         }
       />
@@ -143,10 +126,6 @@ export default function App() {
         }
       />
 
-      {/* ──────────────────────────────────────────────────────────────── */}
-      {/* Lesson Player                                                     */}
-      {/* ──────────────────────────────────────────────────────────────── */}
-
       <Route
         path="/learn/course/:courseId/lesson/:lessonId"
         element={
@@ -156,9 +135,15 @@ export default function App() {
         }
       />
 
-      {/* ──────────────────────────────────────────────────────────────── */}
-      {/* Fallback                                                          */}
-      {/* ──────────────────────────────────────────────────────────────── */}
+      <Route
+        path="/learn"
+        element={
+          <Navigate
+            to="/create"
+            replace
+          />
+        }
+      />
 
       <Route
         path="*"

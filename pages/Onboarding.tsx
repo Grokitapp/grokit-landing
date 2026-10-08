@@ -106,7 +106,7 @@ export default function Onboarding() {
         if (!mounted) return;
 
         if (profile?.onboardingCompleted === true) {
-          navigate('/learn', { replace: true });
+          navigate('/create', { replace: true });
           return;
         }
 
@@ -217,7 +217,7 @@ export default function Onboarding() {
        * Save succeeded.
        * Go directly to the learning experience.
        */
-      navigate('/learn', { replace: true });
+      navigate('/create', { replace: true });
     } catch (error) {
       /*
        * Keep the real technical error available
@@ -251,7 +251,7 @@ export default function Onboarding() {
               const profile = await getProfileWithRetry();
 
               if (profile?.onboardingCompleted === true) {
-                navigate('/learn', { replace: true });
+                navigate('/create', { replace: true });
                 return;
               }
 

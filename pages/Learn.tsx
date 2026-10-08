@@ -298,7 +298,7 @@ export default function Learn() {
   const isCourseFailed = selectedCourseStatus === 'FAILED';
 
   const handleCreateJourney = () => {
-    navigate('/learn/personalize');
+    navigate('/create');
   };
 
   const handleLessonClick = (lesson: Lesson, state: LessonState) => {
