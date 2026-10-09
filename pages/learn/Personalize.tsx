@@ -1,13 +1,18 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { ChevronLeft, Sparkles } from 'lucide-react';
-import grokitOcto from '../../assets/grokit-octo.png';
 
 interface LocationState {
   prompt?: string;
 }
 
-const levels = [
+type Level = 'new' | 'beginner' | 'intermediate' | 'advanced';
+
+const levels: {
+  value: Level;
+  label: string;
+  description: string;
+}[] = [
   {
     value: 'new',
     label: 'Completely new',
@@ -37,234 +42,333 @@ const knowledgeOptions = [
   { value: 'technical', label: 'I understand the technical details' },
 ];
 
-const pageClasses =
-  'min-h-[100dvh] bg-[#131F24] text-white flex flex-col items-center px-5 py-10 sm:py-12 relative';
+const focusOptions = [
+  { value: 'deeper', label: 'Understand how it works in depth' },
+  { value: 'practical', label: 'Apply it to real-world problems' },
+  { value: 'advanced', label: 'Explore advanced techniques' },
+  { value: 'projects', label: 'Build something practical' },
+];
 
 const primaryButtonClasses =
-  'w-full min-h-[52px] rounded-full bg-orange text-white font-sans font-extrabold text-[15px] shadow-[0_4px_0_#C94713] hover:brightness-105 active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed';
+  'flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-orange px-5 text-[15px] font-extrabold text-white shadow-[0_4px_0_#C94713] transition-all hover:brightness-105 active:translate-y-[2px] active:shadow-none disabled:cursor-not-allowed disabled:opacity-50';
 
 const secondaryButtonClasses =
-  'w-full min-h-[48px] rounded-full bg-[#202F35] border border-[#37464F] text-white font-sans font-bold text-[14px] hover:border-orange/50 transition-all';
+  'flex min-h-[48px] w-full items-center justify-center rounded-full border border-[#37464F] bg-[#202F35] px-5 text-sm font-bold text-white transition-colors hover:border-orange/60';
 
 export default function Personalize() {
   const navigate = useNavigate();
   const location = useLocation();
   const { prompt } = (location.state as LocationState) ?? {};
 
-  const [level, setLevel] = useState('beginner');
+  const [level, setLevel] = useState<Level | null>(null);
   const [knowledge, setKnowledge] = useState<string[]>([]);
+  const [focusAreas, setFocusAreas] = useState<string[]>([]);
   const [focus, setFocus] = useState('');
 
   const goBack = () => navigate(-1);
 
-  const createDirectly = () => {
-    if (!prompt?.trim()) {
+  const toggleItem = (
+    value: string,
+    current: string[],
+    update: (next: string[]) => void,
+  ) => {
+    update(
+      current.includes(value)
+        ? current.filter((item) => item !== value)
+        : [...current, value],
+    );
+  };
+
+  const startGeneration = (personalized: boolean) => {
+    const topic = prompt?.trim();
+
+    if (!topic) {
       navigate('/create');
       return;
     }
 
+    const personalizationProfile =
+      personalized && level
+        ? {
+            experienceLevel: level,
+            existingKnowledge: level === 'new' ? [] : knowledge,
+            learningFocus:
+              level === 'new'
+                ? ''
+                : focus.trim(),
+            focusAreas: level === 'new' ? [] : focusAreas,
+          }
+        : undefined;
+
     navigate('/learn/generating', {
       state: {
-        prompt: prompt.trim(),
-        personalized: false,
+        prompt: topic,
+        personalized: Boolean(personalizationProfile),
+        ...(personalizationProfile
+          ? { personalizationProfile }
+          : {}),
       },
     });
   };
 
-  const createPersonalized = () => {
-    if (!prompt?.trim()) {
-      navigate('/create');
-      return;
-    }
-
-    const personalizationProfile = {
-      experienceLevel: level,
-      existingKnowledge: knowledge,
-      learningFocus: focus.trim(),
-    };
-
-    navigate('/learn/generating', {
-      state: {
-        prompt: prompt.trim(),
-        personalized: true,
-        personalizationProfile,
-      },
-    });
-  };
+  const showFollowUps = level !== null && level !== 'new';
 
   return (
-    <main className={pageClasses}>
-      <button
-        type="button"
-        onClick={goBack}
-        aria-label="Go back"
-        className="absolute left-5 top-5 flex h-10 w-10 items-center justify-center rounded-full text-[#91A4AC] transition-colors hover:bg-[#202F35] hover:text-white sm:left-8 sm:top-8"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
+    <main className="flex h-[100dvh] flex-col overflow-hidden bg-[#131F24] text-white">
+      {/* Fixed top navigation */}
+      <header className="relative z-10 shrink-0 border-b border-white/[0.04] bg-[#131F24] px-5 pb-3 pt-[max(12px,env(safe-area-inset-top))] sm:px-8">
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Go back"
+          className="absolute left-4 top-3 flex h-10 w-10 items-center justify-center rounded-full text-[#91A4AC] transition-colors hover:bg-[#202F35] hover:text-white sm:left-8 sm:top-4"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
 
-      <div className="w-full max-w-[620px] pt-12 sm:pt-6">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <img
-            src={grokitOcto}
-            alt=""
-            className="mb-5 h-24 w-24 object-contain sm:h-28 sm:w-28"
-          />
-
-          <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-[#91A4AC]">
+        <div className="mx-auto w-full max-w-[720px] px-1 pt-12 sm:pt-10">
+          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#91A4AC]">
             Make it yours
           </p>
 
-          <h1 className="mb-3 font-display text-[28px] font-extrabold leading-tight text-white sm:text-[36px]">
-            Let's find your starting point
+          <h1 className="font-display text-[25px] font-extrabold leading-tight sm:text-[32px]">
+            Let&apos;s find your starting point
           </h1>
 
-          <p className="max-w-[480px] text-sm leading-6 text-[#91A4AC] sm:text-base">
-            Tell us what you already know about your topic. We'll use it to
-            shape a course that fits you.
+          <p className="mt-2 max-w-[560px] text-sm leading-6 text-[#91A4AC] sm:text-[15px]">
+            A quick check-in helps us create a journey that starts at the
+            right level for you.
           </p>
+        </div>
+      </header>
 
-          {prompt && (
-            <div className="mt-5 w-full rounded-2xl border border-[#37464F] bg-[#19282E] px-4 py-3 text-left">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#718993]">
+      {/* Only this region scrolls */}
+      <div
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-6 sm:px-8 sm:py-8"
+        style={{ scrollbarGutter: 'stable' }}
+      >
+        <div className="mx-auto w-full max-w-[680px]">
+          {prompt?.trim() && (
+            <div className="mb-7 rounded-2xl border border-[#37464F] bg-[#19282E] px-4 py-3">
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[#718993]">
                 Your topic
               </p>
-              <p className="text-sm leading-6 text-white">{prompt}</p>
+              <p className="break-words text-sm leading-6 text-white">
+                {prompt.trim()}
+              </p>
             </div>
           )}
-        </div>
 
-        <section className="mb-7">
-          <h2 className="mb-1 text-base font-extrabold text-white sm:text-lg">
-            1. How familiar are you with this topic?
-          </h2>
-          <p className="mb-4 text-sm text-[#91A4AC]">
-            Choose the level that feels closest to you.
-          </p>
+          <section aria-labelledby="familiarity-heading">
+            <h2
+              id="familiarity-heading"
+              className="mb-1 text-base font-extrabold sm:text-lg"
+            >
+              How familiar are you with this topic?
+            </h2>
+            <p className="mb-4 text-sm leading-6 text-[#91A4AC]">
+              Choose the level that feels closest to you.
+            </p>
 
-          <div className="space-y-2">
-            {levels.map((item) => {
-              const selected = level === item.value;
+            <div className="space-y-2.5">
+              {levels.map((item) => {
+                const selected = level === item.value;
 
-              return (
-                <button
-                  key={item.value}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => setLevel(item.value)}
-                  className={`flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-all sm:p-4 ${
-                    selected
-                      ? 'border-orange bg-[#253238]'
-                      : 'border-[#37464F] bg-[#19262B] hover:border-[#52666F]'
-                  }`}
-                >
-                  <span
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                return (
+                  <button
+                    key={item.value}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setLevel(item.value)}
+                    className={`flex w-full items-center gap-3 rounded-2xl border p-3.5 text-left transition-colors sm:p-4 ${
                       selected
-                        ? 'border-orange'
-                        : 'border-[#60757E]'
+                        ? 'border-orange bg-[#253238]'
+                        : 'border-[#37464F] bg-[#19262B] hover:border-[#52666F]'
                     }`}
                   >
-                    {selected && (
-                      <span className="h-2.5 w-2.5 rounded-full bg-orange" />
-                    )}
-                  </span>
-
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold text-white">
-                      {item.label}
+                    <span
+                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                        selected ? 'border-orange' : 'border-[#60757E]'
+                      }`}
+                    >
+                      {selected && (
+                        <span className="h-2.5 w-2.5 rounded-full bg-orange" />
+                      )}
                     </span>
-                    <span className="mt-0.5 block text-xs leading-5 text-[#91A4AC] sm:text-sm">
-                      {item.description}
+
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-bold">
+                        {item.label}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-5 text-[#91A4AC] sm:text-sm">
+                        {item.description}
+                      </span>
                     </span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-        <section className="mb-7">
-          <h2 className="mb-1 text-base font-extrabold text-white sm:text-lg">
-            2. What do you already know?
-          </h2>
-          <p className="mb-4 text-sm text-[#91A4AC]">
-            Select anything that applies. You can skip this question.
-          </p>
+          {level === 'new' && (
+            <div className="mt-5 rounded-xl border border-[#37464F] bg-[#19282E] p-4">
+              <p className="text-sm font-semibold text-white">
+                Perfect. We&apos;ll start with the essentials.
+              </p>
+              <p className="mt-1 text-sm leading-6 text-[#91A4AC]">
+                No more questions needed. We&apos;ll use your topic and
+                onboarding preferences to shape your journey.
+              </p>
+            </div>
+          )}
 
-          <div className="space-y-3">
-            {knowledgeOptions.map((item) => {
-              const checked = knowledge.includes(item.value);
+          {level === 'beginner' && (
+            <section className="mt-8">
+              <h2 className="mb-1 text-base font-extrabold sm:text-lg">
+                What do you already know?
+              </h2>
+              <p className="mb-4 text-sm leading-6 text-[#91A4AC]">
+                Select anything that applies. You can leave this blank.
+              </p>
 
-              return (
-                <label
-                  key={item.value}
-                  className="flex cursor-pointer items-center gap-3 text-sm text-[#D5DEE2]"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(event) => {
-                      setKnowledge((current) =>
-                        event.target.checked
-                          ? [...current, item.value]
-                          : current.filter((value) => value !== item.value),
-                      );
-                    }}
-                    className="h-4 w-4 accent-[#FF6B00]"
-                  />
-                  {item.label}
-                </label>
-              );
-            })}
-          </div>
-        </section>
+              <div className="space-y-3">
+                {knowledgeOptions.slice(0, 3).map((item) => (
+                  <label
+                    key={item.value}
+                    className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-[#D5DEE2]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={knowledge.includes(item.value)}
+                      onChange={() =>
+                        toggleItem(item.value, knowledge, setKnowledge)
+                      }
+                      className="mt-1 h-4 w-4 shrink-0 accent-[#FF6B00]"
+                    />
+                    {item.label}
+                  </label>
+                ))}
+              </div>
+            </section>
+          )}
 
-        <section className="mb-8">
-          <h2 className="mb-1 text-base font-extrabold text-white sm:text-lg">
-            3. What would you especially like to understand?
-          </h2>
-          <p className="mb-3 text-sm text-[#91A4AC]">
-            Optional. Tell us about a question, skill, or real-world application.
-          </p>
+          {level === 'intermediate' && (
+            <section className="mt-8">
+              <h2 className="mb-1 text-base font-extrabold sm:text-lg">
+                What would you like to understand more deeply?
+              </h2>
+              <p className="mb-4 text-sm leading-6 text-[#91A4AC]">
+                Choose any areas that interest you.
+              </p>
 
-          <textarea
-            value={focus}
-            onChange={(event) => setFocus(event.target.value)}
-            maxLength={1200}
-            rows={3}
-            placeholder="e.g. How neural networks learn and where AI is used..."
-            className="w-full resize-y rounded-2xl border border-[#37464F] bg-[#19282E] p-4 text-sm leading-6 text-white outline-none transition-colors placeholder:text-[#718993] focus:border-orange"
-          />
-        </section>
+              <div className="space-y-3">
+                {focusOptions.slice(0, 2).map((item) => (
+                  <label
+                    key={item.value}
+                    className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-[#D5DEE2]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={focusAreas.includes(item.value)}
+                      onChange={() =>
+                        toggleItem(item.value, focusAreas, setFocusAreas)
+                      }
+                      className="mt-1 h-4 w-4 shrink-0 accent-[#FF6B00]"
+                    />
+                    {item.label}
+                  </label>
+                ))}
+              </div>
 
-        <div className="space-y-3">
+              <label
+                htmlFor="learning-focus"
+                className="mb-2 mt-5 block text-sm font-semibold text-white"
+              >
+                Anything specific on your mind? (Optional)
+              </label>
+              <textarea
+                id="learning-focus"
+                value={focus}
+                onChange={(event) => setFocus(event.target.value)}
+                maxLength={1200}
+                rows={3}
+                placeholder="e.g. How neural networks learn..."
+                className="w-full resize-y rounded-2xl border border-[#37464F] bg-[#19282E] p-4 text-sm leading-6 text-white outline-none placeholder:text-[#718993] focus:border-orange"
+              />
+            </section>
+          )}
+
+          {level === 'advanced' && (
+            <section className="mt-8">
+              <h2 className="mb-1 text-base font-extrabold sm:text-lg">
+                What do you want to focus on?
+              </h2>
+              <p className="mb-4 text-sm leading-6 text-[#91A4AC]">
+                Select the direction that best fits your goals.
+              </p>
+
+              <div className="space-y-3">
+                {focusOptions.map((item) => (
+                  <label
+                    key={item.value}
+                    className="flex cursor-pointer items-start gap-3 text-sm leading-6 text-[#D5DEE2]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={focusAreas.includes(item.value)}
+                      onChange={() =>
+                        toggleItem(item.value, focusAreas, setFocusAreas)
+                      }
+                      className="mt-1 h-4 w-4 shrink-0 accent-[#FF6B00]"
+                    />
+                    {item.label}
+                  </label>
+                ))}
+              </div>
+
+              <label
+                htmlFor="learning-focus"
+                className="mb-2 mt-5 block text-sm font-semibold text-white"
+              >
+                Specific challenge or application (Optional)
+              </label>
+              <textarea
+                id="learning-focus"
+                value={focus}
+                onChange={(event) => setFocus(event.target.value)}
+                maxLength={1200}
+                rows={3}
+                placeholder="What would you like to be able to solve or build?"
+                className="w-full resize-y rounded-2xl border border-[#37464F] bg-[#19282E] p-4 text-sm leading-6 text-white outline-none placeholder:text-[#718993] focus:border-orange"
+              />
+            </section>
+          )}
+        </div>
+      </div>
+
+      {/* Fixed bottom actions */}
+      <footer className="z-10 shrink-0 border-t border-white/[0.06] bg-[#131F24] px-5 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 sm:px-8">
+        <div className="mx-auto flex w-full max-w-[680px] flex-col gap-3">
           <button
             type="button"
-            onClick={createPersonalized}
-            disabled={!prompt?.trim()}
+            onClick={() => startGeneration(true)}
+            disabled={!prompt?.trim() || !level}
             className={primaryButtonClasses}
           >
-            <span className="inline-flex items-center justify-center gap-2">
-              <Sparkles className="h-4 w-4" />
-              Create my learning journey
-            </span>
+            <Sparkles className="h-4 w-4" />
+            Create my learning journey
           </button>
 
           <button
             type="button"
-            onClick={createDirectly}
+            onClick={() => startGeneration(false)}
+            disabled={!prompt?.trim()}
             className={secondaryButtonClasses}
           >
             Skip questions and create directly
           </button>
         </div>
-
-        <p className="mt-5 text-center text-xs leading-5 text-[#718993]">
-          Your learning preferences from onboarding can help shape your course,
-          too.
-        </p>
-      </div>
+      </footer>
     </main>
   );
 }

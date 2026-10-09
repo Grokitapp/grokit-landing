@@ -32,10 +32,17 @@ const retryButtonClasses = 'text-orange font-sans font-semibold text-sm underlin
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+type PersonalizationProfile = {
+  experienceLevel: 'new' | 'beginner' | 'intermediate' | 'advanced';
+  existingKnowledge: string[];
+  learningFocus: string;
+  focusAreas: string[];
+};
+
 interface LocationState {
   prompt?: string;
   personalized?: boolean;
-  personalizationProfile?: unknown;
+  personalizationProfile?: PersonalizationProfile;
 }
 
 type Stage = 'building' | 'streaming' | 'ready' | 'error';

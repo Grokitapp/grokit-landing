@@ -17,18 +17,61 @@ function requireId(id: string, code: string) {
 
 // ─── Mutations (AI generation) ─────────────────────────────────────────────
 
+
+type PersonalizationProfile = {
+  experienceLevel: 'new' | 'beginner' | 'intermediate' | 'advanced';
+  existingKnowledge: string[];
+  learningFocus: string;
+  focusAreas: string[];
+};
+
 export async function createCourseFromPrompt(
   topic: string,
-  personalizationProfile?: unknown,
+  personalizationProfile?: PersonalizationProfile,
 ) {
-  const { data, errors } = await client.mutations.generateOutline({
-    topic: topic.trim(),
-    personalizationProfile: personalizationProfile as never,
-  });
+  const normalizedTopic = topic.trim();
+
+  if (!normalizedTopic) {
+    throw new Error('COURSE_TOPIC_REQUIRED');
+  }
+
+  const profile =
+    personalizationProfile &&
+    typeof personalizationProfile === 'object'
+      ? {
+          experienceLevel: personalizationProfile.experienceLevel,
+          existingKnowledge: Array.isArray(
+            personalizationProfile.existingKnowledge,
+          )
+            ? personalizationProfile.existingKnowledge.filter(
+                (item): item is string => typeof item === 'string',
+              )
+            : [],
+          learningFocus:
+            typeof personalizationProfile.learningFocus === 'string'
+              ? personalizationProfile.learningFocus.trim()
+              : '',
+          focusAreas: Array.isArray(personalizationProfile.focusAreas)
+            ? personalizationProfile.focusAreas.filter(
+                (item): item is string => typeof item === 'string',
+              )
+            : [],
+        }
+      : undefined;
+
+  const input = {
+    topic: normalizedTopic,
+    ...(profile ? { personalizationProfile: profile } : {}),
+  };
+
+  const { data, errors } =
+    await client.mutations.generateOutline(input);
 
   throwIfErrors(errors);
 
-  if (!data) throw new Error('No course returned from generateOutline');
+  if (!data) {
+    throw new Error('No course returned from generateOutline');
+  }
 
   return data;
 }
