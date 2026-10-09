@@ -123,7 +123,10 @@ const schema = a.schema({
       allow.authenticated(),
     ])
     .handler(a.handler.function(generateLesson)),
-});
+}).authorization((allow) => [
+  allow.resource(generateOutline),
+  allow.resource(generateLesson),
+]);
 
 export type Schema = ClientSchema<typeof schema>;
 
