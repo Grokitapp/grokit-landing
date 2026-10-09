@@ -243,7 +243,7 @@ export default function Create() {
 
         <div className="relative flex min-h-[100dvh] w-full items-center justify-center px-4 pb-10 pt-20 sm:px-6 sm:pt-16 lg:px-10 lg:pt-10">
           <div className="flex w-full max-w-[920px] flex-col items-center">
-            <div className="relative flex h-[150px] w-[240px] items-center justify-center sm:h-[175px] sm:w-[280px]">
+            <div className="relative flex h-[180px] w-[280px] items-center justify-center sm:h-[205px] sm:w-[320px]">
               <div className="pointer-events-none absolute inset-0 rounded-full bg-orange/[0.08] blur-[45px]" />
 
               <img

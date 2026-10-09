@@ -56,10 +56,12 @@ export default function AppShell({
 
   const accountRef = useRef<HTMLDivElement>(null);
 
+  const pathname = location.pathname.replace(/\/+$/, '').toLowerCase();
   const isCreateFlow =
-    location.pathname === '/create' ||
-    location.pathname.startsWith('/learn/personalize') ||
-    location.pathname.startsWith('/learn/generating');
+    pathname === '/' ||
+    pathname === '/create' ||
+    pathname.startsWith('/learn/personalize') ||
+    pathname.startsWith('/learn/generating');
 
   useEffect(() => {
     if (providedUserName) {
@@ -140,10 +142,12 @@ export default function AppShell({
             const active = label === 'Create' ? isCreateFlow : isActive;
 
             return [
-              'group relative flex min-h-[48px] items-center gap-3 rounded-2xl px-4',
-              'font-sans text-[15px] font-bold transition-all duration-150',
+              'group relative flex items-center gap-3',
+              'min-h-[48px] rounded-2xl px-4',
+              'font-sans text-[15px] font-bold',
+              'transition-all duration-150',
               active
-                ? 'bg-[#203138] text-orange'
+                ? 'bg-[#203138] !text-[#FF6B00]'
                 : 'text-[#91A4AC] hover:bg-[#1A292F] hover:text-white',
             ].join(' ');
           }}
