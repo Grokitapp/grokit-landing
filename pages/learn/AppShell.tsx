@@ -38,6 +38,12 @@ interface AppShellProps {
   userName?: string;
 }
 
+interface RouteState {
+  refreshJourneys?: boolean;
+  newlyCreatedJourneyId?: string;
+  [key: string]: unknown;
+}
+
 const navItems = [
   { label: 'Create', icon: Sparkles, to: '/create' },
   { label: 'Explore', icon: Compass, to: '/explore' },
@@ -62,8 +68,6 @@ export default function AppShell({
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [userName, setUserName] = useState(providedUserName || 'You');
 
-  // If a parent supplies journeys, continue using that API.
-  // Otherwise, AppShell manages its own journey list.
   const [loadedCourses, setLoadedCourses] = useState<Journey[]>([]);
   const [loadedCoursesLoading, setLoadedCoursesLoading] = useState(
     providedCourses === undefined,
@@ -73,6 +77,8 @@ export default function AppShell({
 
   const accountRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(0);
+  const hasLoadedRef = useRef(false);
+  const handledCreationRef = useRef<string | null>(null);
 
   const courses = providedCourses ?? loadedCourses;
   const coursesLoading =
@@ -95,6 +101,9 @@ export default function AppShell({
 
   // ---------------------------------------------------------------------------
   // Load journeys
+  //
+  // Intentionally does not depend on location.pathname. Ordinary navigation
+  // must not reload the sidebar list.
   // ---------------------------------------------------------------------------
 
   useEffect(() => {
@@ -106,67 +115,39 @@ export default function AppShell({
     let cancelled = false;
     const requestId = ++requestRef.current;
 
-    // Extract the journey ID from /learn/course/:courseId.
-    const journeyIdFromRoute =
-      location.pathname.match(/\/learn\/course\/([^/?#]+)/i)?.[1];
-
-    const wait = (milliseconds: number) =>
-      new Promise<void>((resolve) => {
-        window.setTimeout(resolve, milliseconds);
-      });
-
     const loadJourneys = async () => {
-      setLoadedCoursesLoading(true);
+      // Only show skeletons on the first load, not during background refreshes.
+      if (!hasLoadedRef.current) {
+        setLoadedCoursesLoading(true);
+      }
+
       setCoursesError(false);
 
-      // Newly created records may take a moment to appear in a list query.
-      // Retry briefly if the current page identifies a journey we cannot find.
-      const retryDelays = journeyIdFromRoute
-        ? [0, 500, 1000, 2000, 3500]
-        : [0];
-
       try {
-        for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
-          if (retryDelays[attempt] > 0) {
-            await wait(retryDelays[attempt]);
-          }
+        const records = await listCourses();
 
-          if (cancelled || requestId !== requestRef.current) return;
+        if (cancelled || requestId !== requestRef.current) return;
 
-          const records = await listCourses();
+        const journeys: Journey[] = records
+          .filter(
+            (record): record is typeof record & {
+              id: string;
+              title: string;
+            } => Boolean(record.id && record.title),
+          )
+          .map((record) => ({
+            id: record.id,
+            title: record.title,
+          }));
 
-          if (cancelled || requestId !== requestRef.current) return;
-
-          const journeys: Journey[] = records
-            .filter(
-              (record): record is typeof record & {
-                id: string;
-                title: string;
-              } => Boolean(record.id && record.title),
-            )
-            .map((record) => ({
-              id: record.id,
-              title: record.title,
-            }));
-
-          setLoadedCourses(journeys);
-
-          const targetJourneyFound =
-            !journeyIdFromRoute ||
-            journeys.some(
-              (journey) => journey.id === journeyIdFromRoute,
-            );
-
-          if (targetJourneyFound || attempt === retryDelays.length - 1) {
-            setCoursesError(false);
-            return;
-          }
-        }
+        setLoadedCourses(journeys);
+        hasLoadedRef.current = true;
+        setCoursesError(false);
       } catch (error) {
         if (cancelled || requestId !== requestRef.current) return;
 
         console.error(
-          'Unable to load journeys for the sidebar',
+          '[AppShell] Unable to load journeys for the sidebar:',
           error,
         );
         setCoursesError(true);
@@ -182,7 +163,44 @@ export default function AppShell({
     return () => {
       cancelled = true;
     };
-  }, [providedCourses, location.pathname, refreshKey]);
+  }, [providedCourses, refreshKey]);
+
+  // ---------------------------------------------------------------------------
+  // Refresh once when generation navigates to a newly created journey.
+  // Clear the one-time flag from route state to avoid repeated refreshes.
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (providedCourses !== undefined) return;
+
+    const state = location.state as RouteState | null;
+    if (!state?.refreshJourneys) return;
+
+    const creationKey =
+      state.newlyCreatedJourneyId ??
+      `${location.pathname}:created`;
+
+    if (handledCreationRef.current === creationKey) return;
+
+    handledCreationRef.current = creationKey;
+    refreshJourneys();
+
+    const nextState: RouteState = { ...state };
+    delete nextState.refreshJourneys;
+
+    navigate(location.pathname + location.search + location.hash, {
+      replace: true,
+      state: nextState,
+    });
+  }, [
+    location.pathname,
+    location.search,
+    location.hash,
+    location.state,
+    navigate,
+    providedCourses,
+    refreshJourneys,
+  ]);
 
   // ---------------------------------------------------------------------------
   // Load account name
@@ -498,50 +516,111 @@ export default function AppShell({
           <div className="w-10" />
         </header>
 
-        {/* Mobile navigation drawer */}
+        {/* Mobile navigation backdrop */}
         {mobileNavOpen && (
-          <div className="fixed inset-0 z-[80] lg:hidden">
-            <button
-              type="button"
-              aria-label="Close navigation"
-              onClick={() => setMobileNavOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            />
-
-            <aside
-              aria-label="Mobile navigation"
-              className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-[#2D3C43] bg-[#131F24] px-4 py-5 shadow-2xl"
-            >
-              <div className="mb-7 flex min-h-[48px] items-center justify-between px-3">
-                <GrokitLogo className="h-[42px] w-[112px] object-contain object-left" />
-
-                <button
-                  type="button"
-                  aria-label="Close navigation"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-[#91A4AC] hover:bg-[#203138] hover:text-white"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              {renderNavigation()}
-              {renderJourneys()}
-              {renderAccount(true)}
-            </aside>
-          </div>
+          <button
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setMobileNavOpen(false)}
+            className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm lg:hidden"
+          />
         )}
 
+        {/* Mobile drawer */}
+        <aside
+          aria-label="Mobile navigation"
+          aria-hidden={!mobileNavOpen}
+          className={[
+            'fixed inset-y-0 left-0 z-[70] flex w-[min(86vw,320px)] flex-col border-r border-[#2D3C43] bg-[#131F24] px-4 py-5 transition-transform duration-200 lg:hidden',
+            mobileNavOpen ? 'translate-x-0' : '-translate-x-full',
+          ].join(' ')}
+        >
+          <div className="mb-8 flex min-h-[48px] items-center justify-between px-3">
+            <GrokitLogo className="h-[42px] w-[112px] shrink-0 object-contain object-left" />
+
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen(false)}
+              aria-label="Close navigation"
+              className="flex h-9 w-9 items-center justify-center rounded-xl text-[#91A4AC] hover:bg-[#203138] hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {renderNavigation()}
+          {renderJourneys()}
+          {renderAccount(true)}
+        </aside>
+
         {/* Main content */}
-        <main className="min-w-0 flex-1 overflow-y-auto pt-16 lg:pt-0">
+        <div className="min-w-0 flex-1 pt-16 lg:pt-0">
           {children}
-        </main>
+        </div>
       </div>
 
+      {/* Logout confirmation */}
       {logoutConfirmOpen && (
-        <LogoutConfirmation
-          onCancel={() => setLogoutConfirmOpen(false)}
-        />
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setLogoutConfirmOpen(false);
+            }
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-dialog-title"
+            className="w-full max-w-sm rounded-[24px] border border-[#37464F] bg-[#19282E] p-6 shadow-2xl"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange/10 text-orange">
+              <LogOut className="h-5 w-5" />
+            </div>
+
+            <h2
+              id="logout-dialog-title"
+              className="mt-5 font-display text-xl font-extrabold text-white"
+            >
+              Log out?
+            </h2>
+
+            <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
+              You can sign back in whenever you’re ready. Your saved
+              journeys will remain in your account.
+            </p>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setLogoutConfirmOpen(false)}
+                className="inline-flex min-h-11 flex-1 items-center justify-center rounded-xl border border-[#37464F] px-4 text-sm font-bold text-[#C8D3DA] transition hover:bg-[#26373E]"
+              >
+                Stay logged in
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await signOutUser();
+                  } catch (error) {
+                    console.error('[AppShell] Sign-out failed:', error);
+                  } finally {
+                    setLogoutConfirmOpen(false);
+                    navigate('/login', { replace: true });
+                  }
+                }}
+                className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-orange px-4 text-sm font-extrabold text-white transition hover:brightness-110"
+              >
+                <LogOut className="h-4 w-4" />
+                Log out
+              </button>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );
@@ -560,38 +639,37 @@ function AccountButton({
   open: boolean;
   onClick: () => void;
 }) {
-  const initial = userName.trim().charAt(0).toUpperCase() || 'Y';
+  const initials = userName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join('');
 
   return (
     <button
       type="button"
-      onClick={onClick}
-      aria-expanded={open}
       aria-haspopup="menu"
-      className={[
-        'flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-left transition-all duration-150',
-        open
-          ? 'border-[#2D3C43] bg-[#1A292F]'
-          : 'hover:border-[#2D3C43] hover:bg-[#1A292F]',
-      ].join(' ')}
+      aria-expanded={open}
+      onClick={onClick}
+      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-[#1A292F]"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#8F3FB5] text-xs font-extrabold text-white">
-        {initial}
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[#3A505A] bg-[#203138] text-sm font-extrabold text-orange">
+        {initials || 'Y'}
       </span>
 
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-extrabold text-white">
           {userName}
         </span>
-
-        <span className="mt-0.5 block text-[11px] font-medium text-[#60757E]">
-          Account
+        <span className="mt-0.5 block text-xs text-[#78909A]">
+          Your account
         </span>
       </span>
 
       <ChevronRight
-        className={`h-4 w-4 shrink-0 text-[#60757E] transition-transform ${
-          open ? '-rotate-90' : ''
+        className={`h-4 w-4 shrink-0 text-[#78909A] transition-transform ${
+          open ? 'rotate-90' : ''
         }`}
       />
     </button>
@@ -603,153 +681,59 @@ function AccountButton({
 // -----------------------------------------------------------------------------
 
 function AccountMenu({
+  mobile,
   onProfile,
   onSettings,
   onLogout,
-  mobile = false,
 }: {
+  mobile: boolean;
   onProfile: () => void;
   onSettings: () => void;
   onLogout: () => void;
-  mobile?: boolean;
 }) {
-  const itemClass =
-    'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-[#E6EAEC] transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';
-
   return (
     <div
       role="menu"
       className={[
-        'absolute bottom-[76px] left-0 z-[70] w-full rounded-[22px] border border-[#39464C] bg-[#202F35]/95 p-2 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl',
-        mobile ? 'max-w-full' : '',
+        'z-[80] rounded-2xl border border-[#37464F] bg-[#19282E] p-2 shadow-2xl',
+        mobile
+          ? 'mb-3'
+          : 'absolute bottom-full left-0 right-0 mb-3',
       ].join(' ')}
     >
       <button
         type="button"
         role="menuitem"
         onClick={onProfile}
-        className={itemClass}
+        className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[#C8D3DA] transition hover:bg-[#26373E] hover:text-white"
       >
-        <UserRound className="h-[18px] w-[18px] text-[#C5CFD3]" />
-        <span>Profile</span>
+        <UserRound className="h-4 w-4 text-[#91A4AC]" />
+        Profile
+        <ArrowRight className="ml-auto h-3.5 w-3.5 text-[#60757E]" />
       </button>
 
       <button
         type="button"
         role="menuitem"
         onClick={onSettings}
-        className={itemClass}
+        className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[#C8D3DA] transition hover:bg-[#26373E] hover:text-white"
       >
-        <Settings className="h-[18px] w-[18px] text-[#C5CFD3]" />
-        <span>Settings</span>
+        <Settings className="h-4 w-4 text-[#91A4AC]" />
+        Settings
+        <ArrowRight className="ml-auto h-3.5 w-3.5 text-[#60757E]" />
       </button>
+
+      <div className="my-2 border-t border-[#37464F]" />
 
       <button
         type="button"
         role="menuitem"
         onClick={onLogout}
-        className={itemClass}
+        className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-[#FF9A7A] transition hover:bg-[#3A2826] hover:text-white"
       >
-        <LogOut className="h-[18px] w-[18px] text-[#C5CFD3]" />
-        <span>Log out</span>
+        <LogOut className="h-4 w-4" />
+        Log out
       </button>
-    </div>
-  );
-}
-
-// -----------------------------------------------------------------------------
-// Logout confirmation
-// -----------------------------------------------------------------------------
-
-function LogoutConfirmation({
-  onCancel,
-}: {
-  onCancel: () => void;
-}) {
-  const navigate = useNavigate();
-
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleLogout = async () => {
-    if (isSigningOut) return;
-
-    setIsSigningOut(true);
-    setError(null);
-
-    try {
-      await signOutUser();
-      navigate('/', { replace: true });
-    } catch (logoutError) {
-      console.error('Failed to sign out', logoutError);
-
-      setError('Unable to log out right now. Please try again.');
-      setIsSigningOut(false);
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="logout-title"
-    >
-      <div className="w-full max-w-[420px] rounded-[26px] border border-[#34434A] bg-[#19272D] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:p-7">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange/10 text-orange">
-          <LogOut className="h-5 w-5" />
-        </div>
-
-        <h2
-          id="logout-title"
-          className="mt-5 font-display text-2xl font-extrabold tracking-[-0.02em] text-white"
-        >
-          Are you sure you want to log out?
-        </h2>
-
-        <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
-          You&apos;ll need to sign in again to continue learning with Grokit.
-        </p>
-
-        {error && (
-          <div
-            role="alert"
-            className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 text-xs font-medium text-red-200"
-          >
-            {error}
-          </div>
-        )}
-
-        <div className="mt-7 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={isSigningOut}
-            className="min-h-[46px] rounded-2xl border border-[#344951] bg-[#1D3037] px-5 text-sm font-extrabold text-[#D7E0E3] transition-colors hover:bg-[#24383F] disabled:pointer-events-none disabled:opacity-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={isSigningOut}
-            className="inline-flex min-h-[46px] items-center justify-center gap-2 rounded-2xl bg-orange px-5 text-sm font-extrabold text-white shadow-[0_4px_0_#C94713] transition-all hover:brightness-105 active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-60"
-          >
-            {isSigningOut ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Logging out...
-              </>
-            ) : (
-              <>
-                Log out
-                <ArrowRight className="h-4 w-4" />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

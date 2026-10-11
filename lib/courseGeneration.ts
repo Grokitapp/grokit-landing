@@ -100,7 +100,7 @@ export async function createCourseFromPrompt(
     const { data, errors } = await client.mutations.generateOutline(
       {
         topic: normalizedTopic,
-        ...(profile ? { personalizationProfile: profile } : {}),
+        ...(profile ? { personalizationProfile: JSON.stringify(profile) } : {}),
       },
       USER_POOL,
     );
