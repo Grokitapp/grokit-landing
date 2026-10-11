@@ -1,6 +1,8 @@
 import { type ClientSchema, a, defineData } from '@aws-amplify/backend';
 import { generateOutline } from '../functions/generate-outline/resource';
+import { generateOutlineWorker } from '../functions/generate-outline-worker/resource';
 import { generateLesson } from '../functions/generate-lesson/resource';
+import { generateLessonWorker } from '../functions/generate-lesson-worker/resource';
 
 const schema = a.schema({
   Course: a
@@ -11,6 +13,7 @@ const schema = a.schema({
       description: a.string(),
       heroImageUrl: a.string(),
       personalizationProfile: a.json(),
+      outline: a.json(),
       status: a.enum([
         'DRAFT',
         'GENERATING',
@@ -174,7 +177,9 @@ const schema = a.schema({
     .handler(a.handler.function(generateLesson)),
 }).authorization((allow) => [
   allow.resource(generateOutline),
+  allow.resource(generateOutlineWorker),
   allow.resource(generateLesson),
+  allow.resource(generateLessonWorker),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

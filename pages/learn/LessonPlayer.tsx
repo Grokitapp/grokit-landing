@@ -12,6 +12,9 @@ import {
   X,
 } from 'lucide-react';
 
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 import { GrokitMascot } from '../../components/Grokitmascot';
 import {
   generateLessonContent,
@@ -30,6 +33,7 @@ type QuizQuestion = {
   question: string;
   options: string[];
   correctIndex: number;
+  explanation?: string;
 };
 
 type KeyTerm = {
@@ -51,6 +55,7 @@ type LessonData = {
   quiz?: unknown;
   status?: LessonStatus | null;
   generationError?: string | null;
+  updatedAt?: string | null;
 };
 
 // -----------------------------------------------------------------------------
@@ -96,6 +101,18 @@ function parseQuiz(value: unknown): QuizQuestion[] {
       (item as QuizQuestion).correctIndex >= 0 &&
       (item as QuizQuestion).correctIndex < 4,
   );
+}
+
+// A lesson whose worker died (crash/timeout) stays GENERATING forever.
+// The backend allows a restart after 330s; the player offers it just after.
+const STALE_GENERATION_MS = 345_000;
+
+function isStaleGeneration(lesson: LessonData): boolean {
+  if (lesson.status !== 'GENERATING' || !lesson.updatedAt) return false;
+
+  const updatedAt = Date.parse(lesson.updatedAt);
+
+  return Number.isFinite(updatedAt) && Date.now() - updatedAt > STALE_GENERATION_MS;
 }
 
 function formatLessonContent(content: string): string[] {
@@ -330,6 +347,82 @@ function LessonComplete({
 }
 
 // -----------------------------------------------------------------------------
+// Markdown rendering for lesson content
+// -----------------------------------------------------------------------------
+
+function LessonMarkdown({ source }: { source: string }) {
+  return (
+    <div className="space-y-5 text-[17px] leading-8 text-[#C8D3DA]">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ children }) => (
+            <h2 className="pt-6 text-2xl font-extrabold text-white">{children}</h2>
+          ),
+          h2: ({ children }) => (
+            <h2 className="pt-6 text-2xl font-extrabold text-white">{children}</h2>
+          ),
+          h3: ({ children }) => (
+            <h3 className="pt-3 text-xl font-extrabold text-white">{children}</h3>
+          ),
+          p: ({ children }) => <p>{children}</p>,
+          strong: ({ children }) => (
+            <strong className="font-extrabold text-white">{children}</strong>
+          ),
+          em: ({ children }) => <em className="italic">{children}</em>,
+          ul: ({ children }) => (
+            <ul className="list-disc space-y-2 pl-6 marker:text-orange">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="list-decimal space-y-2 pl-6 marker:font-bold marker:text-orange">
+              {children}
+            </ol>
+          ),
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-4 border-orange/60 pl-4 text-[#9FB0BB]">
+              {children}
+            </blockquote>
+          ),
+          pre: ({ children }) => (
+            <pre className="overflow-x-auto rounded-2xl border border-[#2C3E4A] bg-[#0F1A1F] p-4 text-sm leading-6 text-[#D8E0E4]">
+              {children}
+            </pre>
+          ),
+          code: ({ children, className }) =>
+            className || String(children).includes('\n') ? (
+              <code className={className}>{children}</code>
+            ) : (
+              <code className="rounded-md bg-[#263640] px-1.5 py-0.5 text-[0.9em] text-[#FFB27A]">
+                {children}
+              </code>
+            ),
+          table: ({ children }) => (
+            <div className="overflow-x-auto rounded-2xl border border-[#2C3E4A]">
+              <table className="w-full border-collapse text-left text-[15px]">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border-b border-[#2C3E4A] bg-[#1D2A33] px-4 py-2.5 font-extrabold text-white">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border-b border-[#223039] px-4 py-2.5">{children}</td>
+          ),
+          a: ({ children, href }) => (
+            <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-orange underline">
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {source}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // Lesson player
 // -----------------------------------------------------------------------------
 
@@ -453,6 +546,37 @@ export default function LessonPlayer() {
       requestIdRef.current += 1;
     };
   }, [loadLesson]);
+
+  // The lesson may still be generating when the page opens (reload, or
+  // returning to it). Poll until the backend finishes instead of showing a
+  // permanent spinner. Skipped while this tab started the generation itself,
+  // because generateLessonContent already waits for the result.
+  useEffect(() => {
+    if (!lesson || lesson.status !== 'GENERATING' || generating) return;
+    if (isStaleGeneration(lesson)) return;
+
+    let cancelled = false;
+    const currentId = lesson.id;
+
+    const timer = window.setInterval(async () => {
+      try {
+        const latest = await getLesson(currentId);
+
+        if (cancelled || !latest) return;
+
+        if (latest.status !== 'GENERATING') {
+          setLesson(latest as LessonData);
+        }
+      } catch (err) {
+        console.error('Lesson status check failed', err);
+      }
+    }, 3000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [lesson, generating]);
 
   const keyTerms = useMemo(
     () => parseKeyTerms(lesson?.keyTerms),
@@ -649,7 +773,8 @@ export default function LessonPlayer() {
   if (
     lesson.status === 'PENDING' ||
     lesson.status === 'FAILED' ||
-    !lesson.status
+    !lesson.status ||
+    isStaleGeneration(lesson)
   ) {
     return (
       <StartLesson
@@ -763,15 +888,8 @@ export default function LessonPlayer() {
 
         {/* Core lesson content */}
         {content.length > 0 && (
-          <section className="space-y-6">
-            {content.map((paragraph, index) => (
-              <p
-                key={`${index}-${paragraph.slice(0, 20)}`}
-                className="text-[17px] leading-8 text-[#C8D3DA]"
-              >
-                {paragraph}
-              </p>
-            ))}
+          <section>
+            <LessonMarkdown source={lesson.coreContent ?? ''} />
           </section>
         )}
 
@@ -898,6 +1016,11 @@ export default function LessonPlayer() {
                         {correct
                           ? 'Correct. Nice work.'
                           : `Not quite. The correct answer is “${question.options[question.correctIndex]}”.`}
+                        {question.explanation && (
+                          <p className="mt-1.5 font-medium text-[#C8D3DA]">
+                            {question.explanation}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

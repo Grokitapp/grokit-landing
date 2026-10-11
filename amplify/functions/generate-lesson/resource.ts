@@ -1,11 +1,13 @@
-import { defineFunction, secret } from "@aws-amplify/backend";
+import { defineFunction } from "@aws-amplify/backend";
 
+/**
+ * Fast "starter" behind the AppSync mutation. It checks ownership, flips the
+ * lesson to GENERATING and triggers the background worker. It never calls
+ * Anthropic, so it does not need the API key.
+ */
 export const generateLesson = defineFunction({
   name: "generate-lesson",
   entry: "./handler.ts",
-  timeoutSeconds: 90,
+  timeoutSeconds: 15,
   resourceGroupName: "data",
-  environment: {
-    ANTHROPIC_API_KEY: secret("ANTHROPIC_API_KEY"),
-  },
 });
