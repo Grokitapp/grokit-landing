@@ -101,6 +101,27 @@ const schema = a.schema({
       allow.owner(),
     ]),
 
+  // A published copy of a journey that every signed-in learner can browse in
+  // Explore. Learners can read these; only the owner can create or edit them.
+  PublicJourney: a
+    .model({
+      owner: a.string(),
+      courseId: a.id().required(),
+      title: a.string().required(),
+      topic: a.string().required(),
+      category: a.string(),
+      heroImageUrl: a.string(),
+      zoneCount: a.integer(),
+      lessonCount: a.integer(),
+      featured: a.boolean().default(false),
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow
+        .ownerDefinedIn('owner')
+        .identityClaim('sub'),
+    ]),
+
   generateOutline: a
     .mutation()
     .arguments({

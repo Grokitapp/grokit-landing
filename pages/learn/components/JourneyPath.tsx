@@ -37,28 +37,28 @@ type ZoneState = 'complete' | 'current' | 'available' | 'locked';
 // -----------------------------------------------------------------------------
 
 // Horizontal offsets (px) that make the nodes sway like Duolingo's path.
-const WAVE = [0, 36, 68, 36];
+const WAVE = [0, 26, 50, 26];
 
-const PATH_WIDTH = 'mx-auto w-full max-w-[520px]';
+const PATH_WIDTH = 'mx-auto w-full max-w-[440px]';
 
 const nodeBaseClasses =
-  'relative z-10 flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-4 focus-visible:ring-offset-[#131F24]';
+  'relative z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#131F24]';
 
 const nodeCompletedClasses =
-  'bg-orange text-white shadow-[0_6px_0_#C94713] hover:brightness-110 active:translate-y-1 active:shadow-[0_2px_0_#C94713]';
+  'bg-orange text-white shadow-[0_4px_0_#C94713] hover:brightness-110 active:translate-y-[3px] active:shadow-[0_1px_0_#C94713]';
 
 const nodeUnlockedClasses =
-  'border-2 border-orange bg-[#131F24] shadow-[0_6px_0_#8F3410] hover:bg-[#1A292F] active:translate-y-1 active:shadow-[0_2px_0_#8F3410]';
+  'border-2 border-orange bg-[#131F24] shadow-[0_4px_0_#8F3410] hover:bg-[#1A292F] active:translate-y-[3px] active:shadow-[0_1px_0_#8F3410]';
 
 const nodeLockedClasses =
-  'cursor-not-allowed border border-[#37464F] bg-[#202F35] text-[#60757E] shadow-[0_6px_0_#0D161A]';
+  'cursor-not-allowed border border-[#37464F] bg-[#202F35] text-[#60757E] shadow-[0_4px_0_#0D161A]';
 
 const bannerClasses: Record<ZoneState, string> = {
-  complete: 'bg-emerald-600 text-white shadow-[0_4px_0_#065F46]',
-  current: 'bg-orange text-white shadow-[0_4px_0_#C94713]',
-  available: 'bg-orange text-white shadow-[0_4px_0_#C94713]',
+  complete: 'bg-emerald-600 text-white shadow-[0_3px_0_#065F46]',
+  current: 'bg-orange text-white shadow-[0_3px_0_#C94713]',
+  available: 'bg-orange text-white shadow-[0_3px_0_#C94713]',
   locked:
-    'border border-[#37464F] bg-[#202F35] text-[#78909A] shadow-[0_4px_0_#0D161A]',
+    'border border-[#37464F] bg-[#202F35] text-[#78909A] shadow-[0_3px_0_#0D161A]',
 };
 
 // -----------------------------------------------------------------------------
@@ -84,23 +84,23 @@ function ZoneBanner({
         } completed`;
 
   const actionClasses =
-    'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-white/25 bg-white/15';
+    'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-white/25 bg-white/15';
 
   return (
     // Sits just under the pinned journey card (its measured height is published
     // as --journey-card-h by CourseOverview), which itself sits under the 64px
     // mobile header. The wrapper paints the page colour so nodes
     // never show through the gap.
-    <div className="sticky top-[calc(4rem+var(--journey-card-h,56px))] z-20 bg-[#131F24] pb-4 pt-0 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-[#131F24] after:to-transparent lg:top-[var(--journey-card-h,56px)]">
+    <div className="sticky top-[calc(4rem+var(--journey-card-h,56px))] z-20 bg-[#131F24] pb-3 pt-0 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-[#131F24] after:to-transparent lg:top-[var(--journey-card-h,56px)]">
       <div
-        className={`${PATH_WIDTH} flex items-center justify-between gap-4 rounded-2xl px-5 py-4 ${bannerClasses[state]}`}
+        className={`${PATH_WIDTH} flex items-center justify-between gap-3 rounded-xl px-4 py-3 ${bannerClasses[state]}`}
       >
         <div className="min-w-0">
-          <p className="text-sm font-bold opacity-80">Zone {zone.order}</p>
-          <h2 className="break-words font-display text-lg font-extrabold leading-snug sm:text-xl">
+          <p className="text-xs font-bold opacity-80">Zone {zone.order}</p>
+          <h2 className="break-words font-display text-base font-extrabold leading-snug sm:text-[17px]">
             {zone.title}
           </h2>
-          <p className="mt-0.5 text-xs font-semibold opacity-80">
+          <p className="mt-0.5 text-[11px] font-semibold opacity-80">
             {locked ? 'Complete the previous zone to unlock' : progressText}
           </p>
         </div>
@@ -108,9 +108,9 @@ function ZoneBanner({
         {locked ? (
           <span
             aria-hidden="true"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#37464F] bg-[#19262B]"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#37464F] bg-[#19262B]"
           >
-            <Lock className="h-5 w-5" />
+            <Lock className="h-4 w-4" />
           </span>
         ) : (
           <Link
@@ -119,7 +119,7 @@ function ZoneBanner({
             title="Open zone"
             className={`${actionClasses} transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white`}
           >
-            <BookOpen className="h-5 w-5" aria-hidden="true" />
+            <BookOpen className="h-[18px] w-[18px]" aria-hidden="true" />
           </Link>
         )}
       </div>
@@ -154,10 +154,10 @@ function LessonPathNode({
       : nodeUnlockedClasses;
 
   const titleClasses = locked
-    ? 'font-display text-base font-semibold text-[#60757E] sm:text-lg'
+    ? 'font-display text-sm font-semibold text-[#60757E] sm:text-base'
     : completed
-      ? 'font-display text-base font-semibold text-[#D6E0E4] sm:text-lg'
-      : 'font-display text-base font-bold text-white sm:text-lg';
+      ? 'font-display text-sm font-semibold text-[#D6E0E4] sm:text-base'
+      : 'font-display text-sm font-bold text-white sm:text-base';
 
   const statusText = locked
     ? 'locked'
@@ -170,9 +170,9 @@ function LessonPathNode({
   return (
     <li
       style={{ marginLeft: offset }}
-      className={`flex items-center gap-4 pb-3 ${isCurrent ? 'pt-11' : 'pt-3'}`}
+      className={`flex items-center gap-3 pb-2 ${isCurrent ? 'pt-9' : 'pt-2'}`}
     >
-      <div className="relative h-[72px] w-[72px] shrink-0">
+      <div className="relative h-14 w-14 shrink-0">
         {isCurrent && (
           <>
             <span
@@ -182,10 +182,10 @@ function LessonPathNode({
 
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute -top-10 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-xl border-2 border-[#37464F] bg-[#131F24] px-3 py-1 font-display text-sm font-extrabold text-orange"
+              className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg border-2 border-[#37464F] bg-[#131F24] px-2.5 py-0.5 font-display text-xs font-extrabold text-orange"
             >
               {hasStarted ? 'Continue' : 'Start'}
-              <span className="absolute -bottom-[7px] left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-[#37464F] bg-[#131F24]" />
+              <span className="absolute -bottom-[6px] left-1/2 h-2.5 w-2.5 -translate-x-1/2 rotate-45 border-b-2 border-r-2 border-[#37464F] bg-[#131F24]" />
             </span>
           </>
         )}
@@ -198,14 +198,14 @@ function LessonPathNode({
           className={`${nodeBaseClasses} ${nodeState}`}
         >
           {locked ? (
-            <Lock className="h-6 w-6" aria-hidden="true" />
+            <Lock className="h-5 w-5" aria-hidden="true" />
           ) : completed ? (
-            <Check className="h-8 w-8" strokeWidth={3} aria-hidden="true" />
+            <Check className="h-6 w-6" strokeWidth={3} aria-hidden="true" />
           ) : (
             <img
               src={grokitMascot}
               alt=""
-              className="h-11 w-11 object-contain"
+              className="h-8 w-8 object-contain"
             />
           )}
         </button>
@@ -217,7 +217,7 @@ function LessonPathNode({
         </p>
 
         {completed && (
-          <p className="mt-0.5 text-sm text-[#60757E]">Completed</p>
+          <p className="mt-0.5 text-xs text-[#60757E]">Completed</p>
         )}
       </div>
     </li>
@@ -238,21 +238,21 @@ function ZoneCheckpoint({
   return (
     <li
       style={{ marginLeft: offset }}
-      className="flex items-center gap-4 pb-3 pt-3"
+      className="flex items-center gap-3 pb-2 pt-2"
     >
       <div
         aria-hidden="true"
-        className={`flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-full ${
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full ${
           done
-            ? 'bg-amber text-[#12142B] shadow-[0_6px_0_#DC8B0A]'
-            : 'border border-[#37464F] bg-[#202F35] text-[#60757E] shadow-[0_6px_0_#0D161A]'
+            ? 'bg-amber text-[#12142B] shadow-[0_4px_0_#DC8B0A]'
+            : 'border border-[#37464F] bg-[#202F35] text-[#60757E] shadow-[0_4px_0_#0D161A]'
         }`}
       >
-        <Trophy className="h-7 w-7" />
+        <Trophy className="h-5 w-5" />
       </div>
 
       <p
-        className={`font-display text-base font-semibold sm:text-lg ${
+        className={`font-display text-sm font-semibold sm:text-base ${
           done ? 'text-white' : 'text-[#60757E]'
         }`}
       >
@@ -292,7 +292,7 @@ export default function JourneyPath({
           <section
             key={zone.id}
             aria-label={`Zone ${zone.order}: ${zone.title}`}
-            className="pb-6"
+            className="pb-3"
           >
             <ZoneBanner courseId={courseId} zone={zone} state={state} />
 

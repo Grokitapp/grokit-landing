@@ -141,16 +141,16 @@ function JourneyCard({
   return (
     <section
       aria-label="Your learning journey"
-      className="relative rounded-[28px] border border-[#2D4149] bg-[#1A2A31] px-6 pb-6 pt-5 sm:px-7"
+      className="relative rounded-2xl border border-[#2D4149] bg-[#1A2A31] px-5 pb-4 pt-4 sm:px-6"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-2 text-sm font-extrabold text-orange">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
+          <p className="flex items-center gap-1.5 text-xs font-extrabold text-orange">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             Your learning journey
           </p>
 
-          <h1 className="mt-3 break-words font-display text-2xl font-extrabold leading-tight text-white sm:text-[32px]">
+          <h1 className="mt-1.5 break-words font-display text-xl font-extrabold leading-tight text-white sm:text-[26px]">
             {title}
           </h1>
         </div>
@@ -158,9 +158,9 @@ function JourneyCard({
         <JourneyMenu journey={{ id: courseId, title }} />
       </div>
 
-      <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="w-full sm:max-w-[480px]">
-          <div className="flex items-baseline justify-between gap-4 text-sm">
+          <div className="flex items-baseline justify-between gap-4 text-xs">
             <span className="font-bold text-white">
               {stats.completed} of {stats.total} lessons
             </span>
@@ -175,7 +175,7 @@ function JourneyCard({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={stats.percentage}
-            className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#0F1A1F]"
+            className="mt-2 h-2 overflow-hidden rounded-full bg-[#0F1A1F]"
           >
             <div
               className="h-full rounded-full bg-orange transition-[width] duration-500"
@@ -188,7 +188,7 @@ function JourneyCard({
           type="button"
           onClick={onContinue}
           disabled={zoneCount === 0}
-          className={`${primaryButtonClasses} shrink-0 rounded-2xl px-6 disabled:pointer-events-none disabled:opacity-50`}
+          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange px-4 text-sm font-extrabold text-white shadow-[0_3px_0_#C94713] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A2A31] disabled:pointer-events-none disabled:opacity-50"
         >
           {actionLabel}
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -247,21 +247,21 @@ function JourneySkeleton() {
       aria-busy="true"
       className="animate-pulse"
     >
-      <div className="pb-4 pt-1">
-        <div className="h-[184px] rounded-[28px] bg-[#26373E]" />
+      <div className="pb-3 pt-1">
+        <div className="h-[128px] rounded-2xl bg-[#26373E]" />
       </div>
 
-      <div className="mx-auto max-w-[520px]">
-        <div className="h-[88px] rounded-2xl bg-[#26373E]" />
+      <div className="mx-auto max-w-[440px]">
+        <div className="h-[64px] rounded-xl bg-[#26373E]" />
 
-        <div className="mt-8 space-y-9 px-1">
-          {[0, 36, 68, 36].map((offset, index) => (
+        <div className="mt-6 space-y-6 px-1">
+          {[0, 26, 50, 26].map((offset, index) => (
             <div
               key={index}
               style={{ marginLeft: offset }}
-              className="flex items-center gap-4"
+              className="flex items-center gap-3"
             >
-              <div className="h-[72px] w-[72px] shrink-0 rounded-full bg-[#26373E]" />
+              <div className="h-14 w-14 shrink-0 rounded-full bg-[#26373E]" />
               <div className="h-4 w-40 rounded bg-[#26373E]" />
             </div>
           ))}
@@ -553,7 +553,7 @@ export default function CourseOverview() {
             {courseId && (
               <div
                 ref={barRef}
-                className="sticky top-16 z-30 bg-[#131F24] pb-4 pt-1 lg:top-0"
+                className="sticky top-16 z-30 bg-[#131F24] pb-3 pt-1 lg:top-0"
               >
                 <JourneyCard
                   courseId={courseId}
@@ -582,7 +582,7 @@ export default function CourseOverview() {
 
             {/* Completion footer */}
             {stats.isComplete && (
-              <section className="mx-auto mt-4 max-w-[520px] rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 sm:p-6">
+              <section className="mx-auto mt-4 max-w-[440px] rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 sm:p-6">
                 <div className="flex items-start gap-4">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
                     <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
