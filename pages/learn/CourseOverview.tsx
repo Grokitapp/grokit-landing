@@ -3,9 +3,13 @@ import { Link, useNavigate, useParams } from 'react-router';
 import {
   ArrowRight,
   BookOpen,
+  Check,
   CheckCircle2,
+  ChevronsUpDown,
   Compass,
+  Plus,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react';
 
 import {
@@ -22,6 +26,7 @@ import JourneyPath, {
 } from './components/JourneyPath';
 import {
   getCourse,
+  listCourses,
   listLessonsForCourse,
   listPhasesForCourse,
   listProgressForCourse,
@@ -39,6 +44,11 @@ import { useGamification } from '../../lib/gamification';
 interface JourneyData {
   title: string;
   zones: PathZone[];
+}
+
+interface JourneyListItem {
+  id: string;
+  title: string;
 }
 
 interface JourneyStats {
@@ -105,6 +115,198 @@ function calculateStats(zones: PathZone[]): JourneyStats {
     currentLessonId: isComplete ? null : currentLessonId,
     isComplete,
   };
+}
+
+// -----------------------------------------------------------------------------
+// Journey switcher (lives in the sticky title bar)
+// -----------------------------------------------------------------------------
+
+function JourneySwitcher({
+  currentId,
+  currentTitle,
+  journeys,
+  onSelect,
+}: {
+  currentId: string | undefined;
+  currentTitle: string;
+  journeys: JourneyListItem[];
+  onSelect: (id: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative min-w-0">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex max-w-full items-center gap-2 rounded-lg py-1.5 pr-1 text-left transition-colors hover:text-orange focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+      >
+        <span className="truncate font-display text-lg font-extrabold text-white sm:text-xl">
+          {currentTitle}
+        </span>
+
+        <ChevronsUpDown
+          className="h-4 w-4 shrink-0 text-[#91A4AC]"
+          aria-hidden="true"
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label="Switch journey"
+          className="absolute left-0 top-full z-40 mt-1 max-h-[320px] w-[min(320px,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-[#39464C] bg-[#202F35] p-1.5 shadow-[0_18px_60px_rgba(0,0,0,0.45)]"
+        >
+          {journeys.map((journey) => {
+            const active = journey.id === currentId;
+
+            return (
+              <button
+                key={journey.id}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  setOpen(false);
+                  if (!active) onSelect(journey.id);
+                }}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange ${
+                  active
+                    ? 'bg-orange/10 text-white'
+                    : 'text-[#C5CFD3] hover:bg-white/[0.07]'
+                }`}
+              >
+                <span className="min-w-0 flex-1 truncate">{journey.title}</span>
+                {active && (
+                  <Check
+                    className="h-4 w-4 shrink-0 text-orange"
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            );
+          })}
+
+          <div className="my-1.5 h-px bg-[#2B4048]" />
+
+          <Link
+            to="/create"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-extrabold text-[#D7E0E3] transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+          >
+            <Plus className="h-4 w-4 text-orange" aria-hidden="true" />
+            Create another journey
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Journey card ("Your learning journey")
+// -----------------------------------------------------------------------------
+
+function JourneyCard({
+  courseId,
+  title,
+  stats,
+  zoneCount,
+  onContinue,
+}: {
+  courseId: string;
+  title: string;
+  stats: JourneyStats;
+  zoneCount: number;
+  onContinue: () => void;
+}) {
+  const actionLabel = stats.isComplete
+    ? 'Review journey'
+    : stats.completed > 0
+      ? 'Continue'
+      : 'Start learning';
+
+  return (
+    <section
+      aria-label="Your learning journey"
+      className="relative mb-4 rounded-[28px] border border-[#2D4149] bg-[#1A2A31] px-6 pb-6 pt-5 sm:px-7"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-extrabold text-orange">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Your learning journey
+          </p>
+
+          <h2 className="mt-3 break-words font-display text-2xl font-extrabold leading-tight text-white sm:text-[32px]">
+            {title}
+          </h2>
+        </div>
+
+        <JourneyMenu journey={{ id: courseId, title }} />
+      </div>
+
+      <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="w-full sm:max-w-[480px]">
+          <div className="flex items-baseline justify-between gap-4 text-sm">
+            <span className="font-bold text-white">
+              {stats.completed} of {stats.total} lessons
+            </span>
+            <span className="font-semibold text-[#91A4AC]">
+              {stats.completedZones} of {zoneCount} zones
+            </span>
+          </div>
+
+          <div
+            role="progressbar"
+            aria-label="Journey progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={stats.percentage}
+            className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#0F1A1F]"
+          >
+            <div
+              className="h-full rounded-full bg-orange transition-[width] duration-500"
+              style={{ width: `${stats.percentage}%` }}
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={zoneCount === 0}
+          className={`${primaryButtonClasses} shrink-0 rounded-2xl px-6 disabled:pointer-events-none disabled:opacity-50`}
+        >
+          {actionLabel}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    </section>
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -226,6 +428,7 @@ export default function CourseOverview() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [journeyList, setJourneyList] = useState<JourneyListItem[]>([]);
 
   // Prevent stale requests from replacing the latest result.
   const requestVersion = useRef(0);
@@ -337,9 +540,18 @@ export default function CourseOverview() {
     const handleChange = (event: Event) => {
       const change = (event as CustomEvent<JourneyChange>).detail;
 
-      if (!change || change.id !== courseId || change.action !== 'rename') {
-        return;
-      }
+      if (!change) return;
+
+      // Keep the switcher list in sync with the sidebar.
+      setJourneyList((current) =>
+        change.action === 'rename'
+          ? current.map((item) =>
+              item.id === change.id ? { ...item, title: change.title } : item,
+            )
+          : current.filter((item) => item.id !== change.id),
+      );
+
+      if (change.id !== courseId || change.action !== 'rename') return;
 
       setJourney((current) => ({ ...current, title: change.title }));
     };
@@ -348,6 +560,42 @@ export default function CourseOverview() {
 
     return () =>
       window.removeEventListener(JOURNEY_CHANGED_EVENT, handleChange);
+  }, [courseId]);
+
+  // Journeys for the title-bar switcher.
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadJourneyList = async () => {
+      try {
+        const records = await listCourses();
+
+        if (cancelled) return;
+
+        setJourneyList(
+          records
+            .filter(
+              (record) => !(record as { archived?: boolean | null }).archived,
+            )
+            .filter(
+              (record): record is typeof record & {
+                id: string;
+                title: string;
+              } => Boolean(record.id && record.title),
+            )
+            .map((record) => ({ id: record.id, title: record.title })),
+        );
+      } catch (error) {
+        // The switcher is a convenience; the page still works without it.
+        console.error('[CourseOverview] Failed to load journey list:', error);
+      }
+    };
+
+    void loadJourneyList();
+
+    return () => {
+      cancelled = true;
+    };
   }, [courseId]);
 
   const stats = useMemo(() => calculateStats(journey.zones), [journey.zones]);
@@ -368,6 +616,29 @@ export default function CourseOverview() {
     [courseId, navigate],
   );
 
+  // "Start learning" / "Continue": jump to the next lesson, or the first open
+  // zone when there is nothing left to do.
+  const continueJourney = useCallback(() => {
+    if (!courseId) return;
+
+    if (stats.currentZone && stats.currentLessonId) {
+      openLesson(stats.currentZone.id, stats.currentLessonId);
+      return;
+    }
+
+    const fallbackZone =
+      journey.zones.find((zone) => !zone.locked) ?? journey.zones[0];
+
+    if (fallbackZone) {
+      navigate(`/learn/course/${courseId}/phase/${fallbackZone.id}`);
+    }
+  }, [courseId, journey.zones, navigate, openLesson, stats]);
+
+  const switchJourney = useCallback(
+    (id: string) => navigate(`/learn/course/${id}`),
+    [navigate],
+  );
+
   return (
     <div className={containerClasses}>
       {loading ? (
@@ -377,12 +648,19 @@ export default function CourseOverview() {
       ) : (
         <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
           <div className="min-w-0">
-            {/* Sticky title bar: stays put while the path scrolls beneath it,
-                with the current zone banner stacking right under it. */}
+            {/* Sticky title bar with the journey switcher. It stays put while
+                the path scrolls beneath it; the current zone banner (in
+                JourneyPath) pins directly under it. Keep h-14 in sync with
+                the banner's `top` offsets in JourneyPath. */}
             <div className="sticky top-16 z-30 flex h-14 items-center gap-2 bg-[#131F24] lg:top-0">
-              <h1 className="min-w-0 flex-1 truncate font-display text-lg font-extrabold text-white sm:text-xl">
-                {journey.title}
-              </h1>
+              <div className="min-w-0 flex-1">
+                <JourneySwitcher
+                  currentId={courseId}
+                  currentTitle={journey.title}
+                  journeys={journeyList}
+                  onSelect={switchJourney}
+                />
+              </div>
 
               {game && (
                 <div className="flex shrink-0 items-center gap-2 xl:hidden">
@@ -394,11 +672,20 @@ export default function CourseOverview() {
                   <StatChip kind="xp" value={game.totalXp} />
                 </div>
               )}
-
-              {courseId && (
-                <JourneyMenu journey={{ id: courseId, title: journey.title }} />
-              )}
             </div>
+
+            {/* Journey card */}
+            {courseId && (
+              <div className="pt-1">
+                <JourneyCard
+                  courseId={courseId}
+                  title={journey.title}
+                  stats={stats}
+                  zoneCount={journey.zones.length}
+                  onContinue={continueJourney}
+                />
+              </div>
+            )}
 
             {/* Learning path */}
             <section aria-label="Your learning path" className="pt-2">

@@ -90,7 +90,7 @@ function ZoneBanner({
     // Sits just under the sticky journey title bar (h-14), which itself sits
     // under the 64px mobile header. The wrapper paints the page colour so nodes
     // never show through the gap.
-    <div className="sticky top-[120px] z-20 bg-[#131F24] pb-4 pt-2 lg:top-14">
+    <div className="sticky top-[120px] z-20 bg-[#131F24] pb-3 pt-2 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-[#131F24] after:to-transparent lg:top-14">
       <div
         className={`${PATH_WIDTH} flex items-center justify-between gap-4 rounded-2xl px-5 py-4 ${bannerClasses[state]}`}
       >
