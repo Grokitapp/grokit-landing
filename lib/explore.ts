@@ -47,3 +47,83 @@ export async function listPublicJourneys(): Promise<PublicJourney[]> {
     return bDate.localeCompare(aDate);
   });
 }
+
+/** The public listing for one of the learner's journeys, if it has one. */
+export async function getPublicJourneyForCourse(
+  courseId: string,
+): Promise<PublicJourney | null> {
+  let nextToken: string | null | undefined;
+
+  // Filters apply per page, so keep paging until the listing is found.
+  for (let page = 0; page < 10; page += 1) {
+    const { data, errors, nextToken: token } =
+      await client.models.PublicJourney.list({
+        ...USER_POOL,
+        filter: { courseId: { eq: courseId } },
+        limit: 100,
+        nextToken,
+      });
+
+    if (errors?.length) {
+      console.error('[explore] Failed to check public journey:', errors);
+      throw new Error('PUBLIC_JOURNEY_CHECK_FAILED');
+    }
+
+    if (data?.length) return data[0];
+
+    if (!token) break;
+
+    nextToken = token;
+  }
+
+  return null;
+}
+
+export interface PublishJourneyInput {
+  courseId: string;
+  title: string;
+  topic: string;
+  category?: string | null;
+  heroImageUrl?: string | null;
+  zoneCount: number;
+  lessonCount: number;
+}
+
+/** Make a journey visible to every signed-in learner in Explore. */
+export async function publishJourney(
+  input: PublishJourneyInput,
+): Promise<PublicJourney> {
+  const { data, errors } = await client.models.PublicJourney.create(
+    {
+      courseId: input.courseId,
+      title: input.title,
+      topic: input.topic,
+      category: input.category || undefined,
+      heroImageUrl: input.heroImageUrl || undefined,
+      zoneCount: input.zoneCount,
+      lessonCount: input.lessonCount,
+      featured: false,
+    },
+    USER_POOL,
+  );
+
+  if (errors?.length || !data) {
+    console.error('[explore] Failed to publish journey:', errors);
+    throw new Error('PUBLISH_FAILED');
+  }
+
+  return data;
+}
+
+/** Remove a journey from Explore. */
+export async function unpublishJourney(publicJourneyId: string) {
+  const { errors } = await client.models.PublicJourney.delete(
+    { id: publicJourneyId },
+    USER_POOL,
+  );
+
+  if (errors?.length) {
+    console.error('[explore] Failed to unpublish journey:', errors);
+    throw new Error('UNPUBLISH_FAILED');
+  }
+}

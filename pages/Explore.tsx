@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import {
-  BookOpen,
-  ChevronLeft,
-  ChevronRight,
-  Compass,
-  RefreshCw,
-  Search,
-} from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 import { listPublicJourneys, type PublicJourney } from '../lib/explore';
+import {
+  listSavedJourneys,
+  saveJourney,
+  unsaveJourney,
+} from '../lib/library';
+import {
+  BookmarkButton,
+  JourneyTile,
+  MessageState,
+  SearchField,
+  TileSkeleton,
+} from './learn/components/JourneyTile';
 
 // -----------------------------------------------------------------------------
 // Types & helpers
@@ -80,78 +85,50 @@ const hideScrollbar =
   '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
 // -----------------------------------------------------------------------------
-// Journey card (the whole card is the button)
-// -----------------------------------------------------------------------------
-
-function JourneyCard({
-  journey,
-  fluid = false,
-  onOpen,
-}: {
-  journey: PublicJourney;
-  fluid?: boolean;
-  onOpen: (journey: PublicJourney) => void;
-}) {
-  const meta = formatMeta(journey);
-
-  return (
-    <button
-      type="button"
-      onClick={() => onOpen(journey)}
-      aria-label={`Open ${journey.title}`}
-      className={`group flex flex-col overflow-hidden rounded-2xl border border-[#2D4149] bg-[#17262C] text-left transition duration-200 hover:-translate-y-0.5 hover:border-orange/50 hover:shadow-[0_12px_32px_rgba(0,0,0,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange ${
-        fluid ? 'w-full' : 'w-[240px] shrink-0 snap-start sm:w-[250px]'
-      }`}
-    >
-      <div className="relative h-[130px] w-full overflow-hidden bg-[#1D3037]">
-        {journey.heroImageUrl ? (
-          <img
-            src={journey.heroImageUrl}
-            alt=""
-            loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#223A43] to-[#14232A]">
-            <Compass className="h-9 w-9 text-orange/70" aria-hidden="true" />
-          </div>
-        )}
-
-        {journey.category && (
-          <span className="absolute left-3 top-3 max-w-[calc(100%-1.5rem)] truncate rounded-full bg-black/55 px-3 py-1 text-xs font-bold text-white backdrop-blur">
-            {journey.category}
-          </span>
-        )}
-      </div>
-
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="line-clamp-2 min-h-[2.75rem] font-display text-base font-extrabold leading-snug text-white">
-          {journey.title}
-        </h3>
-
-        {meta && (
-          <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-[#91A4AC]">
-            <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-            <span className="truncate">{meta}</span>
-          </p>
-        )}
-      </div>
-    </button>
-  );
-}
-
-// -----------------------------------------------------------------------------
 // Row: title + arrows + horizontally scrolling cards
 // -----------------------------------------------------------------------------
+
+interface TileHandlers {
+  onOpen: (journey: PublicJourney) => void;
+  isSaved: (journey: PublicJourney) => boolean;
+  isSavePending: (journey: PublicJourney) => boolean;
+  onToggleSave: (journey: PublicJourney) => void;
+}
+
+function renderTile(
+  journey: PublicJourney,
+  handlers: TileHandlers,
+  fluid: boolean,
+) {
+  return (
+    <JourneyTile
+      key={journey.id}
+      title={journey.title}
+      imageUrl={journey.heroImageUrl}
+      badge={journey.category}
+      meta={formatMeta(journey)}
+      fluid={fluid}
+      onOpen={() => handlers.onOpen(journey)}
+      action={
+        <BookmarkButton
+          saved={handlers.isSaved(journey)}
+          busy={handlers.isSavePending(journey)}
+          label={journey.title}
+          onToggle={() => handlers.onToggleSave(journey)}
+        />
+      }
+    />
+  );
+}
 
 function JourneyRow({
   title,
   items,
-  onOpen,
+  handlers,
 }: {
   title: string;
   items: PublicJourney[];
-  onOpen: (journey: PublicJourney) => void;
+  handlers: TileHandlers;
 }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState(false);
@@ -251,14 +228,7 @@ function JourneyRow({
             : `flex snap-x gap-4 overflow-x-auto scroll-smooth ${hideScrollbar}`
         }`}
       >
-        {items.map((journey) => (
-          <JourneyCard
-            key={journey.id}
-            journey={journey}
-            fluid={expanded}
-            onOpen={onOpen}
-          />
-        ))}
+        {items.map((journey) => renderTile(journey, handlers, expanded))}
       </div>
     </section>
   );
@@ -267,18 +237,6 @@ function JourneyRow({
 // -----------------------------------------------------------------------------
 // States
 // -----------------------------------------------------------------------------
-
-function CardSkeleton() {
-  return (
-    <div className="w-[240px] shrink-0 overflow-hidden rounded-2xl border border-[#243840] bg-[#15242A] sm:w-[250px]">
-      <div className="h-[130px] bg-[#1F333B]" />
-      <div className="space-y-3 p-4">
-        <div className="h-4 w-4/5 rounded bg-[#233A43]" />
-        <div className="h-3 w-2/5 rounded bg-[#1F333B]" />
-      </div>
-    </div>
-  );
-}
 
 function ExploreSkeleton() {
   return (
@@ -295,49 +253,12 @@ function ExploreSkeleton() {
 
           <div className="mt-4 flex gap-4 overflow-hidden">
             {[0, 1, 2, 3, 4].map((card) => (
-              <CardSkeleton key={card} />
+              <TileSkeleton key={card} />
             ))}
           </div>
         </div>
       ))}
     </div>
-  );
-}
-
-function MessageState({
-  title,
-  text,
-  action,
-}: {
-  title: string;
-  text: string;
-  action?: { label: string; onClick: () => void; icon?: 'retry' };
-}) {
-  return (
-    <section className="mx-auto mt-16 flex max-w-md flex-col items-center text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#37464F] bg-[#202F35] text-orange">
-        <Compass className="h-7 w-7" aria-hidden="true" />
-      </div>
-
-      <h2 className="mt-6 font-display text-2xl font-extrabold text-white">
-        {title}
-      </h2>
-
-      <p className="mt-2 text-sm leading-6 text-[#91A4AC]">{text}</p>
-
-      {action && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#37464F] px-4 py-2.5 text-sm font-bold text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
-        >
-          {action.icon === 'retry' && (
-            <RefreshCw className="h-4 w-4" aria-hidden="true" />
-          )}
-          {action.label}
-        </button>
-      )}
-    </section>
   );
 }
 
@@ -353,6 +274,10 @@ export default function Explore() {
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState('');
+
+  // public journey id -> saved record id
+  const [savedIds, setSavedIds] = useState<Map<string, string>>(new Map());
+  const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -379,6 +304,63 @@ export default function Explore() {
     };
   }, [reloadKey]);
 
+  // Which journeys are already bookmarked. Failing here only hides the filled
+  // bookmark state; browsing still works.
+  useEffect(() => {
+    let cancelled = false;
+
+    listSavedJourneys()
+      .then((saved) => {
+        if (cancelled) return;
+
+        setSavedIds(
+          new Map(saved.map((item) => [item.publicJourneyId, item.id])),
+        );
+      })
+      .catch((savedError) => {
+        console.error('[Explore] Failed to load saved journeys:', savedError);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleSave = useCallback(
+    async (journey: PublicJourney) => {
+      if (pendingSaves.has(journey.id)) return;
+
+      const savedRecordId = savedIds.get(journey.id);
+
+      setPendingSaves((current) => new Set(current).add(journey.id));
+
+      try {
+        if (savedRecordId) {
+          await unsaveJourney(savedRecordId);
+
+          setSavedIds((current) => {
+            const next = new Map(current);
+            next.delete(journey.id);
+            return next;
+          });
+        } else {
+          const created = await saveJourney(journey);
+
+          setSavedIds((current) => new Map(current).set(journey.id, created.id));
+        }
+      } catch (saveError) {
+        console.error('[Explore] Failed to update saved journey:', saveError);
+      } finally {
+        setPendingSaves((current) => {
+          const next = new Set(current);
+          next.delete(journey.id);
+          return next;
+        });
+      }
+    },
+    [pendingSaves, savedIds],
+  );
+
   const trimmedQuery = query.trim();
 
   const rows = useMemo(() => buildRows(journeys), [journeys]);
@@ -400,6 +382,13 @@ export default function Explore() {
     [navigate],
   );
 
+  const handlers: TileHandlers = {
+    onOpen: openJourney,
+    isSaved: (journey) => savedIds.has(journey.id),
+    isSavePending: (journey) => pendingSaves.has(journey.id),
+    onToggleSave: (journey) => void toggleSave(journey),
+  };
+
   return (
     <div className="relative min-h-[100dvh]">
       <div
@@ -417,20 +406,13 @@ export default function Explore() {
           </p>
         </header>
 
-        <div className="relative mt-6">
-          <Search
-            className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-[#91A4AC]"
-            aria-hidden="true"
-          />
-
-          <input
-            type="search"
+        <div className="mt-6">
+          <SearchField
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={setQuery}
             disabled={loading || error}
             placeholder="Search topics, skills or anything you’re curious about..."
-            aria-label="Search journeys"
-            className="h-14 w-full rounded-full border border-[#2D4149] bg-[#17262C]/80 pl-14 pr-6 text-base font-semibold text-white outline-none transition-colors placeholder:text-[#60757E] focus:border-orange disabled:opacity-60"
+            label="Search journeys"
           />
         </div>
 
@@ -442,7 +424,7 @@ export default function Explore() {
             text="Something went wrong while loading Explore. Please try again."
             action={{
               label: 'Try again',
-              icon: 'retry',
+              retry: true,
               onClick: () => setReloadKey((value) => value + 1),
             }}
           />
@@ -466,14 +448,7 @@ export default function Explore() {
               </h2>
 
               <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
-                {results.map((journey) => (
-                  <JourneyCard
-                    key={journey.id}
-                    journey={journey}
-                    fluid
-                    onOpen={openJourney}
-                  />
-                ))}
+                {results.map((journey) => renderTile(journey, handlers, true))}
               </div>
             </section>
           )
@@ -483,7 +458,7 @@ export default function Explore() {
               key={row.id}
               title={row.title}
               items={row.items}
-              onOpen={openJourney}
+              handlers={handlers}
             />
           ))
         )}

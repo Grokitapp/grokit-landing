@@ -6,14 +6,21 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
+  ArrowLeft,
   ArrowRight,
   BookOpen,
   CheckCircle2,
   Compass,
+  Eye,
+  Globe,
+  Loader2,
   RefreshCw,
+  ShieldCheck,
   Sparkles,
+  Undo2,
+  Users,
 } from 'lucide-react';
 
 import {
@@ -39,6 +46,12 @@ import {
   type JourneyChange,
 } from '../../lib/courseActions';
 import { useGamification } from '../../lib/gamification';
+import {
+  getPublicJourneyForCourse,
+  publishJourney,
+  unpublishJourney,
+  type PublicJourney,
+} from '../../lib/explore';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -46,8 +59,33 @@ import { useGamification } from '../../lib/gamification';
 
 interface JourneyData {
   title: string;
+  description: string;
+  topic: string;
+  heroImageUrl: string;
   zones: PathZone[];
 }
+
+const EMPTY_JOURNEY: JourneyData = {
+  title: '',
+  description: '',
+  topic: '',
+  heroImageUrl: '',
+  zones: [],
+};
+
+type JourneyView = 'path' | 'publish';
+
+const PUBLIC_CATEGORIES = [
+  'AI & Tech',
+  'Business',
+  'Science',
+  'Mind & Life',
+  'Creativity',
+  'Health & Fitness',
+  'History',
+  'Languages',
+  'Other',
+];
 
 interface JourneyStats {
   completed: number;
@@ -125,12 +163,14 @@ function JourneyCard({
   stats,
   zoneCount,
   onContinue,
+  onPublish,
 }: {
   courseId: string;
   title: string;
   stats: JourneyStats;
   zoneCount: number;
   onContinue: () => void;
+  onPublish: () => void;
 }) {
   const actionLabel = stats.isComplete
     ? 'Review journey'
@@ -155,7 +195,7 @@ function JourneyCard({
           </h1>
         </div>
 
-        <JourneyMenu journey={{ id: courseId, title }} />
+        <JourneyMenu journey={{ id: courseId, title }} onPublish={onPublish} />
       </div>
 
       <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -237,6 +277,322 @@ function StickyRail({ children }: { children: ReactNode }) {
 }
 
 // -----------------------------------------------------------------------------
+// Publish to Explore (replaces the path while it is open)
+// -----------------------------------------------------------------------------
+
+function PublishPanel({
+  courseId,
+  title,
+  description,
+  topic,
+  heroImageUrl,
+  zoneCount,
+  lessonCount,
+  onBack,
+}: {
+  courseId: string;
+  title: string;
+  description: string;
+  topic: string;
+  heroImageUrl: string;
+  zoneCount: number;
+  lessonCount: number;
+  onBack: () => void;
+}) {
+  const [existing, setExisting] = useState<PublicJourney | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [checkKey, setCheckKey] = useState(0);
+  const [category, setCategory] = useState<string | null>(null);
+  const [busy, setBusy] = useState<'publish' | 'unpublish' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [justPublished, setJustPublished] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setChecking(true);
+    setCheckFailed(false);
+
+    getPublicJourneyForCourse(courseId)
+      .then((found) => {
+        if (cancelled) return;
+
+        setExisting(found);
+        setCategory(found?.category ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setCheckFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setChecking(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, checkKey]);
+
+  const handlePublish = async () => {
+    if (busy || checking || checkFailed || existing) return;
+
+    setBusy('publish');
+    setError(null);
+
+    try {
+      const created = await publishJourney({
+        courseId,
+        title,
+        topic,
+        category,
+        heroImageUrl,
+        zoneCount,
+        lessonCount,
+      });
+
+      setExisting(created);
+      setJustPublished(true);
+    } catch {
+      setError('We couldn’t make this journey public. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleUnpublish = async () => {
+    if (busy || !existing) return;
+
+    setBusy('unpublish');
+    setError(null);
+
+    try {
+      await unpublishJourney(existing.id);
+
+      setExisting(null);
+      setJustPublished(false);
+    } catch {
+      setError('We couldn’t make this journey private. Please try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const details = [
+    {
+      icon: Eye,
+      title: 'Anyone signed in to Grokit can find it',
+      text: 'Your journey appears in Explore with its title, cover image, category and size.',
+    },
+    {
+      icon: ShieldCheck,
+      title: 'Your learning stays private',
+      text: 'Your lessons, progress, notes and account details are never shown to other people.',
+    },
+    {
+      icon: Users,
+      title: 'Others start their own journey',
+      text: 'When someone opens it, they begin a new journey on the same topic. They can’t see or change yours.',
+    },
+    {
+      icon: Undo2,
+      title: 'You stay in control',
+      text: 'You can make it private again whenever you like from this screen.',
+    },
+  ];
+
+  const sizeText = [
+    zoneCount > 0 ? `${zoneCount} ${zoneCount === 1 ? 'zone' : 'zones'}` : '',
+    lessonCount > 0
+      ? `${lessonCount} ${lessonCount === 1 ? 'lesson' : 'lessons'}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <section aria-label="Publish journey" className="max-w-[720px] pt-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="inline-flex items-center gap-2 rounded-lg py-1 text-sm font-bold text-[#91A4AC] transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back to journey
+      </button>
+
+      <p className="mt-6 flex items-center gap-1.5 text-xs font-extrabold text-orange">
+        <Globe className="h-3.5 w-3.5" aria-hidden="true" />
+        Publish to Explore
+      </p>
+
+      <h1 className="mt-2 break-words font-display text-3xl font-extrabold leading-tight text-white sm:text-4xl">
+        {title}
+      </h1>
+
+      <p className="mt-3 text-sm leading-6 text-[#A9BAC0] sm:text-base sm:leading-7">
+        {description.trim() || `A journey about ${topic || title}.`}
+      </p>
+
+      <div className="mt-8 rounded-2xl border border-[#2D4149] bg-[#1A2A31] p-5 sm:p-6">
+        <h2 className="font-display text-xl font-extrabold text-white">
+          What does a public journey mean?
+        </h2>
+
+        <ul className="mt-4 space-y-4">
+          {details.map(({ icon: Icon, title: detailTitle, text }) => (
+            <li key={detailTitle} className="flex gap-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange/10 text-orange">
+                <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+              </span>
+
+              <div className="min-w-0">
+                <p className="text-sm font-extrabold text-white">
+                  {detailTitle}
+                </p>
+                <p className="mt-0.5 text-sm leading-6 text-[#91A4AC]">{text}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[#2D4149] bg-[#1A2A31] p-5 sm:p-6">
+        <h2 className="font-display text-xl font-extrabold text-white">
+          {existing && !justPublished
+            ? 'This journey is public'
+            : justPublished
+              ? 'Your journey is public'
+              : 'Make this journey public?'}
+        </h2>
+
+        {existing ? (
+          <>
+            <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
+              {justPublished
+                ? 'Thanks for sharing. It now shows up in Explore for other learners.'
+                : 'Other learners can find it in Explore.'}
+              {existing.category ? ` Category: ${existing.category}.` : ''}
+            </p>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <Link
+                to="/explore"
+                className={`${primaryButtonClasses} sm:w-auto`}
+              >
+                View in Explore
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleUnpublish}
+                disabled={busy !== null}
+                className={`${secondaryButtonClasses} disabled:pointer-events-none disabled:opacity-50`}
+              >
+                {busy === 'unpublish' && (
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                )}
+                Make private
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
+              Pick a category so people can find it (optional). It will appear
+              in Explore as{' '}
+              <span className="font-bold text-white">{title}</span>
+              {sizeText ? ` · ${sizeText}` : ''}.
+            </p>
+
+            <div
+              role="group"
+              aria-label="Category"
+              className="mt-4 flex flex-wrap gap-2"
+            >
+              {PUBLIC_CATEGORIES.map((item) => {
+                const selected = category === item;
+
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setCategory(selected ? null : item)}
+                    className={`min-h-9 rounded-full border px-3.5 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange ${
+                      selected
+                        ? 'border-orange bg-orange/10 text-orange'
+                        : 'border-[#37464F] text-[#C8D3DA] hover:border-[#536871] hover:text-white'
+                    }`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+
+            {checkFailed && (
+              <div
+                role="alert"
+                className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 text-xs font-medium text-red-200"
+              >
+                We couldn’t check whether this journey is already public.
+                <button
+                  type="button"
+                  onClick={() => setCheckKey((value) => value + 1)}
+                  className="font-bold text-white underline"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={handlePublish}
+                disabled={busy !== null || checking || checkFailed}
+                className={`${primaryButtonClasses} disabled:pointer-events-none disabled:opacity-50`}
+              >
+                {busy === 'publish' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Publishing...
+                  </>
+                ) : (
+                  <>
+                    Yes, make it public
+                    <Globe className="h-4 w-4" aria-hidden="true" />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={onBack}
+                disabled={busy !== null}
+                className={`${secondaryButtonClasses} disabled:pointer-events-none disabled:opacity-50`}
+              >
+                Not now
+              </button>
+            </div>
+          </>
+        )}
+
+        {error && (
+          <div
+            role="alert"
+            className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 text-xs font-medium text-red-200"
+          >
+            {error}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // Loading state
 // -----------------------------------------------------------------------------
 
@@ -247,14 +603,14 @@ function JourneySkeleton() {
       aria-busy="true"
       className="animate-pulse"
     >
-      <div className="pb-3 pt-1">
+      <div className="pb-3 pt-5">
         <div className="h-[128px] rounded-2xl bg-[#26373E]" />
       </div>
 
-      <div className="mx-auto max-w-[440px]">
+      <div>
         <div className="h-[64px] rounded-xl bg-[#26373E]" />
 
-        <div className="mt-6 space-y-6 px-1">
+        <div className="mx-auto mt-6 max-w-[440px] space-y-6 px-1">
           {[0, 26, 50, 26].map((offset, index) => (
             <div
               key={index}
@@ -348,10 +704,10 @@ export default function CourseOverview() {
   const { courseId } = useParams<{ courseId: string }>();
   const navigate = useNavigate();
 
-  const [journey, setJourney] = useState<JourneyData>({
-    title: '',
-    zones: [],
-  });
+  const location = useLocation();
+
+  const [journey, setJourney] = useState<JourneyData>(EMPTY_JOURNEY);
+  const [view, setView] = useState<JourneyView>('path');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -363,7 +719,7 @@ export default function CourseOverview() {
     const requestId = ++requestVersion.current;
 
     if (!courseId?.trim()) {
-      setJourney({ title: '', zones: [] });
+      setJourney(EMPTY_JOURNEY);
       setLoading(false);
       setLoadError(true);
       return;
@@ -439,7 +795,13 @@ export default function CourseOverview() {
         })
         .sort((a, b) => a.order - b.order);
 
-      setJourney({ title: course.title, zones: mappedZones });
+      setJourney({
+        title: course.title,
+        description: course.description ?? '',
+        topic: course.topic ?? course.title,
+        heroImageUrl: course.heroImageUrl ?? '',
+        zones: mappedZones,
+      });
     } catch (error) {
       if (requestId !== requestVersion.current) return;
 
@@ -478,6 +840,30 @@ export default function CourseOverview() {
     return () =>
       window.removeEventListener(JOURNEY_CHANGED_EVENT, handleChange);
   }, [courseId]);
+
+  // Switching journeys always starts on the path.
+  useEffect(() => {
+    setView('path');
+  }, [courseId]);
+
+  // The sidebar menu's "Publish to Explore" navigates here with this flag.
+  useEffect(() => {
+    const routeState = location.state as
+      | { openPublish?: boolean; [key: string]: unknown }
+      | null;
+
+    if (!routeState?.openPublish) return;
+
+    setView('publish');
+
+    const nextState = { ...routeState };
+    delete nextState.openPublish;
+
+    navigate(
+      { pathname: location.pathname, search: location.search },
+      { replace: true, state: nextState },
+    );
+  }, [location.pathname, location.search, location.state, navigate]);
 
   const stats = useMemo(() => calculateStats(journey.zones), [journey.zones]);
 
@@ -537,7 +923,7 @@ export default function CourseOverview() {
     observer.observe(bar);
 
     return () => observer.disconnect();
-  }, [loading, loadError, courseId]);
+  }, [loading, loadError, courseId, view]);
 
   return (
     <div className={containerClasses}>
@@ -548,12 +934,25 @@ export default function CourseOverview() {
       ) : (
         <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
           <div ref={columnRef} className="min-w-0">
+            {view === 'publish' && courseId ? (
+              <PublishPanel
+                courseId={courseId}
+                title={journey.title}
+                description={journey.description}
+                topic={journey.topic}
+                heroImageUrl={journey.heroImageUrl}
+                zoneCount={journey.zones.length}
+                lessonCount={stats.total}
+                onBack={() => setView('path')}
+              />
+            ) : (
+              <>
             {/* Journey card: pinned to the top. The current zone banner
                 (JourneyPath) pins directly beneath it. */}
             {courseId && (
               <div
                 ref={barRef}
-                className="sticky top-16 z-30 bg-[#131F24] pb-3 pt-1 lg:top-0"
+                className="sticky top-16 z-30 bg-[#131F24] pb-3 pt-5 lg:top-0"
               >
                 <JourneyCard
                   courseId={courseId}
@@ -561,6 +960,7 @@ export default function CourseOverview() {
                   stats={stats}
                   zoneCount={journey.zones.length}
                   onContinue={continueJourney}
+                  onPublish={() => setView('publish')}
                 />
               </div>
             )}
@@ -608,6 +1008,8 @@ export default function CourseOverview() {
                   </div>
                 </div>
               </section>
+            )}
+              </>
             )}
           </div>
 

@@ -5,16 +5,20 @@ import {
   ArrowRight,
   ChevronRight,
   Compass,
+  Flame,
   Library,
   Loader2,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RefreshCw,
   Settings,
   Sparkles,
   UserRound,
   X,
+  Zap,
 } from 'lucide-react';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 
@@ -58,6 +62,16 @@ const navItems = [
 let cachedJourneys: Journey[] | null = null;
 let cachedUserName: string | null = null;
 
+const SIDEBAR_COLLAPSED_KEY = 'grokit:sidebar-collapsed';
+
+function readSidebarCollapsed() {
+  try {
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export default function AppShell({
   children,
   courses: providedCourses,
@@ -73,6 +87,7 @@ export default function AppShell({
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [userName, setUserName] = useState(
     providedUserName || cachedUserName || 'You',
@@ -366,23 +381,41 @@ export default function AppShell({
     setAccountMenuOpen(false);
   }, [location.pathname]);
 
+  const toggleSidebar = useCallback(() => {
+    setAccountMenuOpen(false);
+    setCollapsed((current) => {
+      const next = !current;
+
+      try {
+        window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? '1' : '0');
+      } catch {
+        // Preference just won't persist.
+      }
+
+      return next;
+    });
+  }, []);
+
   const openLogoutConfirmation = () => {
     setAccountMenuOpen(false);
     setLogoutConfirmOpen(true);
   };
 
-  const renderNavigation = () => (
+  const renderNavigation = (compact = false) => (
     <nav aria-label="Main navigation" className="flex flex-col gap-1">
       {navItems.map(({ label, icon: Icon, to }) => (
         <NavLink
           key={label}
           to={to}
           end
+          title={compact ? label : undefined}
+          aria-label={compact ? label : undefined}
           className={({ isActive }) => {
             const active = label === 'Create' ? isCreateFlow : isActive;
 
             return [
-              'group relative flex min-h-[48px] items-center gap-3 rounded-2xl px-4',
+              'group relative flex min-h-[48px] items-center rounded-2xl',
+              compact ? 'justify-center px-0' : 'gap-3 px-4',
               'font-sans text-[15px] font-bold transition-all duration-150',
               active
                 ? 'bg-[#203138] !text-[#FF6B00]'
@@ -402,7 +435,7 @@ export default function AppShell({
                   }`}
                 />
 
-                <span>{label}</span>
+                {!compact && <span>{label}</span>}
               </>
             );
           }}
@@ -526,12 +559,41 @@ export default function AppShell({
     </section>
   );
 
-  const renderAccount = (mobile = false) => (
+  const renderAccount = (mobile = false, compact = false) => (
     <div
       ref={accountRef}
       className="relative mt-auto shrink-0 border-t border-[#2D3C43] pt-4"
     >
-      {game && (
+      {game && compact && (
+        <Link
+          to="/profile"
+          aria-label={`Open your profile. ${game.currentStreak} day streak, ${game.totalXp} XP`}
+          className="mb-3 flex flex-col gap-2 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+        >
+          <span
+            title="Day streak"
+            className="flex h-9 items-center justify-center gap-1 rounded-xl border border-[#2D3C43] bg-[#17262C] text-xs font-extrabold text-white"
+          >
+            <Flame
+              className={`h-3.5 w-3.5 ${
+                game.currentStreak > 0 ? 'text-orange' : 'text-[#60757E]'
+              }`}
+              aria-hidden="true"
+            />
+            {game.currentStreak}
+          </span>
+
+          <span
+            title="Total XP"
+            className="flex h-9 items-center justify-center gap-1 rounded-xl border border-[#2D3C43] bg-[#17262C] text-xs font-extrabold text-white"
+          >
+            <Zap className="h-3.5 w-3.5 text-orange" aria-hidden="true" />
+            {game.totalXp}
+          </span>
+        </Link>
+      )}
+
+      {game && !compact && (
         <Link
           to="/profile"
           aria-label="Open your profile"
@@ -554,6 +616,7 @@ export default function AppShell({
       {accountMenuOpen && (
         <AccountMenu
           mobile={mobile}
+          compact={compact}
           onProfile={() => {
             setAccountMenuOpen(false);
             navigate('/profile');
@@ -568,6 +631,7 @@ export default function AppShell({
 
       <AccountButton
         userName={userName}
+        compact={compact}
         open={accountMenuOpen}
         onClick={() => setAccountMenuOpen((value) => !value)}
       />
@@ -578,14 +642,42 @@ export default function AppShell({
     <div className="min-h-[100dvh] bg-[#131F24] text-white">
       <div className="min-h-[100dvh]">
         {/* Desktop sidebar: fixed to the viewport and never page-scrolls. */}
-        <aside className="fixed inset-y-0 left-0 z-40 hidden h-[100dvh] w-[270px] flex-col overflow-hidden border-r border-[#2D3C43] bg-[#131F24] px-4 py-5 lg:flex xl:w-[292px]">
-          <div className="mb-8 flex shrink-0 items-center px-3">
-            <GrokitLogo className="h-[42px] w-[112px] shrink-0 object-contain object-left" />
+        <aside
+          aria-label="Sidebar"
+          className={`fixed inset-y-0 left-0 z-40 hidden h-[100dvh] flex-col border-r border-[#2D3C43] bg-[#131F24] py-5 transition-[width] duration-200 lg:flex ${
+            collapsed
+              ? 'w-[76px] px-2'
+              : 'w-[270px] overflow-hidden px-4 xl:w-[292px]'
+          }`}
+        >
+          <div
+            className={`mb-8 flex shrink-0 items-center ${
+              collapsed ? 'justify-center' : 'justify-between px-3'
+            }`}
+          >
+            {!collapsed && (
+              <GrokitLogo className="h-[42px] w-[112px] shrink-0 object-contain object-left" />
+            )}
+
+            <button
+              type="button"
+              onClick={toggleSidebar}
+              aria-label={collapsed ? 'Show sidebar' : 'Hide sidebar'}
+              aria-expanded={!collapsed}
+              title={collapsed ? 'Show sidebar' : 'Hide sidebar'}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-[#91A4AC] transition-colors hover:bg-[#203138] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <PanelLeftClose className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
           </div>
 
-          <div className="shrink-0">{renderNavigation()}</div>
-          {renderJourneys()}
-          {renderAccount()}
+          <div className="shrink-0">{renderNavigation(collapsed)}</div>
+          {!collapsed && renderJourneys()}
+          {renderAccount(false, collapsed)}
         </aside>
 
         {/* Mobile top bar */}
@@ -642,7 +734,11 @@ export default function AppShell({
         )}
 
         {/* Main content scrolls independently of the desktop sidebar. */}
-        <main className="min-h-[100dvh] min-w-0 overflow-x-clip pt-16 lg:ml-[270px] lg:pt-0 xl:ml-[292px]">
+        <main
+          className={`min-h-[100dvh] min-w-0 overflow-x-clip pt-16 transition-[margin] duration-200 lg:pt-0 ${
+            collapsed ? 'lg:ml-[76px]' : 'lg:ml-[270px] xl:ml-[292px]'
+          }`}
+        >
           {children}
         </main>
       </div>
@@ -658,10 +754,12 @@ function AccountButton({
   userName,
   open,
   onClick,
+  compact = false,
 }: {
   userName: string;
   open: boolean;
   onClick: () => void;
+  compact?: boolean;
 }) {
   const initial = userName.trim().charAt(0).toUpperCase() || 'Y';
 
@@ -671,8 +769,11 @@ function AccountButton({
       onClick={onClick}
       aria-expanded={open}
       aria-haspopup="menu"
+      aria-label={compact ? `Account: ${userName}` : undefined}
+      title={compact ? userName : undefined}
       className={[
-        'flex w-full items-center gap-3 rounded-2xl border border-transparent px-3 py-3 text-left transition-all duration-150',
+        'flex w-full items-center rounded-2xl border border-transparent py-3 text-left transition-all duration-150',
+        compact ? 'justify-center px-0' : 'gap-3 px-3',
         open
           ? 'border-[#2D3C43] bg-[#1A292F]'
           : 'hover:border-[#2D3C43] hover:bg-[#1A292F]',
@@ -682,21 +783,25 @@ function AccountButton({
         {initial}
       </span>
 
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-extrabold text-white">
-          {userName}
-        </span>
+      {!compact && (
+        <>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-extrabold text-white">
+              {userName}
+            </span>
 
-        <span className="mt-0.5 block text-[11px] font-medium text-[#60757E]">
-          Account
-        </span>
-      </span>
+            <span className="mt-0.5 block text-[11px] font-medium text-[#60757E]">
+              Account
+            </span>
+          </span>
 
-      <ChevronRight
-        className={`h-4 w-4 shrink-0 text-[#60757E] transition-transform ${
-          open ? '-rotate-90' : ''
-        }`}
-      />
+          <ChevronRight
+            className={`h-4 w-4 shrink-0 text-[#60757E] transition-transform ${
+              open ? '-rotate-90' : ''
+            }`}
+          />
+        </>
+      )}
     </button>
   );
 }
@@ -706,11 +811,13 @@ function AccountMenu({
   onSettings,
   onLogout,
   mobile = false,
+  compact = false,
 }: {
   onProfile: () => void;
   onSettings: () => void;
   onLogout: () => void;
   mobile?: boolean;
+  compact?: boolean;
 }) {
   const itemClass =
     'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-[#E6EAEC] transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';
@@ -719,7 +826,8 @@ function AccountMenu({
     <div
       role="menu"
       className={[
-        'absolute bottom-[76px] left-0 z-[70] w-full rounded-[22px] border border-[#39464C] bg-[#202F35]/95 p-2 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl',
+        'absolute bottom-[76px] left-0 z-[70] rounded-[22px] border border-[#39464C] bg-[#202F35]/95 p-2 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl',
+        compact ? 'w-56' : 'w-full',
         mobile ? 'max-w-full' : '',
       ].join(' ')}
     >

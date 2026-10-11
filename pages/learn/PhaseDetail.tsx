@@ -116,7 +116,7 @@ export default function PhaseDetail() {
 
   const loadPhase = useCallback(async () => {
     if (!courseId || !phaseId) {
-      setError('This learning path could not be opened. Please return to your Dive Path.');
+      setError('This learning path could not be opened. Please return to your Journey.');
       setLoading(false);
       return;
     }
@@ -223,7 +223,7 @@ export default function PhaseDetail() {
     const run = async () => {
       if (!courseId || !phaseId) {
         setError(
-          'This learning path could not be opened. Please return to your Dive Path.',
+          'This learning path could not be opened. Please return to your Journey.',
         );
         setLoading(false);
         return;
@@ -339,7 +339,7 @@ export default function PhaseDetail() {
     };
   }, [lessons]);
 
-  // Opened from a node on the journey path (?lesson=<id>): show that lesson's
+  // Opened from a node on the journey (?lesson=<id>): show that lesson's
   // start sheet once the zone has loaded, then clean the URL.
   const requestedLessonId = searchParams.get('lesson');
 
@@ -427,7 +427,7 @@ export default function PhaseDetail() {
                   className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-orange hover:text-white"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Back to Dive Path
+                  Back to Journey
                 </Link>
               </div>
             )}
@@ -439,7 +439,7 @@ export default function PhaseDetail() {
               className={backClasses}
             >
               <ArrowLeft className="h-4 w-4" />
-              Back to Dive Path
+              Back to Journey
             </Link>
 
             <header className={headerClasses}>
@@ -487,7 +487,7 @@ export default function PhaseDetail() {
                   </h2>
 
                   <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
-                    Finish the earlier zones in your Dive Path to unlock this
+                    Finish the earlier zones in your Journey to unlock this
                     one.
                   </p>
 
@@ -495,7 +495,7 @@ export default function PhaseDetail() {
                     to={`/learn/course/${courseId}`}
                     className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange px-5 font-bold text-white transition hover:brightness-105"
                   >
-                    Return to Dive Path
+                    Return to Journey
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
@@ -561,14 +561,14 @@ export default function PhaseDetail() {
                       </p>
 
                       <p className="mt-0.5 text-sm text-[#91A4AC]">
-                        Continue back on your Dive Path.
+                        Continue back on your Journey.
                       </p>
                     </div>
 
                     <Link
                       to={`/learn/course/${courseId}`}
                       className="ml-auto shrink-0 text-orange transition-colors hover:text-white"
-                      aria-label="Back to Dive Path"
+                      aria-label="Back to Journey"
                     >
                       <ArrowRight className="h-5 w-5" />
                     </Link>

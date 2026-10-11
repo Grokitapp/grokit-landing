@@ -47,7 +47,7 @@ const ACTIVITY_MESSAGES = [
   'Understanding what you want to learn',
   'Designing your learning path',
   'Organizing the topics into clear steps',
-  'Preparing your first dive',
+  'Preparing your first journey',
 ];
 
 const pageClasses =
@@ -436,7 +436,7 @@ export default function Generating() {
           <div className="relative grid items-center gap-7 sm:grid-cols-[1fr_auto] sm:gap-10">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange">
-                Your first dive starts here
+                Your first journey starts here
               </p>
 
               <h2 className="mt-3 font-display text-xl font-bold sm:text-2xl">

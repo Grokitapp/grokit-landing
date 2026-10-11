@@ -386,7 +386,7 @@ export default function Learn() {
                   <div className="min-w-0">
                     <div className="mb-3 flex items-center gap-2">
                       <span className="font-sans text-[11px] font-extrabold uppercase tracking-[0.16em] text-orange">
-                        Your dive path
+                        Your journey
                       </span>
                       {currentPhase && (
                         <>
@@ -524,7 +524,7 @@ export default function Learn() {
               )}
 
               {/* ======================================================
-                  ACTUAL DIVE PATH
+                  ACTUAL JOURNEY
               ====================================================== */}
 
               {!isCourseBuilding && !isCourseFailed && (
@@ -584,7 +584,7 @@ export default function Learn() {
                   )}
 
                   {!loadingPath && !pathError && phases.length > 0 && (
-                    <DivePath
+                    <JourneyPath
                       phases={phases}
                       completedLessonIds={completedLessonIds}
                       currentLessonId={currentLessonId}
@@ -792,10 +792,10 @@ function EmptyPathState({ onCreate }: { onCreate: () => void }) {
 }
 
 /* ========================================================================
- * DIVE PATH
+ * JOURNEY
  * ====================================================================== */
 
-function DivePath({
+function JourneyPath({
   phases,
   completedLessonIds,
   currentLessonId,

@@ -122,6 +122,34 @@ const schema = a.schema({
         .identityClaim('sub'),
     ]),
 
+  // A snapshot of a public journey the learner bookmarked from Explore.
+  SavedJourney: a
+    .model({
+      publicJourneyId: a.id().required(),
+      title: a.string().required(),
+      topic: a.string().required(),
+      category: a.string(),
+      heroImageUrl: a.string(),
+      zoneCount: a.integer(),
+      lessonCount: a.integer(),
+    })
+    .authorization((allow) => [
+      allow.owner(),
+    ]),
+
+  // Private notes shown in Library. courseId / courseTitle are optional so
+  // notes can later be attached to a journey or lesson.
+  Note: a
+    .model({
+      title: a.string().required(),
+      content: a.string(),
+      courseId: a.id(),
+      courseTitle: a.string(),
+    })
+    .authorization((allow) => [
+      allow.owner(),
+    ]),
+
   generateOutline: a
     .mutation()
     .arguments({

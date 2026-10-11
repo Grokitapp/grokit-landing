@@ -7,7 +7,9 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router';
 import {
+  Globe,
   Loader2,
   MoreHorizontal,
   Pencil,
@@ -28,6 +30,11 @@ interface JourneyMenuProps {
   journey: { id: string; title: string };
   /** Positioning / visibility classes from the parent (e.g. hover reveal). */
   buttonClassName?: string;
+  /**
+   * Called when "Publish to Explore" is chosen. When omitted (e.g. in the
+   * sidebar) the menu opens the journey page with the publish screen showing.
+   */
+  onPublish?: () => void;
 }
 
 type DialogKind = 'rename' | 'delete';
@@ -37,7 +44,7 @@ type DialogKind = 'rename' | 'delete';
 // -----------------------------------------------------------------------------
 
 const MENU_WIDTH = 224;
-const MENU_HEIGHT_ESTIMATE = 172;
+const MENU_HEIGHT_ESTIMATE = 220;
 
 const triggerClasses =
   'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#91A4AC] transition-colors hover:bg-[#2A3D45] hover:text-white aria-expanded:bg-[#2A3D45] aria-expanded:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';
@@ -293,7 +300,9 @@ function ConfirmDialog({
 export default function JourneyMenu({
   journey,
   buttonClassName = '',
+  onPublish,
 }: JourneyMenuProps) {
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [dialog, setDialog] = useState<DialogKind | null>(null);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -374,6 +383,17 @@ export default function JourneyMenu({
     setDialog(kind);
   };
 
+  const handlePublishClick = () => {
+    setOpen(false);
+
+    if (onPublish) {
+      onPublish();
+      return;
+    }
+
+    navigate(`/learn/course/${journey.id}`, { state: { openPublish: true } });
+  };
+
   const closeDialog = () => {
     setDialog(null);
     buttonRef.current?.focus();
@@ -421,6 +441,16 @@ export default function JourneyMenu({
             >
               <Pencil className="h-[18px] w-[18px] text-[#C5CFD3]" aria-hidden="true" />
               Edit name
+            </button>
+
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handlePublishClick}
+              className={`${menuItemClasses} text-[#E6EAEC] hover:bg-white/[0.07]`}
+            >
+              <Globe className="h-[18px] w-[18px] text-[#C5CFD3]" aria-hidden="true" />
+              Publish to Explore
             </button>
 
             <button
