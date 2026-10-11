@@ -1,9 +1,7 @@
 import { lazy, Suspense } from 'react';
-import type { ReactNode } from 'react';
 
 import {
   Navigate,
-  Outlet,
   Route,
   Routes,
 } from 'react-router';
@@ -14,8 +12,6 @@ import AuthGuard from './auth/AuthGuard';
 
 import Terms from './Terms';
 import PrivacyPolicy from './Privacypolicy';
-
-import AppShell from './learn/AppShell';
 
 const Create = lazy(() => import('./Create'));
 
@@ -47,22 +43,10 @@ function PageLoader() {
   );
 }
 
-function ProtectedLearningLayout() {
-  return (
-    <AuthGuard>
-      <AppShell>
-        <Suspense fallback={<PageLoader />}>
-          <Outlet />
-        </Suspense>
-      </AppShell>
-    </AuthGuard>
-  );
-}
-
-function ProtectedStandalonePage({
+function ProtectedLearningPage({
   children,
 }: {
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <AuthGuard>
@@ -76,40 +60,99 @@ function ProtectedStandalonePage({
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
 
-      <Route path="/onboarding" element={<Onboarding />} />
+      <Route
+        path="/"
+        element={<Index />}
+      />
 
-      <Route path="/terms" element={<Terms />} />
+      <Route
+        path="/onboarding"
+        element={<Onboarding />}
+      />
 
-      <Route path="/privacy" element={<PrivacyPolicy />} />
+      <Route
+        path="/terms"
+        element={<Terms />}
+      />
 
-      <Route element={<ProtectedLearningLayout />}>
-        <Route path="/create" element={<Create />} />
-        <Route path="/learn/personalize" element={<Personalize />} />
-        <Route path="/learn/generating" element={<Generating />} />
-        <Route
-          path="/learn/course/:courseId"
-          element={<CourseOverview />}
-        />
-        <Route
-          path="/learn/course/:courseId/phase/:phaseId"
-          element={<PhaseDetail />}
-        />
-        <Route
-          path="/learn/course/:courseId/lesson/:lessonId"
-          element={<LessonPlayer />}
-        />
-      </Route>
+      <Route
+        path="/privacy"
+        element={<PrivacyPolicy />}
+      />
+
+      <Route
+        path="/create"
+        element={
+          <ProtectedLearningPage>
+            <Create />
+          </ProtectedLearningPage>
+        }
+      />
+
+      <Route
+        path="/learn/personalize"
+        element={
+          <ProtectedLearningPage>
+            <Personalize />
+          </ProtectedLearningPage>
+        }
+      />
+
+      <Route
+        path="/learn/generating"
+        element={
+          <ProtectedLearningPage>
+            <Generating />
+          </ProtectedLearningPage>
+        }
+      />
+
+      <Route
+        path="/learn/course/:courseId"
+        element={
+          <ProtectedLearningPage>
+            <CourseOverview />
+          </ProtectedLearningPage>
+        }
+      />
+
+      <Route
+        path="/learn/course/:courseId/phase/:phaseId"
+        element={
+          <ProtectedLearningPage>
+            <PhaseDetail />
+          </ProtectedLearningPage>
+        }
+      />
+
+      <Route
+        path="/learn/course/:courseId/lesson/:lessonId"
+        element={
+          <ProtectedLearningPage>
+            <LessonPlayer />
+          </ProtectedLearningPage>
+        }
+      />
 
       <Route
         path="/learn"
-        element={<Navigate to="/create" replace />}
+        element={
+          <Navigate
+            to="/create"
+            replace
+          />
+        }
       />
 
       <Route
         path="*"
-        element={<Navigate to="/" replace />}
+        element={
+          <Navigate
+            to="/"
+            replace
+          />
+        }
       />
     </Routes>
   );
