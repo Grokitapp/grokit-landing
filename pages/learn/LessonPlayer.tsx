@@ -12,10 +12,8 @@ import {
   X,
 } from 'lucide-react';
 
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-
 import { GrokitMascot } from '../../components/Grokitmascot';
+import LessonMarkdown from './components/LessonMarkdown';
 import {
   generateLessonContent,
   getCourse,
@@ -342,82 +340,6 @@ function LessonComplete({
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
-    </div>
-  );
-}
-
-// -----------------------------------------------------------------------------
-// Markdown rendering for lesson content
-// -----------------------------------------------------------------------------
-
-function LessonMarkdown({ source }: { source: string }) {
-  return (
-    <div className="space-y-5 text-[17px] leading-8 text-[#C8D3DA]">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: ({ children }) => (
-            <h2 className="pt-6 text-2xl font-extrabold text-white">{children}</h2>
-          ),
-          h2: ({ children }) => (
-            <h2 className="pt-6 text-2xl font-extrabold text-white">{children}</h2>
-          ),
-          h3: ({ children }) => (
-            <h3 className="pt-3 text-xl font-extrabold text-white">{children}</h3>
-          ),
-          p: ({ children }) => <p>{children}</p>,
-          strong: ({ children }) => (
-            <strong className="font-extrabold text-white">{children}</strong>
-          ),
-          em: ({ children }) => <em className="italic">{children}</em>,
-          ul: ({ children }) => (
-            <ul className="list-disc space-y-2 pl-6 marker:text-orange">{children}</ul>
-          ),
-          ol: ({ children }) => (
-            <ol className="list-decimal space-y-2 pl-6 marker:font-bold marker:text-orange">
-              {children}
-            </ol>
-          ),
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-orange/60 pl-4 text-[#9FB0BB]">
-              {children}
-            </blockquote>
-          ),
-          pre: ({ children }) => (
-            <pre className="overflow-x-auto rounded-2xl border border-[#2C3E4A] bg-[#0F1A1F] p-4 text-sm leading-6 text-[#D8E0E4]">
-              {children}
-            </pre>
-          ),
-          code: ({ children, className }) =>
-            className || String(children).includes('\n') ? (
-              <code className={className}>{children}</code>
-            ) : (
-              <code className="rounded-md bg-[#263640] px-1.5 py-0.5 text-[0.9em] text-[#FFB27A]">
-                {children}
-              </code>
-            ),
-          table: ({ children }) => (
-            <div className="overflow-x-auto rounded-2xl border border-[#2C3E4A]">
-              <table className="w-full border-collapse text-left text-[15px]">{children}</table>
-            </div>
-          ),
-          th: ({ children }) => (
-            <th className="border-b border-[#2C3E4A] bg-[#1D2A33] px-4 py-2.5 font-extrabold text-white">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border-b border-[#223039] px-4 py-2.5">{children}</td>
-          ),
-          a: ({ children, href }) => (
-            <a href={href} target="_blank" rel="noreferrer" className="font-semibold text-orange underline">
-              {children}
-            </a>
-          ),
-        }}
-      >
-        {source}
-      </ReactMarkdown>
     </div>
   );
 }
