@@ -21,6 +21,11 @@ import { fetchUserAttributes } from 'aws-amplify/auth';
 import { GrokitLogo } from '../../components/Grokitlogo';
 import { signOutUser } from '../auth/authService';
 import { listCourses } from '../../lib/courseGeneration';
+import {
+  JOURNEY_CHANGED_EVENT,
+  type JourneyChange,
+} from '../../lib/courseActions';
+import JourneyMenu from './components/JourneyMenu';
 
 interface Journey {
   id: string;
@@ -246,6 +251,44 @@ export default function AppShell({
     refreshJourneys,
   ]);
 
+  // Apply rename / delete from any JourneyMenu instantly.
+  useEffect(() => {
+    if (providedCourses !== undefined) return;
+
+    const handleJourneyChange = (event: Event) => {
+      const change = (event as CustomEvent<JourneyChange>).detail;
+
+      if (!change) return;
+
+      setLoadedCourses((current) => {
+        const next =
+          change.action === 'rename'
+            ? current.map((journey) =>
+                journey.id === change.id
+                  ? { ...journey, title: change.title }
+                  : journey,
+              )
+            : current.filter((journey) => journey.id !== change.id);
+
+        cachedJourneys = next;
+        return next;
+      });
+
+      // Leave the page of a journey that no longer appears in the list.
+      if (
+        change.action !== 'rename' &&
+        location.pathname.includes(`/learn/course/${change.id}`)
+      ) {
+        navigate('/create', { replace: true });
+      }
+    };
+
+    window.addEventListener(JOURNEY_CHANGED_EVENT, handleJourneyChange);
+
+    return () =>
+      window.removeEventListener(JOURNEY_CHANGED_EVENT, handleJourneyChange);
+  }, [providedCourses, location.pathname, navigate]);
+
   // Load account name.
   useEffect(() => {
     if (providedUserName) {
@@ -452,26 +495,32 @@ export default function AppShell({
         ) : (
           <div className="flex flex-col gap-1">
             {courses.map((course) => (
-              <NavLink
-                key={course.id}
-                to={`/learn/course/${course.id}`}
-                className={({ isActive }) =>
-                  [
-                    'group flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors',
-                    isActive
-                      ? 'bg-[#203138] text-white'
-                      : 'text-[#91A4AC] hover:bg-[#1A292F] hover:text-white',
-                  ].join(' ')
-                }
-              >
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#203138] text-orange">
-                  <Sparkles className="h-3.5 w-3.5" />
-                </span>
+              <div key={course.id} className="group/journey relative">
+                <NavLink
+                  to={`/learn/course/${course.id}`}
+                  className={({ isActive }) =>
+                    [
+                      'group flex min-h-[44px] items-center gap-3 rounded-xl pl-3 pr-11 text-sm font-semibold transition-colors',
+                      isActive
+                        ? 'bg-[#203138] text-white'
+                        : 'text-[#91A4AC] hover:bg-[#1A292F] hover:text-white',
+                    ].join(' ')
+                  }
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#203138] text-orange">
+                    <Sparkles className="h-3.5 w-3.5" />
+                  </span>
 
-                <span className="min-w-0 flex-1 truncate">
-                  {course.title}
-                </span>
-              </NavLink>
+                  <span className="min-w-0 flex-1 truncate">
+                    {course.title}
+                  </span>
+                </NavLink>
+
+                <JourneyMenu
+                  journey={course}
+                  buttonClassName="absolute right-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover/journey:opacity-100 group-focus-within/journey:opacity-100 pointer-coarse:opacity-100 aria-expanded:opacity-100"
+                />
+              </div>
             ))}
           </div>
         )}
@@ -575,7 +624,7 @@ export default function AppShell({
         )}
 
         {/* Main content scrolls independently of the desktop sidebar. */}
-        <main className="min-h-[100dvh] min-w-0 overflow-x-hidden pt-16 lg:ml-[270px] lg:pt-0 xl:ml-[292px]">
+        <main className="min-h-[100dvh] min-w-0 overflow-x-clip pt-16 lg:ml-[270px] lg:pt-0 xl:ml-[292px]">
           {children}
         </main>
       </div>

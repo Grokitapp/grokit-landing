@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   ArrowLeft,
   ArrowRight,
@@ -90,6 +90,7 @@ const actionErrorClasses =
 
 export default function PhaseDetail() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { courseId, phaseId } = useParams<{
     courseId: string;
     phaseId: string;
@@ -337,6 +338,24 @@ export default function PhaseDetail() {
       percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
     };
   }, [lessons]);
+
+  // Opened from a node on the journey path (?lesson=<id>): show that lesson's
+  // start sheet once the zone has loaded, then clean the URL.
+  const requestedLessonId = searchParams.get('lesson');
+
+  useEffect(() => {
+    if (loading || !requestedLessonId) return;
+
+    const requested = lessons.find(
+      (lesson) => lesson.id === requestedLessonId,
+    );
+
+    if (requested && requested.status !== 'locked') {
+      setActiveLessonId(requested.id);
+    }
+
+    setSearchParams({}, { replace: true });
+  }, [loading, lessons, requestedLessonId, setSearchParams]);
 
   const activeLesson = lessons.find(
     (lesson) => lesson.id === activeLessonId,
