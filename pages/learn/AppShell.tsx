@@ -46,6 +46,11 @@ const navItems = [
   { label: 'Library', icon: Library, to: '/library' },
 ];
 
+// Module-level caches survive remounts (e.g. Create -> Personalize -> back), so the
+// sidebar never flashes skeletons for data we already have. Cleared on logout.
+let cachedJourneys: Journey[] | null = null;
+let cachedUserName: string | null = null;
+
 export default function AppShell({
   children,
   courses: providedCourses,
@@ -58,18 +63,22 @@ export default function AppShell({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-  const [userName, setUserName] = useState(providedUserName || 'You');
+  const [userName, setUserName] = useState(
+    providedUserName || cachedUserName || 'You',
+  );
 
-  const [loadedCourses, setLoadedCourses] = useState<Journey[]>([]);
+  const [loadedCourses, setLoadedCourses] = useState<Journey[]>(
+    cachedJourneys ?? [],
+  );
   const [loadedCoursesLoading, setLoadedCoursesLoading] = useState(
-    providedCourses === undefined,
+    providedCourses === undefined && cachedJourneys === null,
   );
   const [coursesError, setCoursesError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const accountRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(0);
-  const hasLoadedJourneysRef = useRef(false);
+  const hasLoadedJourneysRef = useRef(cachedJourneys !== null);
   const handledCreationRef = useRef<string | null>(null);
 
   const courses = providedCourses ?? loadedCourses;
@@ -156,6 +165,7 @@ export default function AppShell({
             }));
 
           setLoadedCourses(journeys);
+          cachedJourneys = journeys;
           hasLoadedJourneysRef.current = true;
 
           const targetJourneyId =
@@ -251,12 +261,14 @@ export default function AppShell({
 
         if (cancelled) return;
 
-        setUserName(
+        const resolvedName =
           attributes.name ||
-            attributes.preferred_username ||
-            attributes.email?.split('@')[0] ||
-            'You',
-        );
+          attributes.preferred_username ||
+          attributes.email?.split('@')[0] ||
+          'You';
+
+        cachedUserName = resolvedName;
+        setUserName(resolvedName);
       } catch {
         if (!cancelled) setUserName('You');
       }
@@ -691,6 +703,8 @@ function LogoutConfirmation({ onCancel }: { onCancel: () => void }) {
 
     try {
       await signOutUser();
+      cachedJourneys = null;
+      cachedUserName = null;
       navigate('/', { replace: true });
     } catch (logoutError) {
       console.error('Failed to sign out', logoutError);

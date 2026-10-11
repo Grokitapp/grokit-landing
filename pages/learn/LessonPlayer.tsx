@@ -12,7 +12,6 @@ import {
   X,
 } from 'lucide-react';
 
-import AppShell from './AppShell';
 import { GrokitMascot } from '../../components/Grokitmascot';
 import {
   generateLessonContent,
@@ -614,44 +613,36 @@ export default function LessonPlayer() {
 
   if (loading) {
     return (
-      <AppShell>
-        <LoadingState />
-      </AppShell>
+      <LoadingState />
     );
   }
 
   if (error && !lesson) {
     return (
-      <AppShell>
-        <ErrorState
-          message={error}
-          onRetry={() => void loadLesson()}
-          backHref={courseId ? `/learn/course/${courseId}` : undefined}
-        />
-      </AppShell>
+      <ErrorState
+        message={error}
+        onRetry={() => void loadLesson()}
+        backHref={courseId ? `/learn/course/${courseId}` : undefined}
+      />
     );
   }
 
   if (!lesson) {
     return (
-      <AppShell>
-        <ErrorState
-          message="This lesson could not be loaded. Return to your learning path and try again."
-          onRetry={() => void loadLesson()}
-          backHref={courseId ? `/learn/course/${courseId}` : undefined}
-        />
-      </AppShell>
+      <ErrorState
+        message="This lesson could not be loaded. Return to your learning path and try again."
+        onRetry={() => void loadLesson()}
+        backHref={courseId ? `/learn/course/${courseId}` : undefined}
+      />
     );
   }
 
   if (completed) {
     return (
-      <AppShell>
-        <LessonComplete
-          lesson={lesson}
-          onBack={() => navigate(phaseHref)}
-        />
-      </AppShell>
+      <LessonComplete
+        lesson={lesson}
+        onBack={() => navigate(phaseHref)}
+      />
     );
   }
 
@@ -661,307 +652,299 @@ export default function LessonPlayer() {
     !lesson.status
   ) {
     return (
-      <AppShell>
-        <StartLesson
-          lesson={lesson}
-          onStart={() => void startGeneration()}
-          loading={generating}
-          error={
-            error ||
-            (lesson.status === 'FAILED'
-              ? 'The lesson couldn’t be generated. You can try again.'
-              : '')
-          }
-        />
-      </AppShell>
+      <StartLesson
+        lesson={lesson}
+        onStart={() => void startGeneration()}
+        loading={generating}
+        error={
+          error ||
+          (lesson.status === 'FAILED'
+            ? 'The lesson couldn’t be generated. You can try again.'
+            : '')
+        }
+      />
     );
   }
 
   if (lesson.status === 'GENERATING' || generating) {
     return (
-      <AppShell>
-        <GenerationState lesson={lesson} />
-      </AppShell>
+      <GenerationState lesson={lesson} />
     );
   }
 
   if (lesson.status !== 'READY') {
     return (
-      <AppShell>
-        <ErrorState
-          message="This lesson is not ready yet. Return to the zone and try again."
-          onRetry={() => void loadLesson()}
-          backHref={phaseHref}
-        />
-      </AppShell>
+      <ErrorState
+        message="This lesson is not ready yet. Return to the zone and try again."
+        onRetry={() => void loadLesson()}
+        backHref={phaseHref}
+      />
     );
   }
 
   return (
-    <AppShell>
-      <div className="min-h-[100dvh]">
-        {/* Sticky lesson header */}
-        <header className="sticky top-0 z-20 border-b border-[#263640]/90 bg-[#131F24]/95 backdrop-blur-md">
-          <div className="mx-auto flex h-[72px] max-w-[1100px] items-center gap-4 px-4 sm:px-6 lg:px-8">
-            <Link
-              to={phaseHref}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#91A4AC] transition hover:bg-[#1D2A33] hover:text-white"
-              aria-label="Back to zone"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
+    <div className="min-h-[100dvh]">
+      {/* Sticky lesson header */}
+      <header className="sticky top-0 z-20 border-b border-[#263640]/90 bg-[#131F24]/95 backdrop-blur-md">
+        <div className="mx-auto flex h-[72px] max-w-[1100px] items-center gap-4 px-4 sm:px-6 lg:px-8">
+          <Link
+            to={phaseHref}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#91A4AC] transition hover:bg-[#1D2A33] hover:text-white"
+            aria-label="Back to zone"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
 
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-[#687D87]">
-                {courseTitle}
-                {phaseTitle ? ` · ${phaseTitle}` : ''}
-              </p>
-              <p className="truncate text-sm font-extrabold text-white">
-                {lesson.title}
-              </p>
-            </div>
-
-            <div className="hidden w-28 shrink-0 sm:block">
-              <div
-                className="h-1.5 overflow-hidden rounded-full bg-[#263640]"
-                role="progressbar"
-                aria-label="Lesson progress"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={lessonProgress}
-              >
-                <div
-                  className="h-full rounded-full bg-orange transition-all duration-300"
-                  style={{ width: `${lessonProgress}%` }}
-                />
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Friendly recoverable errors */}
-        {error && (
-          <div className="mx-auto max-w-3xl px-5 pt-5 sm:px-6">
-            <div
-              className="flex items-start gap-3 rounded-2xl border border-[#513337] bg-[#2B2226] px-4 py-3 text-sm text-[#FF9A9E]"
-              role="alert"
-            >
-              <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-              <span className="flex-1">{error}</span>
-              <button
-                type="button"
-                onClick={() => setError('')}
-                className="shrink-0 text-[#9C676B] hover:text-white"
-                aria-label="Dismiss error"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        <main className="mx-auto max-w-3xl px-5 pb-32 pt-10 sm:px-6 sm:pt-14">
-          <div className="mb-10">
-            <p className="text-sm font-bold text-orange">
-              Lesson {lesson.order}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-bold text-[#687D87]">
+              {courseTitle}
+              {phaseTitle ? ` · ${phaseTitle}` : ''}
             </p>
-
-            <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
+            <p className="truncate text-sm font-extrabold text-white">
               {lesson.title}
-            </h1>
-
-            {lesson.hook && (
-              <p className="mt-4 text-base leading-7 text-[#91A4AC] sm:text-lg">
-                {lesson.hook}
-              </p>
-            )}
+            </p>
           </div>
 
-          {/* Core lesson content */}
-          {content.length > 0 && (
-            <section className="space-y-6">
-              {content.map((paragraph, index) => (
-                <p
-                  key={`${index}-${paragraph.slice(0, 20)}`}
-                  className="text-[17px] leading-8 text-[#C8D3DA]"
-                >
-                  {paragraph}
-                </p>
-              ))}
-            </section>
-          )}
+          <div className="hidden w-28 shrink-0 sm:block">
+            <div
+              className="h-1.5 overflow-hidden rounded-full bg-[#263640]"
+              role="progressbar"
+              aria-label="Lesson progress"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={lessonProgress}
+            >
+              <div
+                className="h-full rounded-full bg-orange transition-all duration-300"
+                style={{ width: `${lessonProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      </header>
 
-          {/* Key terms */}
-          {keyTerms.length > 0 && (
-            <section className="mt-14">
-              <div className="mb-5">
-                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange">
-                  Key ideas
-                </p>
-                <h2 className="mt-1 text-2xl font-extrabold text-white">
-                  Remember these
-                </h2>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                {keyTerms.map((item) => (
-                  <div
-                    key={item.term}
-                    className="rounded-2xl border border-[#2C3E4A] bg-[#1D2A33] p-5"
-                  >
-                    <h3 className="font-extrabold text-white">{item.term}</h3>
-                    <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
-                      {item.definition}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Quiz */}
-          {quiz.length > 0 && (
-            <section className="mt-16">
-              <div className="mb-7">
-                <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange">
-                  Quick check
-                </p>
-                <h2 className="mt-1 text-2xl font-extrabold text-white">
-                  See what stuck
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
-                  Choose an answer for each question.
-                </p>
-              </div>
-
-              <div className="space-y-8">
-                {quiz.map((question, questionIndex) => {
-                  const selected = selectedAnswers[questionIndex];
-                  const checked = Boolean(checkedAnswers[questionIndex]);
-                  const correct = selected === question.correctIndex;
-
-                  return (
-                    <div
-                      key={`${questionIndex}-${question.question}`}
-                      className="rounded-3xl border border-[#2C3E4A] bg-[#1D2A33] p-5 sm:p-6"
-                    >
-                      <div className="flex gap-3">
-                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#263640] text-xs font-extrabold text-orange">
-                          {questionIndex + 1}
-                        </span>
-                        <h3 className="pt-0.5 text-base font-extrabold leading-6 text-white">
-                          {question.question}
-                        </h3>
-                      </div>
-
-                      <div className="mt-5 space-y-2.5">
-                        {question.options.map((option, optionIndex) => {
-                          const isSelected = selected === optionIndex;
-                          const isCorrect = optionIndex === question.correctIndex;
-
-                          return (
-                            <button
-                              key={`${questionIndex}-${optionIndex}-${option}`}
-                              type="button"
-                              onClick={() =>
-                                selectAnswer(questionIndex, optionIndex)
-                              }
-                              disabled={checked}
-                              className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left text-sm font-semibold transition disabled:cursor-default ${getOptionClasses(
-                                checked,
-                                isSelected,
-                                isCorrect,
-                              )}`}
-                            >
-                              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#40515B] text-xs text-[#91A4AC]">
-                                {String.fromCharCode(65 + optionIndex)}
-                              </span>
-
-                              <span className="flex-1 text-[#D8E0E4]">
-                                {option}
-                              </span>
-
-                              {checked && isCorrect && (
-                                <Check className="h-4 w-4 shrink-0 text-[#3DDC84]" />
-                              )}
-
-                              {checked && isSelected && !correct && (
-                                <X className="h-4 w-4 shrink-0 text-[#FF5A5F]" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {!checked ? (
-                        <button
-                          type="button"
-                          onClick={() => checkAnswer(questionIndex)}
-                          disabled={selected === undefined}
-                          className="mt-4 min-h-11 rounded-xl bg-[#263640] px-5 text-sm font-extrabold text-white transition hover:bg-[#30434E] disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          Check answer
-                        </button>
-                      ) : (
-                        <div
-                          className={`mt-4 rounded-xl px-4 py-3 text-sm font-bold ${
-                            correct
-                              ? 'bg-[#1C3027] text-[#3DDC84]'
-                              : 'bg-[#322225] text-[#FF9A9E]'
-                          }`}
-                          role="status"
-                        >
-                          {correct
-                            ? 'Correct. Nice work.'
-                            : `Not quite. The correct answer is “${question.options[question.correctIndex]}”.`}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* Completion */}
-          <div className="mt-14 flex flex-col items-center text-center">
-            {quiz.length > 0 && allQuizChecked && (
-              <p className="mb-4 text-sm font-bold text-[#91A4AC]">
-                You got {quizScore} of {quiz.length} correct.
-              </p>
-            )}
-
+      {/* Friendly recoverable errors */}
+      {error && (
+        <div className="mx-auto max-w-3xl px-5 pt-5 sm:px-6">
+          <div
+            className="flex items-start gap-3 rounded-2xl border border-[#513337] bg-[#2B2226] px-4 py-3 text-sm text-[#FF9A9E]"
+            role="alert"
+          >
+            <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <span className="flex-1">{error}</span>
             <button
               type="button"
-              onClick={() => void completeLesson()}
-              disabled={
-                completing ||
-                !allQuizChecked ||
-                !hasLessonMaterial
-              }
-              className="inline-flex min-h-14 min-w-[210px] items-center justify-center gap-2 rounded-2xl bg-orange px-7 font-extrabold text-white shadow-[0_5px_0_#C94D16] transition hover:brightness-105 active:translate-y-[2px] active:shadow-[0_3px_0_#C94D16] disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={() => setError('')}
+              className="shrink-0 text-[#9C676B] hover:text-white"
+              aria-label="Dismiss error"
             >
-              {completing ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Saving…
-                </>
-              ) : (
-                <>
-                  Finish lesson
-                  <CheckCircle2 className="h-5 w-5" />
-                </>
-              )}
+              <X className="h-4 w-4" />
             </button>
-
-            {answeredCount > 0 && quiz.length > 0 && !allQuizChecked && (
-              <p className="mt-3 text-xs text-[#687D87]">
-                Check all {quiz.length} answers to finish the lesson.
-              </p>
-            )}
           </div>
-        </main>
+        </div>
+      )}
+
+      <div className="mx-auto max-w-3xl px-5 pb-32 pt-10 sm:px-6 sm:pt-14">
+        <div className="mb-10">
+          <p className="text-sm font-bold text-orange">
+            Lesson {lesson.order}
+          </p>
+
+          <h1 className="mt-2 text-3xl font-extrabold leading-tight tracking-tight text-white sm:text-4xl">
+            {lesson.title}
+          </h1>
+
+          {lesson.hook && (
+            <p className="mt-4 text-base leading-7 text-[#91A4AC] sm:text-lg">
+              {lesson.hook}
+            </p>
+          )}
+        </div>
+
+        {/* Core lesson content */}
+        {content.length > 0 && (
+          <section className="space-y-6">
+            {content.map((paragraph, index) => (
+              <p
+                key={`${index}-${paragraph.slice(0, 20)}`}
+                className="text-[17px] leading-8 text-[#C8D3DA]"
+              >
+                {paragraph}
+              </p>
+            ))}
+          </section>
+        )}
+
+        {/* Key terms */}
+        {keyTerms.length > 0 && (
+          <section className="mt-14">
+            <div className="mb-5">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange">
+                Key ideas
+              </p>
+              <h2 className="mt-1 text-2xl font-extrabold text-white">
+                Remember these
+              </h2>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              {keyTerms.map((item) => (
+                <div
+                  key={item.term}
+                  className="rounded-2xl border border-[#2C3E4A] bg-[#1D2A33] p-5"
+                >
+                  <h3 className="font-extrabold text-white">{item.term}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
+                    {item.definition}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Quiz */}
+        {quiz.length > 0 && (
+          <section className="mt-16">
+            <div className="mb-7">
+              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange">
+                Quick check
+              </p>
+              <h2 className="mt-1 text-2xl font-extrabold text-white">
+                See what stuck
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
+                Choose an answer for each question.
+              </p>
+            </div>
+
+            <div className="space-y-8">
+              {quiz.map((question, questionIndex) => {
+                const selected = selectedAnswers[questionIndex];
+                const checked = Boolean(checkedAnswers[questionIndex]);
+                const correct = selected === question.correctIndex;
+
+                return (
+                  <div
+                    key={`${questionIndex}-${question.question}`}
+                    className="rounded-3xl border border-[#2C3E4A] bg-[#1D2A33] p-5 sm:p-6"
+                  >
+                    <div className="flex gap-3">
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#263640] text-xs font-extrabold text-orange">
+                        {questionIndex + 1}
+                      </span>
+                      <h3 className="pt-0.5 text-base font-extrabold leading-6 text-white">
+                        {question.question}
+                      </h3>
+                    </div>
+
+                    <div className="mt-5 space-y-2.5">
+                      {question.options.map((option, optionIndex) => {
+                        const isSelected = selected === optionIndex;
+                        const isCorrect = optionIndex === question.correctIndex;
+
+                        return (
+                          <button
+                            key={`${questionIndex}-${optionIndex}-${option}`}
+                            type="button"
+                            onClick={() =>
+                              selectAnswer(questionIndex, optionIndex)
+                            }
+                            disabled={checked}
+                            className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left text-sm font-semibold transition disabled:cursor-default ${getOptionClasses(
+                              checked,
+                              isSelected,
+                              isCorrect,
+                            )}`}
+                          >
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#40515B] text-xs text-[#91A4AC]">
+                              {String.fromCharCode(65 + optionIndex)}
+                            </span>
+
+                            <span className="flex-1 text-[#D8E0E4]">
+                              {option}
+                            </span>
+
+                            {checked && isCorrect && (
+                              <Check className="h-4 w-4 shrink-0 text-[#3DDC84]" />
+                            )}
+
+                            {checked && isSelected && !correct && (
+                              <X className="h-4 w-4 shrink-0 text-[#FF5A5F]" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {!checked ? (
+                      <button
+                        type="button"
+                        onClick={() => checkAnswer(questionIndex)}
+                        disabled={selected === undefined}
+                        className="mt-4 min-h-11 rounded-xl bg-[#263640] px-5 text-sm font-extrabold text-white transition hover:bg-[#30434E] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        Check answer
+                      </button>
+                    ) : (
+                      <div
+                        className={`mt-4 rounded-xl px-4 py-3 text-sm font-bold ${
+                          correct
+                            ? 'bg-[#1C3027] text-[#3DDC84]'
+                            : 'bg-[#322225] text-[#FF9A9E]'
+                        }`}
+                        role="status"
+                      >
+                        {correct
+                          ? 'Correct. Nice work.'
+                          : `Not quite. The correct answer is “${question.options[question.correctIndex]}”.`}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Completion */}
+        <div className="mt-14 flex flex-col items-center text-center">
+          {quiz.length > 0 && allQuizChecked && (
+            <p className="mb-4 text-sm font-bold text-[#91A4AC]">
+              You got {quizScore} of {quiz.length} correct.
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={() => void completeLesson()}
+            disabled={
+              completing ||
+              !allQuizChecked ||
+              !hasLessonMaterial
+            }
+            className="inline-flex min-h-14 min-w-[210px] items-center justify-center gap-2 rounded-2xl bg-orange px-7 font-extrabold text-white shadow-[0_5px_0_#C94D16] transition hover:brightness-105 active:translate-y-[2px] active:shadow-[0_3px_0_#C94D16] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {completing ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                Finish lesson
+                <CheckCircle2 className="h-5 w-5" />
+              </>
+            )}
+          </button>
+
+          {answeredCount > 0 && quiz.length > 0 && !allQuizChecked && (
+            <p className="mt-3 text-xs text-[#687D87]">
+              Check all {quiz.length} answers to finish the lesson.
+            </p>
+          )}
+        </div>
       </div>
-    </AppShell>
+    </div>
   );
 }

@@ -8,7 +8,6 @@ import {
   RefreshCw,
 } from 'lucide-react';
 
-import AppShell from './AppShell';
 import LessonNode, {
   type LessonNodeData,
   type LessonNodeStatus,
@@ -383,7 +382,7 @@ export default function PhaseDetail() {
   };
 
   return (
-    <AppShell>
+    <>
       <div className={containerClasses}>
         {loading ? (
           <p className={stateClasses} role="status">
@@ -578,6 +577,6 @@ export default function PhaseDetail() {
           }}
         />
       )}
-    </AppShell>
+    </>
   );
 }
