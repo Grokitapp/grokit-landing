@@ -54,11 +54,11 @@ const nodeLockedClasses =
   'cursor-not-allowed border border-[#37464F] bg-[#202F35] text-[#60757E] shadow-[0_6px_0_#0D161A]';
 
 const bannerClasses: Record<ZoneState, string> = {
-  complete: 'bg-emerald-600 text-white shadow-[0_4px_0_#065F46]',
-  current: 'bg-orange text-white shadow-[0_4px_0_#C94713]',
-  available: 'bg-orange text-white shadow-[0_4px_0_#C94713]',
+  complete: 'bg-emerald-600 text-white shadow-[0_3px_0_#065F46]',
+  current: 'bg-orange text-white shadow-[0_3px_0_#C94713]',
+  available: 'bg-orange text-white shadow-[0_3px_0_#C94713]',
   locked:
-    'border border-[#37464F] bg-[#202F35] text-[#78909A] shadow-[0_4px_0_#0D161A]',
+    'border border-[#37464F] bg-[#202F35] text-[#78909A] shadow-[0_3px_0_#0D161A]',
 };
 
 // -----------------------------------------------------------------------------
@@ -84,22 +84,26 @@ function ZoneBanner({
         } completed`;
 
   const actionClasses =
-    'flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 border-white/25 bg-white/15';
+    'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border-2 border-white/25 bg-white/15';
 
   return (
-    // Sits just under the sticky journey title bar (h-14), which itself sits
-    // under the 64px mobile header. The wrapper paints the page colour so nodes
-    // never show through the gap.
-    <div className="sticky top-[120px] z-20 bg-[#131F24] pb-3 pt-2 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-[#131F24] after:to-transparent lg:top-14">
+    // Pins directly under the journey card (h-24, which itself sits under the
+    // 64px mobile header). The next zone's banner pushes this one off when it
+    // arrives, because each banner is sticky only within its own <section>.
+    // The wrapper paints the page colour so nodes never show through the gap.
+    <div className="sticky top-40 z-20 bg-[#131F24] pb-2 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-[#131F24] after:to-transparent lg:top-24">
       <div
-        className={`${PATH_WIDTH} flex items-center justify-between gap-4 rounded-2xl px-5 py-4 ${bannerClasses[state]}`}
+        className={`${PATH_WIDTH} flex items-center justify-between gap-3 rounded-xl px-4 py-2.5 ${bannerClasses[state]}`}
       >
         <div className="min-w-0">
-          <p className="text-sm font-bold opacity-80">Zone {zone.order}</p>
-          <h2 className="break-words font-display text-lg font-extrabold leading-snug sm:text-xl">
+          <h2
+            title={zone.title}
+            className="truncate font-display text-base font-extrabold leading-snug"
+          >
             {zone.title}
           </h2>
-          <p className="mt-0.5 text-xs font-semibold opacity-80">
+          <p className="truncate text-xs font-semibold opacity-80">
+            Zone {zone.order} ·{' '}
             {locked ? 'Complete the previous zone to unlock' : progressText}
           </p>
         </div>
@@ -107,9 +111,9 @@ function ZoneBanner({
         {locked ? (
           <span
             aria-hidden="true"
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#37464F] bg-[#19262B]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[#37464F] bg-[#19262B]"
           >
-            <Lock className="h-5 w-5" />
+            <Lock className="h-4 w-4" />
           </span>
         ) : (
           <Link
@@ -118,7 +122,7 @@ function ZoneBanner({
             title="Open zone"
             className={`${actionClasses} transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white`}
           >
-            <BookOpen className="h-5 w-5" aria-hidden="true" />
+            <BookOpen className="h-4 w-4" aria-hidden="true" />
           </Link>
         )}
       </div>
