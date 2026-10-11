@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
   ArrowRight,
   Check,
+  Lock,
+  RefreshCw,
 } from 'lucide-react';
 
 import AppShell from './AppShell';
@@ -20,6 +22,7 @@ import grokitMascot from '../../assets/grokit-hero-mascot.png';
 import {
   generateLessonContent,
   getCourse,
+  getPhase,
   listLessonsForPhase,
   listProgressForCourse,
 } from '../../lib/courseGeneration';
@@ -34,8 +37,7 @@ const containerClasses =
 const backClasses =
   'inline-flex items-center gap-2 text-[#91A4AC] hover:text-white text-sm font-semibold transition-colors mb-8';
 
-const headerClasses =
-  'mb-10';
+const headerClasses = 'mb-10';
 
 const eyebrowClasses =
   'text-orange text-xs sm:text-sm font-bold uppercase tracking-[0.16em]';
@@ -44,7 +46,7 @@ const titleClasses =
   'mt-2 font-display font-bold text-white text-2xl sm:text-3xl';
 
 const subtitleClasses =
-  'mt-2 text-[#91A4AC] text-sm sm:text-base';
+  'mt-2 text-[#91A4AC] text-sm sm:text-base leading-6';
 
 const progressRowClasses =
   'mt-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-5';
@@ -64,14 +66,12 @@ const sectionHeaderClasses =
 const sectionTitleClasses =
   'font-display font-bold text-white text-lg sm:text-xl';
 
-const pathClasses =
-  'relative';
+const pathClasses = 'relative';
 
 const pathLineClasses =
   'absolute left-[31px] sm:left-[35px] top-8 bottom-8 w-px bg-[#37464F]';
 
-const lessonsClasses =
-  'relative flex flex-col gap-2';
+const lessonsClasses = 'relative flex flex-col gap-2';
 
 const completionClasses =
   'mt-8 flex items-center gap-3 rounded-2xl border border-orange/20 bg-orange/5 px-4 py-4';
@@ -82,113 +82,242 @@ const completionIconClasses =
 const stateClasses =
   'text-[#91A4AC] text-sm text-center py-20';
 
+const actionErrorClasses =
+  'mt-5 rounded-xl border border-red-400/20 bg-red-400/5 px-4 py-3 text-sm leading-6 text-red-200';
+
 // -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
 export default function PhaseDetail() {
   const navigate = useNavigate();
-
-  const {
-    courseId,
-    phaseId,
-  } = useParams<{
+  const { courseId, phaseId } = useParams<{
     courseId: string;
     phaseId: string;
   }>();
 
   const [courseTitle, setCourseTitle] = useState('');
+  const [phaseTitle, setPhaseTitle] = useState('');
+
   const [lessons, setLessons] = useState<LessonNodeData[]>([]);
-  const [lessonHooks, setLessonHooks] =
-    useState<Record<string, string>>({});
+  const [lessonHooks, setLessonHooks] = useState<Record<string, string>>({});
   const [lessonHasContent, setLessonHasContent] =
     useState<Record<string, boolean>>({});
-  const [activeLessonId, setActiveLessonId] =
-    useState<string | null>(null);
 
-  const [phaseTitle, setPhaseTitle] = useState('');
+  const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(true);
+  const [phaseLocked, setPhaseLocked] = useState(false);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [generatingLessonId, setGeneratingLessonId] = useState<string | null>(
+    null,
+  );
 
-  useEffect(() => {
-    if (!courseId || !phaseId) return;
+  const loadPhase = useCallback(async () => {
+    if (!courseId || !phaseId) {
+      setError('This learning path could not be opened. Please return to your Dive Path.');
+      setLoading(false);
+      return;
+    }
 
     let cancelled = false;
 
-    (async () => {
+    setLoading(true);
+    setError('');
+    setActionError('');
+    setActiveLessonId(null);
+
+    try {
+      const [course, phase, lessonRecords, progress] = await Promise.all([
+        getCourse(courseId),
+        getPhase(phaseId),
+        listLessonsForPhase(phaseId),
+        listProgressForCourse(courseId),
+      ]);
+
+      if (cancelled) return;
+
+      if (!course || !phase || phase.courseId !== courseId) {
+        setError('This zone could not be found in your learning path.');
+        setLessons([]);
+        return;
+      }
+
+      const isLocked = Boolean(phase.locked);
+      setPhaseLocked(isLocked);
+      setCourseTitle(course.title ?? 'Your learning journey');
+      setPhaseTitle(phase.title ?? 'Your next zone');
+
+      if (isLocked) {
+        setLessons([]);
+        setLessonHooks({});
+        setLessonHasContent({});
+        return;
+      }
+
+      // Sort defensively so unlocking follows the intended lesson order.
+      const orderedLessons = [...lessonRecords].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+
+      const completedIds = new Set(
+        progress.map((item) => item.lessonId),
+      );
+
+      let nextLessonAssigned = false;
+
+      const mappedLessons: LessonNodeData[] = orderedLessons.map((lesson) => {
+        let status: LessonNodeStatus;
+
+        if (completedIds.has(lesson.id)) {
+          status = 'completed';
+        } else if (!nextLessonAssigned) {
+          status = 'unlocked';
+          nextLessonAssigned = true;
+        } else {
+          status = 'locked';
+        }
+
+        return {
+          id: lesson.id,
+          title: lesson.title,
+          status,
+          mascotUrl: status === 'unlocked' ? grokitMascot : undefined,
+        };
+      });
+
+      const hooks: Record<string, string> = {};
+      const hasContent: Record<string, boolean> = {};
+
+      orderedLessons.forEach((lesson) => {
+        hooks[lesson.id] = lesson.hook ?? '';
+        hasContent[lesson.id] = lesson.status === 'READY';
+      });
+
+      setLessons(mappedLessons);
+      setLessonHooks(hooks);
+      setLessonHasContent(hasContent);
+    } catch (err) {
+      console.error('Failed to load learning zone', err);
+
+      if (!cancelled) {
+        setError(
+          'We couldn’t load this zone. Check your connection and try again.',
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, phaseId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const run = async () => {
+      if (!courseId || !phaseId) {
+        setError(
+          'This learning path could not be opened. Please return to your Dive Path.',
+        );
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+      setError('');
+      setActionError('');
+      setActiveLessonId(null);
+
       try {
-        const [
-          course,
-          lessonRecords,
-          progress,
-        ] = await Promise.all([
+        const [course, phase, lessonRecords, progress] = await Promise.all([
           getCourse(courseId),
+          getPhase(phaseId),
           listLessonsForPhase(phaseId),
           listProgressForCourse(courseId),
         ]);
 
         if (cancelled) return;
 
+        if (!course || !phase || phase.courseId !== courseId) {
+          setError('This zone could not be found in your learning path.');
+          setLessons([]);
+          return;
+        }
+
+        const isLocked = Boolean(phase.locked);
+
+        setPhaseLocked(isLocked);
+        setCourseTitle(course.title ?? 'Your learning journey');
+        setPhaseTitle(phase.title ?? 'Your next zone');
+
+        if (isLocked) {
+          setLessons([]);
+          setLessonHooks({});
+          setLessonHasContent({});
+          return;
+        }
+
+        const orderedLessons = [...lessonRecords].sort(
+          (a, b) => (a.order ?? 0) - (b.order ?? 0),
+        );
+
         const completedIds = new Set(
           progress.map((item) => item.lessonId),
         );
 
-        let currentAssigned = false;
+        let nextLessonAssigned = false;
 
-        const mapped: LessonNodeData[] =
-          lessonRecords.map((lesson) => {
-            let status: LessonNodeStatus;
+        const mappedLessons: LessonNodeData[] = orderedLessons.map((lesson) => {
+          let status: LessonNodeStatus;
 
-            if (completedIds.has(lesson.id)) {
-              status = 'completed';
-            } else if (!currentAssigned) {
-              status = 'unlocked';
-              currentAssigned = true;
-            } else {
-              status = 'locked';
-            }
+          if (completedIds.has(lesson.id)) {
+            status = 'completed';
+          } else if (!nextLessonAssigned) {
+            status = 'unlocked';
+            nextLessonAssigned = true;
+          } else {
+            status = 'locked';
+          }
 
-            return {
-              id: lesson.id,
-              title: lesson.title,
-              status,
-              mascotUrl:
-                status === 'unlocked'
-                  ? grokitMascot
-                  : undefined,
-            };
-          });
+          return {
+            id: lesson.id,
+            title: lesson.title,
+            status,
+            mascotUrl: status === 'unlocked' ? grokitMascot : undefined,
+          };
+        });
 
         const hooks: Record<string, string> = {};
         const hasContent: Record<string, boolean> = {};
 
-        lessonRecords.forEach((lesson) => {
+        orderedLessons.forEach((lesson) => {
           hooks[lesson.id] = lesson.hook ?? '';
-          hasContent[lesson.id] =
-            lesson.status === 'READY';
+          hasContent[lesson.id] = lesson.status === 'READY';
         });
 
-        setCourseTitle(course?.title ?? '');
-        setPhaseTitle(
-          phaseRecordsTitle(lessonRecords, phaseId),
-        );
-        setLessons(mapped);
+        setLessons(mappedLessons);
         setLessonHooks(hooks);
         setLessonHasContent(hasContent);
       } catch (err) {
+        console.error('Failed to load learning zone', err);
+
         if (!cancelled) {
           setError(
-            err instanceof Error
-              ? err.message
-              : 'Failed to load phase',
+            'We couldn’t load this zone. Check your connection and try again.',
           );
         }
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
-    })();
+    };
+
+    void run();
 
     return () => {
       cancelled = true;
@@ -206,10 +335,7 @@ export default function PhaseDetail() {
       completed,
       total,
       complete: total > 0 && completed === total,
-      percentage:
-        total > 0
-          ? Math.round((completed / total) * 100)
-          : 0,
+      percentage: total > 0 ? Math.round((completed / total) * 100) : 0,
     };
   }, [lessons]);
 
@@ -217,155 +343,221 @@ export default function PhaseDetail() {
     (lesson) => lesson.id === activeLessonId,
   );
 
-  const activeLessonMeta: LessonMeta | null =
-    activeLesson
-      ? {
-          id: activeLesson.id,
-          title: activeLesson.title,
-          hook:
-            lessonHooks[activeLesson.id] ?? '',
-          hasContent:
-            lessonHasContent[activeLesson.id] ?? false,
-        }
-      : null;
+  const activeLessonMeta: LessonMeta | null = activeLesson
+    ? {
+        id: activeLesson.id,
+        title: activeLesson.title,
+        hook: lessonHooks[activeLesson.id] ?? '',
+        hasContent: lessonHasContent[activeLesson.id] ?? false,
+      }
+    : null;
 
-  const handleGenerate = async (
-    lessonId: string,
-  ) => {
-    await generateLessonContent(lessonId);
+  const handleGenerate = async (lessonId: string) => {
+    if (generatingLessonId) return;
 
-    setLessonHasContent((previous) => ({
-      ...previous,
-      [lessonId]: true,
-    }));
+    setGeneratingLessonId(lessonId);
+    setActionError('');
+
+    try {
+      await generateLessonContent(lessonId);
+
+      setLessonHasContent((previous) => ({
+        ...previous,
+        [lessonId]: true,
+      }));
+    } catch (err) {
+      console.error('Failed to generate lesson content', err);
+      setActionError(
+        'We couldn’t prepare this lesson. Please try again in a moment.',
+      );
+      throw err;
+    } finally {
+      setGeneratingLessonId(null);
+    }
   };
 
   const handleStart = (lessonId: string) => {
-    navigate(
-      `/learn/course/${courseId}/lesson/${lessonId}`,
-    );
+    if (!courseId || !lessonId) return;
+
+    navigate(`/learn/course/${courseId}/lesson/${lessonId}`);
   };
 
   return (
     <AppShell>
       <div className={containerClasses}>
         {loading ? (
-          <p className={stateClasses}>
-            Loading your zone...
+          <p className={stateClasses} role="status">
+            Loading your zone…
           </p>
         ) : error ? (
-          <p className={stateClasses}>{error}</p>
+          <div className="mx-auto max-w-lg py-16 text-center">
+            <p className="text-base font-semibold text-white">{error}</p>
+
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#37464F] px-4 text-sm font-semibold text-white transition hover:bg-[#202F35]"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Try again
+            </button>
+
+            {courseId && (
+              <div>
+                <Link
+                  to={`/learn/course/${courseId}`}
+                  className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-orange hover:text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Dive Path
+                </Link>
+              </div>
+            )}
+          </div>
         ) : (
           <>
             <Link
               to={`/learn/course/${courseId}`}
               className={backClasses}
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="h-4 w-4" />
               Back to Dive Path
             </Link>
 
             <header className={headerClasses}>
-              <p className={eyebrowClasses}>
-                {courseTitle}
-              </p>
+              <p className={eyebrowClasses}>{courseTitle}</p>
 
-              <h1 className={titleClasses}>
-                {phaseTitle || 'Your next zone'}
-              </h1>
+              <h1 className={titleClasses}>{phaseTitle}</h1>
 
               <p className={subtitleClasses}>
-                Work through the lessons in order.
-                Complete one to unlock the next.
+                Work through the lessons in order. Complete one to unlock the
+                next.
               </p>
 
-              <div className={progressRowClasses}>
-                <div className={progressTrackClasses}>
+              {!phaseLocked && (
+                <div className={progressRowClasses}>
                   <div
-                    className="h-full rounded-full bg-orange transition-all duration-500"
-                    style={{
-                      width: `${stats.percentage}%`,
-                    }}
-                  />
-                </div>
-
-                <p className={progressMetaClasses}>
-                  {stats.completed}/{stats.total}
-                  {' '}
-                  completed
-                </p>
-              </div>
-            </header>
-
-            <section className={sectionClasses}>
-              <div className={sectionHeaderClasses}>
-                <div>
-                  <h2 className={sectionTitleClasses}>
-                    Lessons
-                  </h2>
-
-                  <p className="text-[#60757E] text-sm mt-1">
-                    Keep moving forward.
-                  </p>
-                </div>
-
-                {stats.complete && (
-                  <span className="inline-flex items-center gap-1.5 text-orange text-sm font-semibold">
-                    <Check className="w-4 h-4" />
-                    Zone complete
-                  </span>
-                )}
-              </div>
-
-              {lessons.length === 0 ? (
-                <p className="text-[#91A4AC] text-sm text-center py-12">
-                  No lessons are available in this zone yet.
-                </p>
-              ) : (
-                <div className={pathClasses}>
-                  <div className={pathLineClasses} />
-
-                  <div className={lessonsClasses}>
-                    {lessons.map((lesson) => (
-                      <LessonNode
-                        key={lesson.id}
-                        lesson={lesson}
-                        onSelect={setActiveLessonId}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {stats.complete && (
-                <div className={completionClasses}>
-                  <div className={completionIconClasses}>
-                    <Check
-                      className="w-4 h-4 text-white"
-                      strokeWidth={2.5}
+                    className={progressTrackClasses}
+                    role="progressbar"
+                    aria-label="Zone completion"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={stats.percentage}
+                  >
+                    <div
+                      className="h-full rounded-full bg-orange transition-all duration-500"
+                      style={{ width: `${stats.percentage}%` }}
                     />
                   </div>
 
-                  <div className="min-w-0">
-                    <p className="text-white font-semibold text-sm">
-                      You completed this zone.
-                    </p>
+                  <p className={progressMetaClasses}>
+                    {stats.completed}/{stats.total} completed
+                  </p>
+                </div>
+              )}
+            </header>
 
-                    <p className="text-[#91A4AC] text-sm mt-0.5">
-                      Continue back on your Dive Path.
-                    </p>
+            {phaseLocked ? (
+              <section className={sectionClasses}>
+                <div className="mx-auto max-w-md py-10 text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#37464F] bg-[#202F35]">
+                    <Lock className="h-6 w-6 text-[#91A4AC]" />
                   </div>
+
+                  <h2 className="mt-5 text-xl font-bold text-white">
+                    This zone is still locked
+                  </h2>
+
+                  <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
+                    Finish the earlier zones in your Dive Path to unlock this
+                    one.
+                  </p>
 
                   <Link
                     to={`/learn/course/${courseId}`}
-                    className="ml-auto shrink-0 text-orange hover:text-white transition-colors"
-                    aria-label="Back to Dive Path"
+                    className="mt-6 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange px-5 font-bold text-white transition hover:brightness-105"
                   >
-                    <ArrowRight className="w-5 h-5" />
+                    Return to Dive Path
+                    <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
-              )}
-            </section>
+              </section>
+            ) : (
+              <section className={sectionClasses}>
+                <div className={sectionHeaderClasses}>
+                  <div>
+                    <h2 className={sectionTitleClasses}>Lessons</h2>
+                    <p className="mt-1 text-sm text-[#60757E]">
+                      Keep moving forward.
+                    </p>
+                  </div>
+
+                  {stats.complete && (
+                    <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-orange">
+                      <Check className="h-4 w-4" />
+                      Zone complete
+                    </span>
+                  )}
+                </div>
+
+                {actionError && (
+                  <p className={actionErrorClasses} role="alert">
+                    {actionError}
+                  </p>
+                )}
+
+                {lessons.length === 0 ? (
+                  <div className="py-12 text-center">
+                    <p className="text-sm text-[#91A4AC]">
+                      No lessons are available in this zone yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className={pathClasses}>
+                    <div className={pathLineClasses} />
+
+                    <div className={lessonsClasses}>
+                      {lessons.map((lesson) => (
+                        <LessonNode
+                          key={lesson.id}
+                          lesson={lesson}
+                          onSelect={setActiveLessonId}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {stats.complete && (
+                  <div className={completionClasses}>
+                    <div className={completionIconClasses}>
+                      <Check
+                        className="h-4 w-4 text-white"
+                        strokeWidth={2.5}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white">
+                        You completed this zone.
+                      </p>
+
+                      <p className="mt-0.5 text-sm text-[#91A4AC]">
+                        Continue back on your Dive Path.
+                      </p>
+                    </div>
+
+                    <Link
+                      to={`/learn/course/${courseId}`}
+                      className="ml-auto shrink-0 text-orange transition-colors hover:text-white"
+                      aria-label="Back to Dive Path"
+                    >
+                      <ArrowRight className="h-5 w-5" />
+                    </Link>
+                  </div>
+                )}
+              </section>
+            )}
           </>
         )}
       </div>
@@ -376,30 +568,16 @@ export default function PhaseDetail() {
           onClose={() => setActiveLessonId(null)}
           onStart={handleStart}
           onGenerate={handleGenerate}
-          onPodcast={(id) =>
-            console.log('podcast', id)
-          }
-          onLiveChallenge={(id) =>
-            console.log('live challenge', id)
-          }
+          onPodcast={(id) => {
+            console.info('Podcast feature is not implemented yet.', { id });
+          }}
+          onLiveChallenge={(id) => {
+            console.info('Live challenge feature is not implemented yet.', {
+              id,
+            });
+          }}
         />
       )}
     </AppShell>
   );
-}
-
-/**
- * The current PhaseDetail API only receives lessons from the
- * phase-specific query. We intentionally keep phase naming
- * isolated here until the phase record itself is loaded by this
- * page.
- *
- * The current backend helper does not expose a phase getter,
- * so use a neutral title rather than inventing one.
- */
-function phaseRecordsTitle(
-  _lessons: unknown[],
-  _phaseId: string,
-) {
-  return '';
 }

@@ -1,12 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-
-import {
-  NavLink,
-  useLocation,
-  useNavigate,
-} from 'react-router';
-
+import { NavLink, useLocation, useNavigate } from 'react-router';
 import {
   ArrowRight,
   ChevronRight,
@@ -16,20 +10,30 @@ import {
   LogOut,
   Menu,
   Plus,
+  RefreshCw,
   Settings,
   Sparkles,
   UserRound,
   X,
 } from 'lucide-react';
-
 import { fetchUserAttributes } from 'aws-amplify/auth';
 
 import { GrokitLogo } from '../../components/Grokitlogo';
 import { signOutUser } from '../auth/authService';
+import { listCourses } from '../../lib/courseGeneration';
+
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+interface Journey {
+  id: string;
+  title: string;
+}
 
 interface AppShellProps {
   children: ReactNode;
-  courses?: { id: string; title: string }[];
+  courses?: Journey[];
   coursesLoading?: boolean;
   userName?: string;
 }
@@ -40,10 +44,14 @@ const navItems = [
   { label: 'Library', icon: Library, to: '/library' },
 ];
 
+// -----------------------------------------------------------------------------
+// App shell
+// -----------------------------------------------------------------------------
+
 export default function AppShell({
   children,
-  courses = [],
-  coursesLoading = false,
+  courses: providedCourses,
+  coursesLoading: providedCoursesLoading,
   userName: providedUserName,
 }: AppShellProps) {
   const location = useLocation();
@@ -54,14 +62,131 @@ export default function AppShell({
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
   const [userName, setUserName] = useState(providedUserName || 'You');
 
-  const accountRef = useRef<HTMLDivElement>(null);
+  // If a parent supplies journeys, continue using that API.
+  // Otherwise, AppShell manages its own journey list.
+  const [loadedCourses, setLoadedCourses] = useState<Journey[]>([]);
+  const [loadedCoursesLoading, setLoadedCoursesLoading] = useState(
+    providedCourses === undefined,
+  );
+  const [coursesError, setCoursesError] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const pathname = location.pathname.replace(/\/+$/, '').toLowerCase();
+  const accountRef = useRef<HTMLDivElement>(null);
+  const requestRef = useRef(0);
+
+  const courses = providedCourses ?? loadedCourses;
+  const coursesLoading =
+    providedCoursesLoading ?? loadedCoursesLoading;
+
+  const pathname = location.pathname
+    .replace(/\/+$/, '')
+    .toLowerCase();
+
   const isCreateFlow =
     pathname === '/' ||
     pathname === '/create' ||
     pathname.startsWith('/learn/personalize') ||
     pathname.startsWith('/learn/generating');
+
+  const refreshJourneys = useCallback(() => {
+    if (providedCourses !== undefined) return;
+    setRefreshKey((current) => current + 1);
+  }, [providedCourses]);
+
+  // ---------------------------------------------------------------------------
+  // Load journeys
+  // ---------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (providedCourses !== undefined) {
+      setLoadedCoursesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const requestId = ++requestRef.current;
+
+    // Extract the journey ID from /learn/course/:courseId.
+    const journeyIdFromRoute =
+      location.pathname.match(/\/learn\/course\/([^/?#]+)/i)?.[1];
+
+    const wait = (milliseconds: number) =>
+      new Promise<void>((resolve) => {
+        window.setTimeout(resolve, milliseconds);
+      });
+
+    const loadJourneys = async () => {
+      setLoadedCoursesLoading(true);
+      setCoursesError(false);
+
+      // Newly created records may take a moment to appear in a list query.
+      // Retry briefly if the current page identifies a journey we cannot find.
+      const retryDelays = journeyIdFromRoute
+        ? [0, 500, 1000, 2000, 3500]
+        : [0];
+
+      try {
+        for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+          if (retryDelays[attempt] > 0) {
+            await wait(retryDelays[attempt]);
+          }
+
+          if (cancelled || requestId !== requestRef.current) return;
+
+          const records = await listCourses();
+
+          if (cancelled || requestId !== requestRef.current) return;
+
+          const journeys: Journey[] = records
+            .filter(
+              (record): record is typeof record & {
+                id: string;
+                title: string;
+              } => Boolean(record.id && record.title),
+            )
+            .map((record) => ({
+              id: record.id,
+              title: record.title,
+            }));
+
+          setLoadedCourses(journeys);
+
+          const targetJourneyFound =
+            !journeyIdFromRoute ||
+            journeys.some(
+              (journey) => journey.id === journeyIdFromRoute,
+            );
+
+          if (targetJourneyFound || attempt === retryDelays.length - 1) {
+            setCoursesError(false);
+            return;
+          }
+        }
+      } catch (error) {
+        if (cancelled || requestId !== requestRef.current) return;
+
+        console.error(
+          'Unable to load journeys for the sidebar',
+          error,
+        );
+        setCoursesError(true);
+      } finally {
+        if (!cancelled && requestId === requestRef.current) {
+          setLoadedCoursesLoading(false);
+        }
+      }
+    };
+
+    void loadJourneys();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [providedCourses, location.pathname, refreshKey]);
+
+  // ---------------------------------------------------------------------------
+  // Load account name
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     if (providedUserName) {
@@ -71,9 +196,10 @@ export default function AppShell({
 
     let cancelled = false;
 
-    async function loadUserName() {
+    const loadUserName = async () => {
       try {
         const attributes = await fetchUserAttributes();
+
         if (cancelled) return;
 
         setUserName(
@@ -85,7 +211,7 @@ export default function AppShell({
       } catch {
         if (!cancelled) setUserName('You');
       }
-    }
+    };
 
     void loadUserName();
 
@@ -93,6 +219,10 @@ export default function AppShell({
       cancelled = true;
     };
   }, [providedUserName]);
+
+  // ---------------------------------------------------------------------------
+  // Close popovers and drawers
+  // ---------------------------------------------------------------------------
 
   useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -131,8 +261,12 @@ export default function AppShell({
     setLogoutConfirmOpen(true);
   };
 
-  const renderNavigation = (mobile = false) => (
-    <nav className="flex flex-col gap-1">
+  // ---------------------------------------------------------------------------
+  // Primary navigation
+  // ---------------------------------------------------------------------------
+
+  const renderNavigation = () => (
+    <nav aria-label="Main navigation" className="flex flex-col gap-1">
       {navItems.map(({ label, icon: Icon, to }) => (
         <NavLink
           key={label}
@@ -142,10 +276,8 @@ export default function AppShell({
             const active = label === 'Create' ? isCreateFlow : isActive;
 
             return [
-              'group relative flex items-center gap-3',
-              'min-h-[48px] rounded-2xl px-4',
-              'font-sans text-[15px] font-bold',
-              'transition-all duration-150',
+              'group relative flex min-h-[48px] items-center gap-3 rounded-2xl px-4',
+              'font-sans text-[15px] font-bold transition-all duration-150',
               active
                 ? 'bg-[#203138] !text-[#FF6B00]'
                 : 'text-[#91A4AC] hover:bg-[#1A292F] hover:text-white',
@@ -158,14 +290,19 @@ export default function AppShell({
             return (
               <>
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-orange" />
+                  <span
+                    aria-hidden="true"
+                    className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-orange"
+                  />
                 )}
+
                 <Icon
-                  className={[
-                    'h-5 w-5 shrink-0',
-                    active ? 'text-orange' : 'text-[#91A4AC]',
-                  ].join(' ')}
+                  aria-hidden="true"
+                  className={`h-5 w-5 shrink-0 ${
+                    active ? 'text-orange' : 'text-[#91A4AC]'
+                  }`}
                 />
+
                 <span>{label}</span>
               </>
             );
@@ -175,31 +312,73 @@ export default function AppShell({
     </nav>
   );
 
-  const renderJourneys = () => (
-    <div className="mt-9 flex min-h-0 flex-1 flex-col">
-      <div className="mb-2 flex items-center justify-between px-3">
-        <span className="font-sans text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#78909A]">
-          My Journeys
-        </span>
+  // ---------------------------------------------------------------------------
+  // Journey list
+  // ---------------------------------------------------------------------------
 
-        <NavLink
-          to="/create"
-          aria-label="Create a new journey"
-          className="flex h-7 w-7 items-center justify-center rounded-full text-[#91A4AC] transition-colors hover:bg-[#203138] hover:text-orange"
-        >
-          <Plus className="h-4 w-4" />
-        </NavLink>
+  const renderJourneys = () => (
+    <section className="mt-9 flex min-h-0 flex-1 flex-col">
+      <div className="mb-2 flex items-center justify-between px-3">
+        <h2 className="font-sans text-xs font-extrabold uppercase tracking-[0.08em] text-[#78909A]">
+          My Journeys
+        </h2>
+
+        <div className="flex items-center gap-1">
+          {coursesError && (
+            <button
+              type="button"
+              onClick={refreshJourneys}
+              aria-label="Retry loading journeys"
+              title="Retry loading journeys"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[#91A4AC] transition-colors hover:bg-[#203138] hover:text-orange"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </button>
+          )}
+
+          <NavLink
+            to="/create"
+            aria-label="Create a new journey"
+            title="Create a new journey"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-[#91A4AC] transition-colors hover:bg-[#203138] hover:text-orange"
+          >
+            <Plus className="h-4 w-4" />
+          </NavLink>
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {coursesLoading ? (
-          <div className="space-y-2 px-1 pt-1">
+          <div
+            aria-label="Loading journeys"
+            aria-busy="true"
+            className="space-y-2 px-1 pt-1"
+          >
             {[0, 1, 2].map((item) => (
               <div
                 key={item}
                 className="h-12 animate-pulse rounded-2xl bg-[#1A292F]"
               />
             ))}
+          </div>
+        ) : coursesError && courses.length === 0 ? (
+          <div className="mx-1 mt-1 rounded-2xl border border-[#34474F] bg-[#19282E] p-3">
+            <p className="text-sm font-bold text-[#D6E0E3]">
+              Journeys unavailable
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-[#78909A]">
+              We couldn’t load your journeys.
+            </p>
+
+            <button
+              type="button"
+              onClick={refreshJourneys}
+              className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-orange hover:text-white"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Try again
+            </button>
           </div>
         ) : courses.length === 0 ? (
           <NavLink
@@ -209,10 +388,12 @@ export default function AppShell({
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange/10 text-orange">
               <Plus className="h-4 w-4" />
             </span>
+
             <span className="min-w-0">
               <span className="block truncate text-sm font-extrabold text-[#D6E0E3]">
                 Create a journey
               </span>
+
               <span className="mt-0.5 block text-[11px] font-medium text-[#60757E]">
                 Start with an idea
               </span>
@@ -226,7 +407,7 @@ export default function AppShell({
                 to={`/learn/course/${course.id}`}
                 className={({ isActive }) =>
                   [
-                    'flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors',
+                    'group flex min-h-[44px] items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors',
                     isActive
                       ? 'bg-[#203138] text-white'
                       : 'text-[#91A4AC] hover:bg-[#1A292F] hover:text-white',
@@ -236,17 +417,27 @@ export default function AppShell({
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#203138] text-orange">
                   <Sparkles className="h-3.5 w-3.5" />
                 </span>
-                <span className="min-w-0 flex-1 truncate">{course.title}</span>
+
+                <span className="min-w-0 flex-1 truncate">
+                  {course.title}
+                </span>
               </NavLink>
             ))}
           </div>
         )}
       </div>
-    </div>
+    </section>
   );
 
+  // ---------------------------------------------------------------------------
+  // Account controls
+  // ---------------------------------------------------------------------------
+
   const renderAccount = (mobile = false) => (
-    <div ref={accountRef} className="relative mt-auto border-t border-[#2D3C43] pt-4">
+    <div
+      ref={accountRef}
+      className="relative mt-auto border-t border-[#2D3C43] pt-4"
+    >
       {accountMenuOpen && (
         <AccountMenu
           mobile={mobile}
@@ -270,6 +461,10 @@ export default function AppShell({
     </div>
   );
 
+  // ---------------------------------------------------------------------------
+  // Layout
+  // ---------------------------------------------------------------------------
+
   return (
     <div className="min-h-[100dvh] bg-[#131F24] text-white">
       <div className="flex min-h-[100dvh]">
@@ -285,11 +480,12 @@ export default function AppShell({
         </aside>
 
         {/* Mobile top bar */}
-        <div className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[#2D3C43] bg-[#131F24]/95 px-4 backdrop-blur-xl lg:hidden">
+        <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[#2D3C43] bg-[#131F24]/95 px-4 backdrop-blur-xl lg:hidden">
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
             aria-label="Open navigation"
+            aria-expanded={mobileNavOpen}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-[#D2DFE4] hover:bg-[#203138]"
           >
             <Menu className="h-5 w-5" />
@@ -300,7 +496,7 @@ export default function AppShell({
           </div>
 
           <div className="w-10" />
-        </div>
+        </header>
 
         {/* Mobile navigation drawer */}
         {mobileNavOpen && (
@@ -312,9 +508,13 @@ export default function AppShell({
               className="absolute inset-0 bg-black/60 backdrop-blur-sm"
             />
 
-            <aside className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-[#2D3C43] bg-[#131F24] px-4 py-5 shadow-2xl">
+            <aside
+              aria-label="Mobile navigation"
+              className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col border-r border-[#2D3C43] bg-[#131F24] px-4 py-5 shadow-2xl"
+            >
               <div className="mb-7 flex min-h-[48px] items-center justify-between px-3">
                 <GrokitLogo className="h-[42px] w-[112px] object-contain object-left" />
+
                 <button
                   type="button"
                   aria-label="Close navigation"
@@ -325,7 +525,7 @@ export default function AppShell({
                 </button>
               </div>
 
-              {renderNavigation(true)}
+              {renderNavigation()}
               {renderJourneys()}
               {renderAccount(true)}
             </aside>
@@ -339,11 +539,17 @@ export default function AppShell({
       </div>
 
       {logoutConfirmOpen && (
-        <LogoutConfirmation onCancel={() => setLogoutConfirmOpen(false)} />
+        <LogoutConfirmation
+          onCancel={() => setLogoutConfirmOpen(false)}
+        />
       )}
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Account button
+// -----------------------------------------------------------------------------
 
 function AccountButton({
   userName,
@@ -377,20 +583,24 @@ function AccountButton({
         <span className="block truncate text-sm font-extrabold text-white">
           {userName}
         </span>
+
         <span className="mt-0.5 block text-[11px] font-medium text-[#60757E]">
           Account
         </span>
       </span>
 
       <ChevronRight
-        className={[
-          'h-4 w-4 shrink-0 text-[#60757E] transition-transform',
-          open ? '-rotate-90' : '',
-        ].join(' ')}
+        className={`h-4 w-4 shrink-0 text-[#60757E] transition-transform ${
+          open ? '-rotate-90' : ''
+        }`}
       />
     </button>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Account menu
+// -----------------------------------------------------------------------------
 
 function AccountMenu({
   onProfile,
@@ -404,27 +614,42 @@ function AccountMenu({
   mobile?: boolean;
 }) {
   const itemClass =
-    'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-[#E6EAEC] transition-colors hover:bg-white/[0.07]';
+    'flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold text-[#E6EAEC] transition-colors hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';
 
   return (
     <div
       role="menu"
       className={[
-        'absolute bottom-[76px] left-0 z-[70] w-full rounded-[22px] border border-[#39464C] bg-[#292929]/95 p-2 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl',
+        'absolute bottom-[76px] left-0 z-[70] w-full rounded-[22px] border border-[#39464C] bg-[#202F35]/95 p-2 shadow-[0_18px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl',
         mobile ? 'max-w-full' : '',
       ].join(' ')}
     >
-      <button type="button" role="menuitem" onClick={onProfile} className={itemClass}>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={onProfile}
+        className={itemClass}
+      >
         <UserRound className="h-[18px] w-[18px] text-[#C5CFD3]" />
         <span>Profile</span>
       </button>
 
-      <button type="button" role="menuitem" onClick={onSettings} className={itemClass}>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={onSettings}
+        className={itemClass}
+      >
         <Settings className="h-[18px] w-[18px] text-[#C5CFD3]" />
         <span>Settings</span>
       </button>
 
-      <button type="button" role="menuitem" onClick={onLogout} className={itemClass}>
+      <button
+        type="button"
+        role="menuitem"
+        onClick={onLogout}
+        className={itemClass}
+      >
         <LogOut className="h-[18px] w-[18px] text-[#C5CFD3]" />
         <span>Log out</span>
       </button>
@@ -432,8 +657,17 @@ function AccountMenu({
   );
 }
 
-function LogoutConfirmation({ onCancel }: { onCancel: () => void }) {
+// -----------------------------------------------------------------------------
+// Logout confirmation
+// -----------------------------------------------------------------------------
+
+function LogoutConfirmation({
+  onCancel,
+}: {
+  onCancel: () => void;
+}) {
   const navigate = useNavigate();
+
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -447,12 +681,9 @@ function LogoutConfirmation({ onCancel }: { onCancel: () => void }) {
       await signOutUser();
       navigate('/', { replace: true });
     } catch (logoutError) {
-      console.error('Failed to sign out:', logoutError);
-      setError(
-        logoutError instanceof Error
-          ? logoutError.message
-          : 'Unable to log out right now.',
-      );
+      console.error('Failed to sign out', logoutError);
+
+      setError('Unable to log out right now. Please try again.');
       setIsSigningOut(false);
     }
   };
@@ -481,7 +712,10 @@ function LogoutConfirmation({ onCancel }: { onCancel: () => void }) {
         </p>
 
         {error && (
-          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 text-xs font-medium text-red-200">
+          <div
+            role="alert"
+            className="mt-4 rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 text-xs font-medium text-red-200"
+          >
             {error}
           </div>
         )}

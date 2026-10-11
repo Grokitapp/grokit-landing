@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
   ArrowRight,
@@ -10,7 +11,6 @@ import {
   Sparkles,
   X,
 } from 'lucide-react';
-import { Link, useNavigate, useParams } from 'react-router';
 
 import AppShell from './AppShell';
 import { GrokitMascot } from '../../components/Grokitmascot';
@@ -23,6 +23,10 @@ import {
   markLessonComplete,
 } from '../../lib/courseGeneration';
 
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
 type QuizQuestion = {
   question: string;
   options: string[];
@@ -34,12 +38,7 @@ type KeyTerm = {
   definition: string;
 };
 
-type LessonStatus =
-  | 'PENDING'
-  | 'GENERATING'
-  | 'READY'
-  | 'FAILED'
-  | string;
+type LessonStatus = 'PENDING' | 'GENERATING' | 'READY' | 'FAILED' | string;
 
 type LessonData = {
   id: string;
@@ -55,13 +54,17 @@ type LessonData = {
   generationError?: string | null;
 };
 
-function getErrorMessage(
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+function getFriendlyError(
   error: unknown,
-  fallback: string,
+  fallback = 'Something went wrong. Please try again.',
 ): string {
-  return error instanceof Error
-    ? error.message
-    : fallback;
+  // Keep provider, GraphQL, and backend error details out of the UI.
+  console.error('Lesson player operation failed:', error);
+  return fallback;
 }
 
 function parseKeyTerms(value: unknown): KeyTerm[] {
@@ -103,14 +106,40 @@ function formatLessonContent(content: string): string[] {
     .filter(Boolean);
 }
 
-function LoadingState() {
+function getOptionClasses(
+  checked: boolean,
+  isSelected: boolean,
+  isCorrect: boolean,
+): string {
+  if (checked && isCorrect) {
+    return 'border-[#3DDC84] bg-[#1C3027]';
+  }
+
+  if (checked && isSelected) {
+    return 'border-[#FF5A5F] bg-[#322225]';
+  }
+
+  if (isSelected) {
+    return 'border-orange bg-[#32251F]';
+  }
+
+  return 'border-[#2C3E4A] bg-[#18252C] hover:border-[#40535E]';
+}
+
+// -----------------------------------------------------------------------------
+// Shared states
+// -----------------------------------------------------------------------------
+
+function LoadingState({ label = 'Opening your lesson…' }: { label?: string }) {
   return (
-    <div className="flex min-h-[60vh] items-center justify-center">
+    <div
+      className="flex min-h-[60vh] items-center justify-center"
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex flex-col items-center gap-4 text-center">
         <Loader2 className="h-7 w-7 animate-spin text-orange" />
-        <p className="text-sm font-semibold text-[#91A4AC]">
-          Opening your lesson…
-        </p>
+        <p className="text-sm font-semibold text-[#91A4AC]">{label}</p>
       </div>
     </div>
   );
@@ -119,9 +148,11 @@ function LoadingState() {
 function ErrorState({
   message,
   onRetry,
+  backHref,
 }: {
   message: string;
   onRetry: () => void;
+  backHref?: string;
 }) {
   return (
     <div className="mx-auto flex min-h-[60vh] max-w-xl items-center justify-center px-5">
@@ -146,6 +177,18 @@ function ErrorState({
           <RotateCcw className="h-4 w-4" />
           Try again
         </button>
+
+        {backHref && (
+          <div>
+            <Link
+              to={backHref}
+              className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-[#91A4AC] transition hover:text-white"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to your path
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -183,10 +226,12 @@ function StartLesson({
   lesson,
   onStart,
   loading,
+  error,
 }: {
   lesson: LessonData;
   onStart: () => void;
   loading: boolean;
+  error?: string;
 }) {
   return (
     <div className="mx-auto flex min-h-[65vh] max-w-2xl items-center justify-center px-5 py-12">
@@ -209,6 +254,15 @@ function StartLesson({
           </p>
         )}
 
+        {error && (
+          <p
+            className="mx-auto mt-5 max-w-lg rounded-xl border border-[#513337] bg-[#2B2226] px-4 py-3 text-sm leading-6 text-[#FF9A9E]"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+
         <button
           type="button"
           onClick={onStart}
@@ -222,7 +276,7 @@ function StartLesson({
             </>
           ) : (
             <>
-              Start lesson
+              {lesson.status === 'FAILED' ? 'Try again' : 'Start lesson'}
               <ArrowRight className="h-5 w-5" />
             </>
           )}
@@ -255,10 +309,7 @@ function LessonComplete({
 
           <p className="mt-2 text-[#91A4AC]">
             Nice work. You just finished{' '}
-            <span className="font-bold text-white">
-              {lesson.title}
-            </span>
-            .
+            <span className="font-bold text-white">{lesson.title}</span>.
           </p>
 
           <div className="mx-auto mt-7 inline-flex items-center gap-2 rounded-full border border-[#51432B] bg-[#2D2920] px-5 py-2.5 text-sm font-extrabold text-[#FFB020]">
@@ -271,13 +322,17 @@ function LessonComplete({
           onClick={onBack}
           className="mt-9 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-orange px-7 font-extrabold text-white transition hover:brightness-105"
         >
-          Back to path
+          Back to zone
           <ArrowRight className="h-4 w-4" />
         </button>
       </div>
     </div>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Lesson player
+// -----------------------------------------------------------------------------
 
 export default function LessonPlayer() {
   const { courseId, lessonId } = useParams<{
@@ -290,75 +345,114 @@ export default function LessonPlayer() {
   const [lesson, setLesson] = useState<LessonData | null>(null);
   const [courseTitle, setCourseTitle] = useState('');
   const [phaseTitle, setPhaseTitle] = useState('');
+
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
-  const [checkedAnswers, setCheckedAnswers] = useState<Record<number, boolean>>({});
+
+  const [selectedAnswers, setSelectedAnswers] = useState<
+    Record<number, number>
+  >({});
+  const [checkedAnswers, setCheckedAnswers] = useState<
+    Record<number, boolean>
+  >({});
+
   const [completed, setCompleted] = useState(false);
   const [completing, setCompleting] = useState(false);
 
+  // Ignore results from older requests after a retry or route change.
+  const requestIdRef = useRef(0);
+  const generationInFlightRef = useRef(false);
+  const completionInFlightRef = useRef(false);
+
+  const phaseHref =
+    courseId && lesson?.phaseId
+      ? `/learn/course/${courseId}/phase/${lesson.phaseId}`
+      : courseId
+        ? `/learn/course/${courseId}`
+        : '/learn';
+
   const loadLesson = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+
     if (!courseId || !lessonId) {
-      setError('This lesson could not be found.');
+      setLesson(null);
+      setError('This lesson could not be found. Return to your learning path.');
       setLoading(false);
       return;
     }
 
-    try {
-      setLoading(true);
-      setError('');
+    setLoading(true);
+    setError('');
+    setLesson(null);
+    setCourseTitle('');
+    setPhaseTitle('');
+    setCompleted(false);
+    setSelectedAnswers({});
+    setCheckedAnswers({});
 
+    try {
       const [lessonData, courseData] = await Promise.all([
         getLesson(lessonId),
         getCourse(courseId),
       ]);
 
-      if (!lessonData) throw new Error('Lesson not found.');
+      if (requestId !== requestIdRef.current) return;
 
-      if (lessonData.courseId !== courseId) {
-        throw new Error(
-          'This lesson does not belong to the selected course.',
-        );
+      if (!lessonData || !courseData || lessonData.courseId !== courseId) {
+        throw new Error('LESSON_NOT_FOUND');
       }
 
-      if (!courseData) throw new Error('Course not found.');
+      if (!lessonData.phaseId) {
+        throw new Error('LESSON_PHASE_MISSING');
+      }
 
-      setLesson(lessonData as LessonData);
-      setCourseTitle(courseData.title ?? '');
+      const phaseData = await getPhase(lessonData.phaseId);
 
-      if (lessonData.phaseId) {
-        const phaseData = await getPhase(lessonData.phaseId);
+      if (requestId !== requestIdRef.current) return;
 
-        if (phaseData && phaseData.courseId !== courseId) {
-          throw new Error(
-            'This lesson belongs to an invalid phase.',
-          );
-        }
+      if (!phaseData || phaseData.courseId !== courseId) {
+        throw new Error('INVALID_LESSON_PHASE');
+      }
 
-        setPhaseTitle(phaseData?.title ?? '');
+      if (phaseData.locked) {
+        setLesson(null);
+        setError(
+          'This zone is still locked. Complete the earlier zones to continue.',
+        );
+        return;
       }
 
       const progress = await listProgressForCourse(courseId);
-      const alreadyComplete = progress.some(
-        (item) => item.lessonId === lessonId,
-      );
 
-      setCompleted(alreadyComplete);
+      if (requestId !== requestIdRef.current) return;
+
+      setLesson(lessonData as LessonData);
+      setCourseTitle(courseData.title ?? '');
+      setPhaseTitle(phaseData.title ?? '');
+      setCompleted(progress.some((item) => item.lessonId === lessonId));
     } catch (err) {
+      if (requestId !== requestIdRef.current) return;
+
+      console.error('Failed to load lesson', err);
+      setLesson(null);
       setError(
-        getErrorMessage(
-          err,
-          'Unable to load this lesson.',
-        ),
+        'We couldn’t open this lesson. Check your connection and try again.',
       );
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [courseId, lessonId]);
 
   useEffect(() => {
     void loadLesson();
+
+    return () => {
+      // Invalidates any outstanding load request on route change/unmount.
+      requestIdRef.current += 1;
+    };
   }, [loadLesson]);
 
   const keyTerms = useMemo(
@@ -372,10 +466,7 @@ export default function LessonPlayer() {
   );
 
   const content = useMemo(
-    () =>
-      lesson?.coreContent
-        ? formatLessonContent(lesson.coreContent)
-        : [],
+    () => (lesson?.coreContent ? formatLessonContent(lesson.coreContent) : []),
     [lesson?.coreContent],
   );
 
@@ -392,76 +483,84 @@ export default function LessonPlayer() {
     );
   }, [quiz, selectedAnswers]);
 
+  const checkedCount = Object.keys(checkedAnswers).length;
+  const allQuizChecked = quiz.length === 0 || checkedCount === quiz.length;
+
+  const hasLessonMaterial = content.length > 0 || keyTerms.length > 0 || quiz.length > 0;
+
   const lessonProgress = useMemo(() => {
-    if (!lesson) return 0;
+    if (completed) return 100;
+    if (!hasLessonMaterial) return 0;
+    if (!quiz.length) return content.length > 0 ? 100 : 0;
 
-    if (!quiz.length || completed) {
-      return content.length > 0 || completed ? 100 : 0;
-    }
+    const contentWeight = content.length > 0 ? 60 : 0;
+    const quizWeight = (checkedCount / quiz.length) * 40;
 
-    return Math.min(
-      100,
-      Math.round(
-        (content.length > 0 ? 60 : 0) +
-          (answeredCount / quiz.length) * 40,
-      ),
-    );
-  }, [lesson, quiz.length, content.length, answeredCount, completed]);
+    return Math.min(100, Math.round(contentWeight + quizWeight));
+  }, [completed, hasLessonMaterial, quiz.length, content.length, checkedCount]);
 
   const startGeneration = async () => {
-    if (!lesson) return;
+    if (!lesson || generationInFlightRef.current) return;
+
+    const currentLessonId = lesson.id;
+    const requestId = requestIdRef.current;
+
+    generationInFlightRef.current = true;
+    setGenerating(true);
+    setError('');
 
     try {
-      setGenerating(true);
-      setError('');
+      const generated = await generateLessonContent(currentLessonId);
 
-      const generated = await generateLessonContent(lesson.id);
+      if (requestId !== requestIdRef.current) return;
 
-      if (generated) {
-        setLesson(generated as LessonData);
-      } else {
-        const refreshed = await getLesson(lesson.id);
+      // Some mutation responses return the generated lesson; others may not.
+      const refreshed = generated ?? (await getLesson(currentLessonId));
 
-        if (!refreshed) {
-          throw new Error(
-            'The lesson was generated, but could not be loaded.',
-          );
-        }
+      if (requestId !== requestIdRef.current) return;
 
-        setLesson(refreshed as LessonData);
+      if (!refreshed) {
+        throw new Error('LESSON_REFRESH_FAILED');
+      }
+
+      setLesson(refreshed as LessonData);
+
+      if ((refreshed as LessonData).status !== 'READY') {
+        setError(
+          'The lesson is not ready yet. Please wait a moment and try again.',
+        );
       }
     } catch (err) {
-      setError(
-        getErrorMessage(
-          err,
-          'Unable to generate this lesson.',
-        ),
-      );
+      if (requestId !== requestIdRef.current) return;
 
-      /**
-       * Refresh the persisted lesson state.
-       *
-       * The backend now changes a failed generation
-       * from GENERATING to FAILED and stores generationError.
-       */
+      console.error('Failed to generate lesson', err);
+
+      // Re-read persisted state because generation may have succeeded server-side.
       try {
-        const refreshed = await getLesson(lesson.id);
+        const refreshed = await getLesson(currentLessonId);
 
-        if (refreshed) {
-          setLesson(refreshed as LessonData);
-        }
-      } catch {
-        // Keep the original generation error visible.
+        if (requestId !== requestIdRef.current) return;
+
+        if (refreshed) setLesson(refreshed as LessonData);
+      } catch (refreshError) {
+        console.error('Failed to refresh lesson after generation error', refreshError);
+      }
+
+      if (requestId === requestIdRef.current) {
+        setError(
+          'We couldn’t prepare this lesson. Please try again in a moment.',
+        );
       }
     } finally {
-      setGenerating(false);
+      generationInFlightRef.current = false;
+
+      if (requestId === requestIdRef.current) {
+        setGenerating(false);
+      }
     }
   };
 
-  const selectAnswer = (
-    questionIndex: number,
-    optionIndex: number,
-  ) => {
+  const selectAnswer = (questionIndex: number, optionIndex: number) => {
     if (checkedAnswers[questionIndex]) return;
 
     setSelectedAnswers((current) => ({
@@ -485,37 +584,33 @@ export default function LessonPlayer() {
   };
 
   const completeLesson = async () => {
-    if (!courseId || !lessonId || completing || completed) return;
-
     if (
-      quiz.length > 0 &&
-      Object.keys(checkedAnswers).length < quiz.length
+      !courseId ||
+      !lessonId ||
+      completing ||
+      completed ||
+      completionInFlightRef.current ||
+      !hasLessonMaterial ||
+      !allQuizChecked
     ) {
       return;
     }
 
+    completionInFlightRef.current = true;
+    setCompleting(true);
+    setError('');
+
     try {
-      setCompleting(true);
-      setError('');
-
       await markLessonComplete(courseId, lessonId, 10);
-
       setCompleted(true);
     } catch (err) {
-      setError(
-        getErrorMessage(
-          err,
-          'Unable to save your progress.',
-        ),
-      );
+      console.error('Failed to save lesson progress', err);
+      setError('We couldn’t save your progress. Please try again.');
     } finally {
+      completionInFlightRef.current = false;
       setCompleting(false);
     }
   };
-
-  const checkedCount = Object.keys(checkedAnswers).length;
-  const allQuizChecked =
-    quiz.length === 0 || checkedCount === quiz.length;
 
   if (loading) {
     return (
@@ -531,6 +626,7 @@ export default function LessonPlayer() {
         <ErrorState
           message={error}
           onRetry={() => void loadLesson()}
+          backHref={courseId ? `/learn/course/${courseId}` : undefined}
         />
       </AppShell>
     );
@@ -540,8 +636,9 @@ export default function LessonPlayer() {
     return (
       <AppShell>
         <ErrorState
-          message="This lesson could not be loaded."
+          message="This lesson could not be loaded. Return to your learning path and try again."
           onRetry={() => void loadLesson()}
+          backHref={courseId ? `/learn/course/${courseId}` : undefined}
         />
       </AppShell>
     );
@@ -552,34 +649,29 @@ export default function LessonPlayer() {
       <AppShell>
         <LessonComplete
           lesson={lesson}
-          onBack={() =>
-            navigate(
-              `/learn/course/${courseId}/phase/${lesson.phaseId}`,
-            )
-          }
+          onBack={() => navigate(phaseHref)}
         />
       </AppShell>
     );
   }
 
-  if (lesson.status === 'PENDING' || lesson.status === 'FAILED') {
-    const generationError =
-      error || lesson.generationError || '';
-
+  if (
+    lesson.status === 'PENDING' ||
+    lesson.status === 'FAILED' ||
+    !lesson.status
+  ) {
     return (
       <AppShell>
-        {generationError && (
-          <div className="mx-auto max-w-2xl px-5 pt-6">
-            <div className="rounded-2xl border border-[#513337] bg-[#2B2226] px-4 py-3 text-sm text-[#FF9A9E]">
-              {generationError}
-            </div>
-          </div>
-        )}
-
         <StartLesson
           lesson={lesson}
           onStart={() => void startGeneration()}
           loading={generating}
+          error={
+            error ||
+            (lesson.status === 'FAILED'
+              ? 'The lesson couldn’t be generated. You can try again.'
+              : '')
+          }
         />
       </AppShell>
     );
@@ -593,21 +685,13 @@ export default function LessonPlayer() {
     );
   }
 
-  /**
-   * Only READY lessons should reach the lesson player.
-   *
-   * This prevents malformed/unknown backend states from
-   * being rendered as if they contained valid content.
-   */
   if (lesson.status !== 'READY') {
     return (
       <AppShell>
         <ErrorState
-          message={
-            lesson.generationError ||
-            'This lesson is not ready yet.'
-          }
+          message="This lesson is not ready yet. Return to the zone and try again."
           onRetry={() => void loadLesson()}
+          backHref={phaseHref}
         />
       </AppShell>
     );
@@ -616,14 +700,13 @@ export default function LessonPlayer() {
   return (
     <AppShell>
       <div className="min-h-[100dvh]">
-        {/* Top bar */}
-
+        {/* Sticky lesson header */}
         <header className="sticky top-0 z-20 border-b border-[#263640]/90 bg-[#131F24]/95 backdrop-blur-md">
           <div className="mx-auto flex h-[72px] max-w-[1100px] items-center gap-4 px-4 sm:px-6 lg:px-8">
             <Link
-              to={`/learn/course/${courseId}/phase/${lesson.phaseId}`}
+              to={phaseHref}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[#91A4AC] transition hover:bg-[#1D2A33] hover:text-white"
-              aria-label="Back to phase"
+              aria-label="Back to zone"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
@@ -633,14 +716,20 @@ export default function LessonPlayer() {
                 {courseTitle}
                 {phaseTitle ? ` · ${phaseTitle}` : ''}
               </p>
-
               <p className="truncate text-sm font-extrabold text-white">
                 {lesson.title}
               </p>
             </div>
 
             <div className="hidden w-28 shrink-0 sm:block">
-              <div className="h-1.5 overflow-hidden rounded-full bg-[#263640]">
+              <div
+                className="h-1.5 overflow-hidden rounded-full bg-[#263640]"
+                role="progressbar"
+                aria-label="Lesson progress"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={lessonProgress}
+              >
                 <div
                   className="h-full rounded-full bg-orange transition-all duration-300"
                   style={{ width: `${lessonProgress}%` }}
@@ -650,19 +739,19 @@ export default function LessonPlayer() {
           </div>
         </header>
 
-        {/* Error banner */}
-
+        {/* Friendly recoverable errors */}
         {error && (
           <div className="mx-auto max-w-3xl px-5 pt-5 sm:px-6">
-            <div className="flex items-start gap-3 rounded-2xl border border-[#513337] bg-[#2B2226] px-4 py-3 text-sm text-[#FF9A9E]">
+            <div
+              className="flex items-start gap-3 rounded-2xl border border-[#513337] bg-[#2B2226] px-4 py-3 text-sm text-[#FF9A9E]"
+              role="alert"
+            >
               <CircleAlert className="mt-0.5 h-4 w-4 shrink-0" />
-
-              <span>{error}</span>
-
+              <span className="flex-1">{error}</span>
               <button
                 type="button"
                 onClick={() => setError('')}
-                className="ml-auto shrink-0 text-[#9C676B] hover:text-white"
+                className="shrink-0 text-[#9C676B] hover:text-white"
                 aria-label="Dismiss error"
               >
                 <X className="h-4 w-4" />
@@ -670,8 +759,6 @@ export default function LessonPlayer() {
             </div>
           </div>
         )}
-
-        {/* Lesson content */}
 
         <main className="mx-auto max-w-3xl px-5 pb-32 pt-10 sm:px-6 sm:pt-14">
           <div className="mb-10">
@@ -690,8 +777,7 @@ export default function LessonPlayer() {
             )}
           </div>
 
-          {/* Core lesson */}
-
+          {/* Core lesson content */}
           {content.length > 0 && (
             <section className="space-y-6">
               {content.map((paragraph, index) => (
@@ -706,14 +792,12 @@ export default function LessonPlayer() {
           )}
 
           {/* Key terms */}
-
           {keyTerms.length > 0 && (
             <section className="mt-14">
               <div className="mb-5">
                 <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange">
                   Key ideas
                 </p>
-
                 <h2 className="mt-1 text-2xl font-extrabold text-white">
                   Remember these
                 </h2>
@@ -725,10 +809,7 @@ export default function LessonPlayer() {
                     key={item.term}
                     className="rounded-2xl border border-[#2C3E4A] bg-[#1D2A33] p-5"
                   >
-                    <h3 className="font-extrabold text-white">
-                      {item.term}
-                    </h3>
-
+                    <h3 className="font-extrabold text-white">{item.term}</h3>
                     <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
                       {item.definition}
                     </p>
@@ -739,18 +820,15 @@ export default function LessonPlayer() {
           )}
 
           {/* Quiz */}
-
           {quiz.length > 0 && (
             <section className="mt-16">
               <div className="mb-7">
                 <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-orange">
                   Quick check
                 </p>
-
                 <h2 className="mt-1 text-2xl font-extrabold text-white">
                   See what stuck
                 </h2>
-
                 <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
                   Choose an answer for each question.
                 </p>
@@ -759,7 +837,7 @@ export default function LessonPlayer() {
               <div className="space-y-8">
                 {quiz.map((question, questionIndex) => {
                   const selected = selectedAnswers[questionIndex];
-                  const checked = checkedAnswers[questionIndex];
+                  const checked = Boolean(checkedAnswers[questionIndex]);
                   const correct = selected === question.correctIndex;
 
                   return (
@@ -771,7 +849,6 @@ export default function LessonPlayer() {
                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#263640] text-xs font-extrabold text-orange">
                           {questionIndex + 1}
                         </span>
-
                         <h3 className="pt-0.5 text-base font-extrabold leading-6 text-white">
                           {question.question}
                         </h3>
@@ -780,14 +857,7 @@ export default function LessonPlayer() {
                       <div className="mt-5 space-y-2.5">
                         {question.options.map((option, optionIndex) => {
                           const isSelected = selected === optionIndex;
-                          const isCorrect =
-                            optionIndex === question.correctIndex;
-
-                          const classes = getOptionClasses(
-                            checked,
-                            isSelected,
-                            isCorrect,
-                          );
+                          const isCorrect = optionIndex === question.correctIndex;
 
                           return (
                             <button
@@ -797,7 +867,11 @@ export default function LessonPlayer() {
                                 selectAnswer(questionIndex, optionIndex)
                               }
                               disabled={checked}
-                              className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left text-sm font-semibold transition ${classes}`}
+                              className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left text-sm font-semibold transition disabled:cursor-default ${getOptionClasses(
+                                checked,
+                                isSelected,
+                                isCorrect,
+                              )}`}
                             >
                               <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#40515B] text-xs text-[#91A4AC]">
                                 {String.fromCharCode(65 + optionIndex)}
@@ -835,6 +909,7 @@ export default function LessonPlayer() {
                               ? 'bg-[#1C3027] text-[#3DDC84]'
                               : 'bg-[#322225] text-[#FF9A9E]'
                           }`}
+                          role="status"
                         >
                           {correct
                             ? 'Correct. Nice work.'
@@ -848,8 +923,7 @@ export default function LessonPlayer() {
             </section>
           )}
 
-          {/* Complete */}
-
+          {/* Completion */}
           <div className="mt-14 flex flex-col items-center text-center">
             {quiz.length > 0 && allQuizChecked && (
               <p className="mb-4 text-sm font-bold text-[#91A4AC]">
@@ -863,7 +937,7 @@ export default function LessonPlayer() {
               disabled={
                 completing ||
                 !allQuizChecked ||
-                (!content.length && !quiz.length)
+                !hasLessonMaterial
               }
               className="inline-flex min-h-14 min-w-[210px] items-center justify-center gap-2 rounded-2xl bg-orange px-7 font-extrabold text-white shadow-[0_5px_0_#C94D16] transition hover:brightness-105 active:translate-y-[2px] active:shadow-[0_3px_0_#C94D16] disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -879,29 +953,15 @@ export default function LessonPlayer() {
                 </>
               )}
             </button>
+
+            {answeredCount > 0 && quiz.length > 0 && !allQuizChecked && (
+              <p className="mt-3 text-xs text-[#687D87]">
+                Check all {quiz.length} answers to finish the lesson.
+              </p>
+            )}
           </div>
         </main>
       </div>
     </AppShell>
   );
-}
-
-function getOptionClasses(
-  checked: boolean | undefined,
-  isSelected: boolean,
-  isCorrect: boolean,
-): string {
-  if (checked && isCorrect) {
-    return 'border-[#3DDC84] bg-[#1C3027]';
-  }
-
-  if (checked && isSelected) {
-    return 'border-[#FF5A5F] bg-[#322225]';
-  }
-
-  if (isSelected) {
-    return 'border-orange bg-[#32251F]';
-  }
-
-  return 'border-[#2C3E4A] bg-[#18252C] hover:border-[#40535E]';
 }

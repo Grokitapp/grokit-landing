@@ -3,97 +3,183 @@ import type { Schema } from '../amplify/data/resource';
 
 const client = generateClient<Schema>();
 
-type GraphqlError = { message: string };
+const USER_POOL = { authMode: 'userPool' } as const;
 
-function throwIfErrors(errors?: GraphqlError[] | null) {
-  if (errors?.length) {
-    throw new Error(errors.map((e) => e.message).join('; '));
-  }
-}
+type GraphqlError = {
+  message?: string;
+};
 
-function requireId(id: string, code: string) {
-  if (!id.trim()) throw new Error(code);
-}
-
-// ─── Mutations (AI generation) ─────────────────────────────────────────────
-
+type ExperienceLevel =
+  | 'new'
+  | 'beginner'
+  | 'intermediate'
+  | 'advanced';
 
 type PersonalizationProfile = {
-  experienceLevel: 'new' | 'beginner' | 'intermediate' | 'advanced';
+  experienceLevel: ExperienceLevel;
   existingKnowledge: string[];
   learningFocus: string;
   focusAreas: string[];
 };
 
+const EXPERIENCE_LEVELS = new Set<ExperienceLevel>([
+  'new',
+  'beginner',
+  'intermediate',
+  'advanced',
+]);
+
+function throwIfErrors(
+  errors?: readonly GraphqlError[] | null,
+  code = 'REQUEST_FAILED',
+): void {
+  if (!errors?.length) return;
+
+  console.error(`[courseGeneration] ${code}:`, errors);
+  throw new Error(code);
+}
+
+function requireId(id: string, code: string): void {
+  if (typeof id !== 'string' || !id.trim()) {
+    throw new Error(code);
+  }
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+
+  return [
+    ...new Set(
+      value
+        .filter((item): item is string => typeof item === 'string')
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function normalizePersonalization(
+  profile?: PersonalizationProfile,
+): PersonalizationProfile | undefined {
+  if (profile == null) return undefined;
+
+  if (
+    typeof profile !== 'object' ||
+    !EXPERIENCE_LEVELS.has(profile.experienceLevel)
+  ) {
+    throw new Error('PERSONALIZATION_PROFILE_INVALID');
+  }
+
+  return {
+    experienceLevel: profile.experienceLevel,
+    existingKnowledge: normalizeStringList(profile.existingKnowledge),
+    learningFocus:
+      typeof profile.learningFocus === 'string'
+        ? profile.learningFocus.trim()
+        : '',
+    focusAreas: normalizeStringList(profile.focusAreas),
+  };
+}
+
+// ─── Course generation ──────────────────────────────────────────────────────
+
 export async function createCourseFromPrompt(
   topic: string,
   personalizationProfile?: PersonalizationProfile,
 ) {
-  const normalizedTopic = topic.trim();
+  const normalizedTopic =
+    typeof topic === 'string' ? topic.trim() : '';
 
   if (!normalizedTopic) {
     throw new Error('COURSE_TOPIC_REQUIRED');
   }
 
-  const profile =
-    personalizationProfile &&
-    typeof personalizationProfile === 'object'
-      ? {
-          experienceLevel: personalizationProfile.experienceLevel,
-          existingKnowledge: Array.isArray(
-            personalizationProfile.existingKnowledge,
-          )
-            ? personalizationProfile.existingKnowledge.filter(
-                (item): item is string => typeof item === 'string',
-              )
-            : [],
-          learningFocus:
-            typeof personalizationProfile.learningFocus === 'string'
-              ? personalizationProfile.learningFocus.trim()
-              : '',
-          focusAreas: Array.isArray(personalizationProfile.focusAreas)
-            ? personalizationProfile.focusAreas.filter(
-                (item): item is string => typeof item === 'string',
-              )
-            : [],
-        }
-      : undefined;
+  const profile = normalizePersonalization(personalizationProfile);
 
-  const input = {
-    topic: normalizedTopic,
-    ...(profile ? { personalizationProfile: profile } : {}),
-  };
+  try {
+    const { data, errors } = await client.mutations.generateOutline(
+      {
+        topic: normalizedTopic,
+        ...(profile ? { personalizationProfile: profile } : {}),
+      },
+      USER_POOL,
+    );
 
-  const { data, errors } =
-    await client.mutations.generateOutline(input);
+    throwIfErrors(errors, 'COURSE_GENERATION_FAILED');
 
-  throwIfErrors(errors);
+    if (!data) {
+      throw new Error('COURSE_GENERATION_EMPTY');
+    }
 
-  if (!data) {
-    throw new Error('No course returned from generateOutline');
+    return data;
+  } catch (error) {
+    console.error('[courseGeneration] Course generation failed:', error);
+
+    if (
+      error instanceof Error &&
+      (error.message.startsWith('COURSE_') ||
+        error.message === 'PERSONALIZATION_PROFILE_INVALID')
+    ) {
+      throw error;
+    }
+
+    throw new Error('COURSE_GENERATION_FAILED');
   }
-
-  return data;
 }
 
 export async function generateLessonContent(lessonId: string) {
-  const { data, errors } = await client.mutations.generateLesson({ lessonId });
+  requireId(lessonId, 'LESSON_ID_REQUIRED');
 
-  throwIfErrors(errors);
+  try {
+    const { data, errors } = await client.mutations.generateLesson(
+      { lessonId },
+      USER_POOL,
+    );
 
-  if (!data) throw new Error('No lesson returned from generateLesson');
+    throwIfErrors(errors, 'LESSON_GENERATION_FAILED');
 
-  return data;
+    if (!data) {
+      throw new Error('LESSON_GENERATION_EMPTY');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[courseGeneration] Lesson generation failed:', error);
+
+    if (
+      error instanceof Error &&
+      error.message.startsWith('LESSON_')
+    ) {
+      throw error;
+    }
+
+    throw new Error('LESSON_GENERATION_FAILED');
+  }
 }
 
 // ─── Course reads ───────────────────────────────────────────────────────────
 
+export async function listCourses() {
+  const { data, errors } = await client.models.Course.list();
+
+  throwIfErrors(errors, 'COURSES_LOAD_FAILED');
+
+  return [...(data ?? [])].sort((a, b) => {
+    const aDate = a.updatedAt ?? a.createdAt ?? '';
+    const bDate = b.updatedAt ?? b.createdAt ?? '';
+
+    return bDate.localeCompare(aDate);
+  });
+}
+
 export async function getCourse(courseId: string) {
   requireId(courseId, 'COURSE_ID_REQUIRED');
 
-  const { data, errors } = await client.models.Course.get({ id: courseId });
+  const { data, errors } = await client.models.Course.get({
+    id: courseId,
+  });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'COURSE_LOAD_FAILED');
 
   return data;
 }
@@ -105,7 +191,7 @@ export async function listPhasesForCourse(courseId: string) {
     filter: { courseId: { eq: courseId } },
   });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'PHASES_LOAD_FAILED');
 
   return [...(data ?? [])].sort((a, b) => a.order - b.order);
 }
@@ -115,9 +201,11 @@ export async function listPhasesForCourse(courseId: string) {
 export async function getPhase(phaseId: string) {
   requireId(phaseId, 'PHASE_ID_REQUIRED');
 
-  const { data, errors } = await client.models.Phase.get({ id: phaseId });
+  const { data, errors } = await client.models.Phase.get({
+    id: phaseId,
+  });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'PHASE_LOAD_FAILED');
 
   return data;
 }
@@ -129,19 +217,21 @@ export async function listLessonsForPhase(phaseId: string) {
     filter: { phaseId: { eq: phaseId } },
   });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'LESSONS_LOAD_FAILED');
 
   return [...(data ?? [])].sort((a, b) => a.order - b.order);
 }
 
-// ─── Lesson reads ──────────────────────────────────────────────────────────
+// ─── Lesson reads ───────────────────────────────────────────────────────────
 
 export async function getLesson(lessonId: string) {
   requireId(lessonId, 'LESSON_ID_REQUIRED');
 
-  const { data, errors } = await client.models.Lesson.get({ id: lessonId });
+  const { data, errors } = await client.models.Lesson.get({
+    id: lessonId,
+  });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'LESSON_LOAD_FAILED');
 
   return data;
 }
@@ -153,12 +243,12 @@ export async function listLessonsForCourse(courseId: string) {
     filter: { courseId: { eq: courseId } },
   });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'LESSONS_LOAD_FAILED');
 
   return [...(data ?? [])].sort((a, b) => a.order - b.order);
 }
 
-// ─── Progress ──────────────────────────────────────────────────────────────
+// ─── Progress ───────────────────────────────────────────────────────────────
 
 export async function listProgressForCourse(courseId: string) {
   requireId(courseId, 'COURSE_ID_REQUIRED');
@@ -167,21 +257,20 @@ export async function listProgressForCourse(courseId: string) {
     filter: { courseId: { eq: courseId } },
   });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'PROGRESS_LOAD_FAILED');
 
   return data ?? [];
 }
 
 /**
- * Mark a lesson as complete.
+ * Mark a lesson complete.
  *
- * Completion is application-level idempotent:
- * if the lesson has already been completed, the existing
- * progress record is returned.
+ * Existing completion records are reused. Progression is checked again
+ * when an existing record is found, allowing a failed phase unlock to
+ * recover on a later attempt.
  *
- * Phase progression is checked even when an existing
- * progress record is found, which allows a previously
- * interrupted phase-unlock operation to recover.
+ * Client-side checks cannot prevent duplicate records from concurrent
+ * requests. Enforce uniqueness or idempotency on the backend if required.
  */
 export async function markLessonComplete(
   courseId: string,
@@ -191,86 +280,118 @@ export async function markLessonComplete(
   requireId(courseId, 'COURSE_ID_REQUIRED');
   requireId(lessonId, 'LESSON_ID_REQUIRED');
 
-  if (!Number.isFinite(xp) || xp < 0) throw new Error('XP_INVALID');
+  if (!Number.isSafeInteger(xp) || xp < 0) {
+    throw new Error('XP_INVALID');
+  }
 
-  // 1. Check for an existing completion.
+  const lesson = await getLesson(lessonId);
+
+  if (!lesson) {
+    throw new Error('LESSON_NOT_FOUND');
+  }
+
+  if (lesson.courseId !== courseId) {
+    throw new Error('LESSON_COURSE_MISMATCH');
+  }
+
+  const phase = await getPhase(lesson.phaseId);
+
+  if (!phase) {
+    throw new Error('LESSON_PHASE_NOT_FOUND');
+  }
+
+  if (phase.courseId !== courseId) {
+    throw new Error('LESSON_PHASE_COURSE_MISMATCH');
+  }
+
   const progress = await listProgressForCourse(courseId);
-  const existing = progress.find((p) => p.lessonId === lessonId);
+  const existing = progress.find(
+    (item) => item.lessonId === lessonId,
+  );
 
   if (existing) {
-    // The record exists, but phase progression may not have
-    // completed during the original request.
     await advancePhaseIfComplete(courseId, lessonId);
     return existing;
   }
 
-  // 2. Create the completion record.
-  const { data, errors } = await client.models.UserProgress.create({
-    courseId,
-    lessonId,
-    completedAt: new Date().toISOString(),
-    xp,
-  });
+  const { data, errors } = await client.models.UserProgress.create(
+    {
+      courseId,
+      lessonId,
+      completedAt: new Date().toISOString(),
+      xp,
+    },
+  );
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'LESSON_COMPLETION_FAILED');
 
-  if (!data) throw new Error('LESSON_COMPLETION_FAILED');
+  if (!data) {
+    throw new Error('LESSON_COMPLETION_FAILED');
+  }
 
-  // 3. Advance the course if this completed the phase.
+  // Completion is saved before progression. If unlocking fails, a retry
+  // can reuse the existing completion record and retry progression.
   await advancePhaseIfComplete(courseId, lessonId);
 
   return data;
 }
 
-// ─── Phase progression ─────────────────────────────────────────────────────
+// ─── Phase progression ──────────────────────────────────────────────────────
 
 async function advancePhaseIfComplete(
   courseId: string,
   lessonId: string,
-) {
-  // Find the completed lesson.
+): Promise<void> {
   const lesson = await getLesson(lessonId);
 
-  if (!lesson) throw new Error('COMPLETED_LESSON_NOT_FOUND');
+  if (!lesson) {
+    throw new Error('COMPLETED_LESSON_NOT_FOUND');
+  }
 
-  // Prevent a completion record from one course from
-  // progressing another course.
   if (lesson.courseId !== courseId) {
     throw new Error('LESSON_COURSE_MISMATCH');
   }
 
-  // Find the lesson's phase.
   const phase = await getPhase(lesson.phaseId);
 
-  if (!phase) throw new Error('LESSON_PHASE_NOT_FOUND');
+  if (!phase) {
+    throw new Error('LESSON_PHASE_NOT_FOUND');
+  }
 
-  // Load all lessons belonging to the phase.
-  const phaseLessons = await listLessonsForPhase(phase.id);
+  if (phase.courseId !== courseId) {
+    throw new Error('LESSON_PHASE_COURSE_MISMATCH');
+  }
 
-  if (!phaseLessons.length) return;
+  const [phaseLessons, progress, phases] = await Promise.all([
+    listLessonsForPhase(phase.id),
+    listProgressForCourse(courseId),
+    listPhasesForCourse(courseId),
+  ]);
 
-  // Load current course progress.
-  const progress = await listProgressForCourse(courseId);
-  const completedLessonIds = new Set(progress.map((p) => p.lessonId));
+  if (
+    phaseLessons.length === 0 ||
+    phaseLessons.some((item) => item.courseId !== courseId)
+  ) {
+    return;
+  }
 
-  // A phase is complete only when every lesson in that
-  // phase has a UserProgress record.
-  const phaseComplete = phaseLessons.every((l) =>
-    completedLessonIds.has(l.id),
+  const completedLessonIds = new Set(
+    progress.map((item) => item.lessonId),
+  );
+
+  const phaseComplete = phaseLessons.every((item) =>
+    completedLessonIds.has(item.id),
   );
 
   if (!phaseComplete) return;
 
-  // Find the next phase by sequence order.
-  const phases = await listPhasesForCourse(courseId);
-  const nextPhase = phases.find(
-    (candidate) => candidate.order === phase.order + 1,
-  );
+  // Find the nearest subsequent phase without assuming consecutive orders.
+  const nextPhase = phases
+    .filter((candidate) => candidate.order > phase.order)
+    .sort((a, b) => a.order - b.order)[0];
 
-  // There is no next phase when the final phase is complete.
   if (!nextPhase) return;
 
-  // Unlock the next phase.
   await unlockPhase(nextPhase.id);
 }
 
@@ -279,19 +400,24 @@ export async function unlockPhase(phaseId: string) {
 
   const phase = await getPhase(phaseId);
 
-  if (!phase) throw new Error('PHASE_NOT_FOUND');
+  if (!phase) {
+    throw new Error('PHASE_NOT_FOUND');
+  }
 
-  // Idempotent unlock.
-  if (phase.locked === false) return phase;
+  if (phase.locked === false) {
+    return phase;
+  }
 
   const { data, errors } = await client.models.Phase.update({
     id: phaseId,
     locked: false,
   });
 
-  throwIfErrors(errors);
+  throwIfErrors(errors, 'PHASE_UNLOCK_FAILED');
 
-  if (!data) throw new Error('PHASE_UNLOCK_FAILED');
+  if (!data) {
+    throw new Error('PHASE_UNLOCK_FAILED');
+  }
 
   return data;
 }
