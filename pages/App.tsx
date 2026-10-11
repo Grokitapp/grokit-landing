@@ -14,6 +14,7 @@ const Generating = lazy(() => import('./learn/Generating'));
 const CourseOverview = lazy(() => import('./learn/CourseOverview'));
 const PhaseDetail = lazy(() => import('./learn/PhaseDetail'));
 const LessonPlayer = lazy(() => import('./learn/LessonPlayer'));
+const Profile = lazy(() => import('./Profile'));
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
       {/* Screens with the persistent sidebar */}
       <Route element={<LearnLayout />}>
         <Route path="/create" element={<Create />} />
+        <Route path="/profile" element={<Profile />} />
         <Route path="/learn/course/:courseId" element={<CourseOverview />} />
         <Route
           path="/learn/course/:courseId/phase/:phaseId"

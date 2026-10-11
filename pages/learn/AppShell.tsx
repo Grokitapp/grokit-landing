@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import {
   ArrowRight,
   ChevronRight,
@@ -26,6 +26,8 @@ import {
   type JourneyChange,
 } from '../../lib/courseActions';
 import JourneyMenu from './components/JourneyMenu';
+import { StatChip } from './components/GamificationCards';
+import { resetGamification, useGamification } from '../../lib/gamification';
 
 interface Journey {
   id: string;
@@ -64,6 +66,10 @@ export default function AppShell({
 }: AppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Streak + XP for the sidebar chips; refetched whenever the route changes so
+  // finishing a lesson is reflected as soon as the learner navigates back.
+  const { stats: game } = useGamification(location.pathname);
 
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -159,6 +165,9 @@ export default function AppShell({
 
           const journeys: Journey[] = records
             .filter(
+              (record) => !(record as { archived?: boolean | null }).archived,
+            )
+            .filter(
               (record): record is typeof record & {
                 id: string;
                 title: string;
@@ -251,7 +260,7 @@ export default function AppShell({
     refreshJourneys,
   ]);
 
-  // Apply rename / delete from any JourneyMenu instantly.
+  // Apply rename / archive / delete from any JourneyMenu instantly.
   useEffect(() => {
     if (providedCourses !== undefined) return;
 
@@ -386,13 +395,6 @@ export default function AppShell({
 
             return (
               <>
-                {active && (
-                  <span
-                    aria-hidden="true"
-                    className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-orange"
-                  />
-                )}
-
                 <Icon
                   aria-hidden="true"
                   className={`h-5 w-5 shrink-0 ${
@@ -507,10 +509,6 @@ export default function AppShell({
                     ].join(' ')
                   }
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#203138] text-orange">
-                    <Sparkles className="h-3.5 w-3.5" />
-                  </span>
-
                   <span className="min-w-0 flex-1 truncate">
                     {course.title}
                   </span>
@@ -533,6 +531,26 @@ export default function AppShell({
       ref={accountRef}
       className="relative mt-auto shrink-0 border-t border-[#2D3C43] pt-4"
     >
+      {game && (
+        <Link
+          to="/profile"
+          aria-label="Open your profile"
+          className="mb-3 flex gap-2 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+        >
+          <StatChip
+            kind="streak"
+            value={game.currentStreak}
+            active={game.currentStreak > 0}
+            className="flex-1 justify-center"
+          />
+          <StatChip
+            kind="xp"
+            value={game.totalXp}
+            className="flex-1 justify-center"
+          />
+        </Link>
+      )}
+
       {accountMenuOpen && (
         <AccountMenu
           mobile={mobile}
@@ -754,6 +772,7 @@ function LogoutConfirmation({ onCancel }: { onCancel: () => void }) {
       await signOutUser();
       cachedJourneys = null;
       cachedUserName = null;
+      resetGamification();
       navigate('/', { replace: true });
     } catch (logoutError) {
       console.error('Failed to sign out', logoutError);

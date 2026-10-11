@@ -6,9 +6,14 @@ import {
   CheckCircle2,
   Compass,
   RefreshCw,
-  Sparkles,
 } from 'lucide-react';
 
+import {
+  DailyGoalCard,
+  NextBadgeCard,
+  StatChip,
+  StreakCard,
+} from './components/GamificationCards';
 import JourneyMenu from './components/JourneyMenu';
 import JourneyPath, {
   type PathLesson,
@@ -25,6 +30,7 @@ import {
   JOURNEY_CHANGED_EVENT,
   type JourneyChange,
 } from '../../lib/courseActions';
+import { useGamification } from '../../lib/gamification';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -50,16 +56,7 @@ interface JourneyStats {
 // -----------------------------------------------------------------------------
 
 const containerClasses =
-  'mx-auto min-h-[100dvh] w-full max-w-[1040px] px-4 py-6 sm:px-7 sm:py-9 xl:px-9';
-
-const headerCardClasses =
-  'mb-8 rounded-[24px] border border-[#37464F] bg-[#19282E] p-5 sm:p-6';
-
-const eyebrowClasses =
-  'inline-flex items-center gap-2 text-sm font-bold text-orange';
-
-const titleClasses =
-  'mt-1.5 max-w-3xl break-words font-display text-2xl font-extrabold leading-tight text-white sm:text-3xl';
+  'mx-auto min-h-[100dvh] w-full max-w-[1180px] px-4 pb-10 sm:px-7 xl:px-9';
 
 const primaryButtonClasses =
   'inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-orange px-5 py-3 text-sm font-extrabold text-white shadow-[0_3px_0_#C94713] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#19282E]';
@@ -121,10 +118,8 @@ function JourneySkeleton() {
       aria-busy="true"
       className="animate-pulse"
     >
-      <div className="mb-8 rounded-[24px] border border-[#37464F] bg-[#19282E] p-6">
-        <div className="h-3 w-28 rounded bg-[#37464F]" />
-        <div className="mt-4 h-8 max-w-md rounded-lg bg-[#26373E]" />
-        <div className="mt-6 h-2 max-w-sm rounded-full bg-[#26373E]" />
+      <div className="flex h-14 items-center">
+        <div className="h-7 w-64 max-w-full rounded-lg bg-[#26373E]" />
       </div>
 
       <div className="mx-auto max-w-[520px]">
@@ -357,6 +352,8 @@ export default function CourseOverview() {
 
   const stats = useMemo(() => calculateStats(journey.zones), [journey.zones]);
 
+  const { stats: game } = useGamification(courseId);
+
   const retry = useCallback(() => {
     setReloadKey((current) => current + 1);
   }, []);
@@ -371,13 +368,6 @@ export default function CourseOverview() {
     [courseId, navigate],
   );
 
-  const continueTo =
-    stats.currentZone && courseId
-      ? `/learn/course/${courseId}/phase/${stats.currentZone.id}${
-          stats.currentLessonId ? `?lesson=${stats.currentLessonId}` : ''
-        }`
-      : null;
-
   return (
     <div className={containerClasses}>
       {loading ? (
@@ -385,128 +375,95 @@ export default function CourseOverview() {
       ) : loadError ? (
         <JourneyError onRetry={retry} />
       ) : (
-        <>
-          {/* Journey header */}
-          <header className={headerCardClasses}>
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className={eyebrowClasses}>
-                    <Sparkles className="h-4 w-4" aria-hidden="true" />
-                    Your learning journey
-                  </span>
+        <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
+          <div className="min-w-0">
+            {/* Sticky title bar: stays put while the path scrolls beneath it,
+                with the current zone banner stacking right under it. */}
+            <div className="sticky top-16 z-30 flex h-14 items-center gap-2 bg-[#131F24] lg:top-0">
+              <h1 className="min-w-0 flex-1 truncate font-display text-lg font-extrabold text-white sm:text-xl">
+                {journey.title}
+              </h1>
 
-                  {stats.isComplete && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-300">
-                      <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
-                      Completed
-                    </span>
-                  )}
+              {game && (
+                <div className="flex shrink-0 items-center gap-2 xl:hidden">
+                  <StatChip
+                    kind="streak"
+                    value={game.currentStreak}
+                    active={game.currentStreak > 0}
+                  />
+                  <StatChip kind="xp" value={game.totalXp} />
                 </div>
-
-                <h1 className={titleClasses}>{journey.title}</h1>
-              </div>
+              )}
 
               {courseId && (
-                <JourneyMenu
-                  journey={{ id: courseId, title: journey.title }}
-                  buttonClassName="mt-0.5"
-                />
+                <JourneyMenu journey={{ id: courseId, title: journey.title }} />
               )}
             </div>
 
-            <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="w-full max-w-sm">
-                <div className="flex items-baseline justify-between gap-4 text-sm">
-                  <p className="font-semibold text-white">
-                    {stats.completed} of {stats.total}{' '}
-                    {stats.total === 1 ? 'lesson' : 'lessons'}
-                  </p>
-
-                  <p className="text-[#91A4AC]">
-                    {stats.completedZones} of {journey.zones.length}{' '}
-                    {journey.zones.length === 1 ? 'zone' : 'zones'}
-                  </p>
-                </div>
-
-                <div
-                  role="progressbar"
-                  aria-label="Journey completion"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={stats.percentage}
-                  className="mt-3 h-2 overflow-hidden rounded-full bg-[#0D181C]"
-                >
-                  <div
-                    className="h-full rounded-full bg-orange transition-[width] duration-700 ease-out"
-                    style={{ width: `${stats.percentage}%` }}
-                  />
-                </div>
-              </div>
-
-              {continueTo ? (
-                <Link
-                  to={continueTo}
-                  className={`${primaryButtonClasses} w-full shrink-0 sm:w-auto`}
-                >
-                  {stats.completed === 0
-                    ? 'Start learning'
-                    : 'Continue learning'}
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              ) : stats.isComplete ? (
-                <p className="text-sm font-bold text-emerald-300">
-                  You’ve completed every lesson!
-                </p>
-              ) : null}
-            </div>
-          </header>
-
-          {/* Learning path */}
-          <section aria-label="Your learning path">
-            {journey.zones.length === 0 ? (
-              <EmptyJourney onRetry={retry} />
-            ) : (
-              <JourneyPath
-                courseId={courseId ?? ''}
-                zones={journey.zones}
-                currentZoneId={stats.currentZone?.id ?? null}
-                hasStarted={stats.completed > 0}
-                onSelectLesson={openLesson}
-              />
-            )}
-          </section>
-
-          {/* Completion footer */}
-          {stats.isComplete && (
-            <section className="mx-auto mt-4 max-w-[520px] rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 sm:p-6">
-              <div className="flex items-start gap-4">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
-                  <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
-                </div>
-
-                <div className="min-w-0">
-                  <h3 className="font-display text-lg font-extrabold text-white">
-                    Journey complete!
-                  </h3>
-
-                  <p className="mt-1 text-sm leading-6 text-[#91A4AC]">
-                    You’ve worked through every lesson in this path. Take a
-                    moment to appreciate how far you’ve come.
-                  </p>
-
-                  <Link
-                    to="/create"
-                    className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-orange transition hover:text-white"
-                  >
-                    Create another journey
-                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                  </Link>
-                </div>
-              </div>
+            {/* Learning path */}
+            <section aria-label="Your learning path" className="pt-2">
+              {journey.zones.length === 0 ? (
+                <EmptyJourney onRetry={retry} />
+              ) : (
+                <JourneyPath
+                  courseId={courseId ?? ''}
+                  zones={journey.zones}
+                  currentZoneId={stats.currentZone?.id ?? null}
+                  hasStarted={stats.completed > 0}
+                  onSelectLesson={openLesson}
+                />
+              )}
             </section>
-          )}
-        </>
+
+            {/* Completion footer */}
+            {stats.isComplete && (
+              <section className="mx-auto mt-4 max-w-[520px] rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-5 sm:p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-400/10 text-emerald-300">
+                    <CheckCircle2 className="h-6 w-6" aria-hidden="true" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h3 className="font-display text-lg font-extrabold text-white">
+                      Journey complete!
+                    </h3>
+
+                    <p className="mt-1 text-sm leading-6 text-[#91A4AC]">
+                      You’ve worked through every lesson in this path. Take a
+                      moment to appreciate how far you’ve come.
+                    </p>
+
+                    <Link
+                      to="/create"
+                      className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-orange transition hover:text-white"
+                    >
+                      Create another journey
+                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Gamification rail (desktop) */}
+          <aside className="hidden xl:block" aria-label="Your progress">
+            <div className="sticky top-6 space-y-4 pt-2">
+              {game ? (
+                <>
+                  <StreakCard stats={game} />
+                  <DailyGoalCard stats={game} />
+                  <NextBadgeCard badges={game.badges} />
+                </>
+              ) : (
+                <div aria-hidden="true" className="space-y-4 animate-pulse">
+                  <div className="h-40 rounded-2xl bg-[#19282E]" />
+                  <div className="h-52 rounded-2xl bg-[#19282E]" />
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
       )}
     </div>
   );
