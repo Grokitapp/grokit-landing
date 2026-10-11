@@ -116,13 +116,8 @@ function calculateStats(zones: PathZone[]): JourneyStats {
 }
 
 // -----------------------------------------------------------------------------
-// Journey card (pinned to the top while the path scrolls)
+// Journey card ("Your learning journey")
 // -----------------------------------------------------------------------------
-
-// Height of the pinned card wrapper. JourneyPath's zone banner offsets
-// (`top-40 lg:top-24`) are this plus the 64px mobile header; keep in sync.
-const JOURNEY_BAR_CLASSES =
-  'sticky top-16 z-30 h-24 bg-[#131F24] py-2 lg:top-0';
 
 function JourneyCard({
   courseId,
@@ -146,59 +141,59 @@ function JourneyCard({
   return (
     <section
       aria-label="Your learning journey"
-      className="flex h-full items-center gap-3 rounded-2xl border border-[#2D4149] bg-[#1A2A31] px-4 sm:px-5"
+      className="relative rounded-[28px] border border-[#2D4149] bg-[#1A2A31] px-6 pb-6 pt-5 sm:px-7"
     >
-      <div className="min-w-0 flex-1">
-        <h1 className="flex items-center gap-2 font-display text-base font-extrabold text-white sm:text-lg">
-          <Sparkles
-            className="h-4 w-4 shrink-0 text-orange"
-            aria-hidden="true"
-          />
-          <span className="truncate" title={title}>
-            {title}
-          </span>
-        </h1>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-extrabold text-orange">
+            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            Your learning journey
+          </p>
 
-        <div className="mt-2 flex items-center gap-3">
+          <h1 className="mt-3 break-words font-display text-2xl font-extrabold leading-tight text-white sm:text-[32px]">
+            {title}
+          </h1>
+        </div>
+
+        <JourneyMenu journey={{ id: courseId, title }} />
+      </div>
+
+      <div className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="w-full sm:max-w-[480px]">
+          <div className="flex items-baseline justify-between gap-4 text-sm">
+            <span className="font-bold text-white">
+              {stats.completed} of {stats.total} lessons
+            </span>
+            <span className="font-semibold text-[#91A4AC]">
+              {stats.completedZones} of {zoneCount} zones
+            </span>
+          </div>
+
           <div
             role="progressbar"
             aria-label="Journey progress"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={stats.percentage}
-            className="h-2 min-w-0 flex-1 overflow-hidden rounded-full bg-[#0F1A1F]"
+            className="mt-3 h-2.5 overflow-hidden rounded-full bg-[#0F1A1F]"
           >
             <div
               className="h-full rounded-full bg-orange transition-[width] duration-500"
               style={{ width: `${stats.percentage}%` }}
             />
           </div>
-
-          <p className="shrink-0 whitespace-nowrap text-xs font-semibold text-[#91A4AC]">
-            <span className="font-bold text-white">
-              {stats.completed}/{stats.total}
-            </span>{' '}
-            lessons
-            <span className="hidden sm:inline">
-              {' '}
-              · {stats.completedZones}/{zoneCount} zones
-            </span>
-          </p>
         </div>
+
+        <button
+          type="button"
+          onClick={onContinue}
+          disabled={zoneCount === 0}
+          className={`${primaryButtonClasses} shrink-0 rounded-2xl px-6 disabled:pointer-events-none disabled:opacity-50`}
+        >
+          {actionLabel}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </button>
       </div>
-
-      <button
-        type="button"
-        onClick={onContinue}
-        disabled={zoneCount === 0}
-        aria-label={actionLabel}
-        className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange px-3 text-sm font-extrabold text-white shadow-[0_3px_0_#C94713] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:pointer-events-none disabled:opacity-50 sm:px-4"
-      >
-        <span className="hidden sm:inline">{actionLabel}</span>
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </button>
-
-      <JourneyMenu journey={{ id: courseId, title }} />
     </section>
   );
 }
@@ -252,8 +247,8 @@ function JourneySkeleton() {
       aria-busy="true"
       className="animate-pulse"
     >
-      <div className="h-24 py-2">
-        <div className="h-full rounded-2xl bg-[#26373E]" />
+      <div className="pb-4 pt-1">
+        <div className="h-[184px] rounded-[28px] bg-[#26373E]" />
       </div>
 
       <div className="mx-auto max-w-[520px]">
@@ -520,6 +515,30 @@ export default function CourseOverview() {
     }
   }, [courseId, journey.zones, navigate, openLesson, stats]);
 
+  // The journey card is pinned to the top and its height varies (long titles
+  // wrap), so publish its measured height as a CSS variable. JourneyPath uses
+  // it to pin each zone banner directly beneath the card.
+  const columnRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const column = columnRef.current;
+    const bar = barRef.current;
+
+    if (!column || !bar) return;
+
+    const update = () => {
+      column.style.setProperty('--journey-card-h', `${bar.offsetHeight}px`);
+    };
+
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(bar);
+
+    return () => observer.disconnect();
+  }, [loading, loadError, courseId]);
+
   return (
     <div className={containerClasses}>
       {loading ? (
@@ -528,11 +547,14 @@ export default function CourseOverview() {
         <JourneyError onRetry={retry} />
       ) : (
         <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
-          <div className="min-w-0">
+          <div ref={columnRef} className="min-w-0">
             {/* Journey card: pinned to the top. The current zone banner
                 (JourneyPath) pins directly beneath it. */}
             {courseId && (
-              <div className={JOURNEY_BAR_CLASSES}>
+              <div
+                ref={barRef}
+                className="sticky top-16 z-30 bg-[#131F24] pb-4 pt-1 lg:top-0"
+              >
                 <JourneyCard
                   courseId={courseId}
                   title={journey.title}
@@ -544,7 +566,7 @@ export default function CourseOverview() {
             )}
 
             {/* Learning path */}
-            <section aria-label="Your learning path">
+            <section aria-label="Your learning path" className="pt-1">
               {journey.zones.length === 0 ? (
                 <EmptyJourney onRetry={retry} />
               ) : (

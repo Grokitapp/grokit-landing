@@ -9,8 +9,14 @@
 	html,
 	body {
 		background-color: var(--color-surface);
-		overflow-x: hidden;
 		max-width: 100%;
+	}
+
+	/* Hide horizontal overflow on <html> only. If <body> also sets
+	   overflow-x: hidden, the body becomes its own scroll container and
+	   breaks every `position: sticky` element on the page. */
+	html {
+		overflow-x: hidden;
 	}
 
 	/* Browsers only show a pointer cursor on <a> by default, not <button>.
