@@ -12,7 +12,6 @@ import { fetchUserAttributes } from 'aws-amplify/auth';
 
 import {
   BadgeGrid,
-  DailyGoalCard,
   StreakCalendar,
   StreakCard,
   cardClasses,
@@ -83,7 +82,7 @@ function ProfileSkeleton() {
 // -----------------------------------------------------------------------------
 
 export default function Profile() {
-  const { stats, loading, error, goal, setGoal, refresh } = useGamification();
+  const { stats, loading, error, refresh } = useGamification();
   const [name, setName] = useState('');
 
   useEffect(() => {
@@ -223,16 +222,12 @@ export default function Profile() {
             </div>
           </section>
 
-          {/* Goal + calendar */}
+          {/* Streak + calendar */}
           <section
-            aria-label="Goal and activity"
+            aria-label="Streak and activity"
             className="grid gap-4 md:grid-cols-2"
           >
-            <div className="space-y-4">
-              <DailyGoalCard stats={stats} onChangeGoal={setGoal} />
-              <StreakCard stats={stats} />
-            </div>
-
+            <StreakCard stats={stats} />
             <StreakCalendar stats={stats} />
           </section>
 

@@ -434,7 +434,7 @@ export default function Generating() {
           <div className="relative grid items-center gap-7 sm:grid-cols-[1fr_auto] sm:gap-10">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-orange">
-                Your first journey starts here
+                Your journey starts here
               </p>
 
               <h2 className="mt-3 font-display text-xl font-bold sm:text-2xl">
@@ -452,7 +452,7 @@ export default function Generating() {
               </div>
             </div>
 
-            <div className="mx-auto flex h-32 w-32 items-center justify-center rounded-full border border-white/10 bg-[#142329]/70 sm:h-40 sm:w-40">
+            <div className="mx-auto flex h-32 w-32 items-center justify-center sm:h-40 sm:w-40">
               <img
                 src={grokitMascot}
                 alt="Grokit welcomes you to your new journey"

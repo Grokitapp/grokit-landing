@@ -24,7 +24,6 @@ import {
 } from 'lucide-react';
 
 import {
-  DailyGoalCard,
   NextBadgeCard,
   StatChip,
   StreakCard,
@@ -869,6 +868,14 @@ export default function CourseOverview() {
 
   const { stats: game } = useGamification(courseId);
 
+  // The rail shows account-wide progress (streak, XP, badges), not journey data.
+  // Remember the last stats we received so it keeps rendering while a journey
+  // loads, switches, or the hook briefly returns nothing. The skeleton is only
+  // for the very first load.
+  const lastGameRef = useRef(game);
+  if (game) lastGameRef.current = game;
+  const railStats = game ?? lastGameRef.current;
+
   const retry = useCallback(() => {
     setReloadKey((current) => current + 1);
   }, []);
@@ -927,14 +934,13 @@ export default function CourseOverview() {
 
   return (
     <div className={containerClasses}>
-      {loading ? (
-        <JourneySkeleton />
-      ) : loadError ? (
-        <JourneyError onRetry={retry} />
-      ) : (
-        <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
+      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_320px] xl:gap-10">
           <div ref={columnRef} className="min-w-0">
-            {view === 'publish' && courseId ? (
+            {loading ? (
+              <JourneySkeleton />
+            ) : loadError ? (
+              <JourneyError onRetry={retry} />
+            ) : view === 'publish' && courseId ? (
               <PublishPanel
                 courseId={courseId}
                 title={journey.title}
@@ -1016,11 +1022,10 @@ export default function CourseOverview() {
           {/* Gamification rail (desktop) */}
           <aside className="hidden xl:block" aria-label="Your progress">
             <StickyRail>
-              {game ? (
+              {railStats ? (
                 <>
-                  <StreakCard stats={game} />
-                  <DailyGoalCard stats={game} />
-                  <NextBadgeCard badges={game.badges} />
+                  <StreakCard stats={railStats} />
+                  <NextBadgeCard badges={railStats.badges} />
                 </>
               ) : (
                 <div aria-hidden="true" className="space-y-4 animate-pulse">
@@ -1030,8 +1035,7 @@ export default function CourseOverview() {
               )}
             </StickyRail>
           </aside>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

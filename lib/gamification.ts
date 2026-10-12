@@ -57,34 +57,11 @@ export interface GamificationStats {
   /** True when a lesson was completed today (the streak is safe for today). */
   streakActiveToday: boolean;
   todayXp: number;
-  goal: number;
-  goalMet: boolean;
   lessonsCompleted: number;
   firstActivityAt: Date | null;
   week: WeekDay[];
   activeDays: Set<string>;
   badges: Badge[];
-}
-
-// -----------------------------------------------------------------------------
-// Daily goal (stored on this device; no backend field needed)
-// -----------------------------------------------------------------------------
-
-export const GOAL_OPTIONS = [10, 20, 30, 50] as const;
-
-const DEFAULT_GOAL = 20;
-const GOAL_STORAGE_KEY = 'grokit:daily-goal-xp';
-
-function readStoredGoal(): number {
-  try {
-    const stored = Number(window.localStorage.getItem(GOAL_STORAGE_KEY));
-
-    return (GOAL_OPTIONS as readonly number[]).includes(stored)
-      ? stored
-      : DEFAULT_GOAL;
-  } catch {
-    return DEFAULT_GOAL;
-  }
 }
 
 // -----------------------------------------------------------------------------
@@ -113,7 +90,6 @@ const LEVEL_SIZE = 100;
 
 export function computeStats(
   entries: ProgressEntry[],
-  goal: number,
   now: Date = new Date(),
 ): GamificationStats {
   // A lesson only counts once, even if it was completed more than once.
@@ -197,7 +173,6 @@ export function computeStats(
     };
   });
 
-  const bestDayXp = Math.max(0, ...xpByDay.values());
   const lessonsCompleted = lessons.length;
 
   const badge = (
@@ -226,7 +201,6 @@ export function computeStats(
     badge('unstoppable', 'Unstoppable', 'Reach a 30 day streak', 'award', longestStreak, 30),
     badge('century', 'Century', 'Earn 100 XP', 'star', totalXp, 100),
     badge('rising-star', 'Rising star', 'Earn 500 XP', 'zap', totalXp, 500),
-    badge('goal-getter', 'Goal getter', 'Hit your daily XP goal', 'target', bestDayXp, goal),
   ];
 
   return {
@@ -238,8 +212,6 @@ export function computeStats(
     longestStreak,
     streakActiveToday,
     todayXp,
-    goal,
-    goalMet: todayXp >= goal,
     lessonsCompleted,
     firstActivityAt,
     week,
@@ -256,14 +228,12 @@ interface StoreState {
   entries: ProgressEntry[] | null;
   loading: boolean;
   error: boolean;
-  goal: number;
 }
 
 let state: StoreState = {
   entries: null,
   loading: false,
   error: false,
-  goal: readStoredGoal(),
 };
 
 const listeners = new Set<() => void>();
@@ -342,16 +312,6 @@ export function refreshGamification(force = false): Promise<void> {
   return inflight;
 }
 
-export function setDailyGoal(goal: number): void {
-  try {
-    window.localStorage.setItem(GOAL_STORAGE_KEY, String(goal));
-  } catch {
-    // Storage can be unavailable (private mode); the goal still applies this session.
-  }
-
-  setState({ goal });
-}
-
 /** Call on logout so the next account never sees the previous one's data. */
 export function resetGamification(): void {
   lastFetchAt = 0;
@@ -359,12 +319,11 @@ export function resetGamification(): void {
     entries: null,
     loading: false,
     error: false,
-    goal: readStoredGoal(),
   });
 }
 
 /**
- * Streak, XP, level, badges and the daily goal, derived from UserProgress.
+ * Streak, XP, level and badges, derived from UserProgress.
  * Pass `refreshKey` (e.g. the route pathname) to refetch when it changes.
  */
 export function useGamification(refreshKey?: string) {
@@ -375,19 +334,14 @@ export function useGamification(refreshKey?: string) {
   }, [refreshKey]);
 
   const stats = useMemo(
-    () =>
-      snapshot.entries
-        ? computeStats(snapshot.entries, snapshot.goal)
-        : null,
-    [snapshot.entries, snapshot.goal],
+    () => (snapshot.entries ? computeStats(snapshot.entries) : null),
+    [snapshot.entries],
   );
 
   return {
     stats,
     loading: snapshot.loading && snapshot.entries === null,
     error: snapshot.error,
-    goal: snapshot.goal,
-    setGoal: setDailyGoal,
     refresh: () => refreshGamification(true),
   };
 }

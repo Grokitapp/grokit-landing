@@ -69,19 +69,10 @@ function AuthLoading({ step, slow }: { step: number; slow: boolean }) {
 
         <p
           key={step}
-          className="grokit-fade-up mt-2 flex items-center gap-1 text-sm font-semibold text-[#91A4AC]"
+          className="grokit-fade-up mt-2 text-sm font-semibold text-[#91A4AC]"
           style={{ animation: 'grokit-fade-up 300ms ease-out' }}
         >
           {LOADING_STEPS[Math.min(step, LOADING_STEPS.length - 1)]}
-          <span aria-hidden="true" className="inline-flex gap-0.5">
-            {[0, 1, 2].map((dot) => (
-              <span
-                key={dot}
-                className="inline-block h-1 w-1 animate-bounce rounded-full bg-orange motion-reduce:animate-none"
-                style={{ animationDelay: `${dot * 150}ms` }}
-              />
-            ))}
-          </span>
         </p>
 
         <div
