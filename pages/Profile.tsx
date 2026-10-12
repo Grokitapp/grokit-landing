@@ -33,21 +33,30 @@ function StatTile({
   icon: Icon,
   value,
   label,
-  accent = false,
+  color,
+  filled = false,
 }: {
   icon: typeof Flame;
   value: number | string;
   label: string;
-  accent?: boolean;
+  /** Accent colour (hex) for the icon and its soft background. */
+  color: string;
+  /** Fill the icon shape (e.g. a lit flame). */
+  filled?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border-2 border-[#37464F] px-4 py-3.5">
-      <Icon
+    <div className="flex items-center gap-3 rounded-2xl border-2 border-[#37464F] bg-[#19282E] px-4 py-3.5">
+      <span
         aria-hidden="true"
-        className={`h-7 w-7 shrink-0 ${
-          accent ? 'fill-orange text-orange' : 'text-orange'
-        }`}
-      />
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+        style={{ backgroundColor: `${color}22` }}
+      >
+        <Icon
+          className="h-7 w-7"
+          style={{ color }}
+          fill={filled ? color : 'none'}
+        />
+      </span>
 
       <div className="min-w-0">
         <p className="font-display text-xl font-extrabold leading-none text-white">
@@ -165,34 +174,6 @@ export default function Profile() {
                 ? `Learning since ${learningSince}`
                 : 'Complete a lesson to start your story'}
             </p>
-
-            {/* Level */}
-            <div className="mx-auto mt-6 max-w-sm text-left">
-              <div className="flex items-baseline justify-between text-sm">
-                <p className="font-display font-extrabold text-white">
-                  Level {stats.level}
-                </p>
-                <p className="text-[#91A4AC]">
-                  {stats.levelXp}/{stats.levelSize} XP
-                </p>
-              </div>
-
-              <div
-                role="progressbar"
-                aria-label="Progress to next level"
-                aria-valuemin={0}
-                aria-valuemax={stats.levelSize}
-                aria-valuenow={stats.levelXp}
-                className="mt-2 h-2.5 overflow-hidden rounded-full bg-[#0D181C]"
-              >
-                <div
-                  className="h-full rounded-full bg-orange transition-[width] duration-700 ease-out"
-                  style={{
-                    width: `${(stats.levelXp / stats.levelSize) * 100}%`,
-                  }}
-                />
-              </div>
-            </div>
           </section>
 
           {/* Statistics */}
@@ -204,18 +185,27 @@ export default function Profile() {
             <div className="grid grid-cols-2 gap-3">
               <StatTile
                 icon={Flame}
-                accent={stats.currentStreak > 0}
+                color="#F4611F"
+                filled={stats.currentStreak > 0}
                 value={stats.currentStreak}
                 label="Day streak"
               />
-              <StatTile icon={Zap} value={stats.totalXp} label="Total XP" />
+              <StatTile
+                icon={Zap}
+                color="#FACC15"
+                filled={stats.totalXp > 0}
+                value={stats.totalXp}
+                label="Total XP"
+              />
               <StatTile
                 icon={BookOpen}
+                color="#38BDF8"
                 value={stats.lessonsCompleted}
                 label="Lessons completed"
               />
               <StatTile
                 icon={Trophy}
+                color="#F59E0B"
                 value={stats.longestStreak}
                 label="Longest streak"
               />

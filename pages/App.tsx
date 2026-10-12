@@ -17,6 +17,7 @@ const LessonPlayer = lazy(() => import('./learn/LessonPlayer'));
 const Profile = lazy(() => import('./Profile'));
 const Explore = lazy(() => import('./Explore'));
 const Library = lazy(() => import('./Library'));
+const Leaderboard = lazy(() => import('./Leaderboard'));
 
 export default function App() {
   return (
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/create" element={<Create />} />
         <Route path="/explore" element={<Explore />} />
         <Route path="/library" element={<Library />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/learn/course/:courseId" element={<CourseOverview />} />
         <Route

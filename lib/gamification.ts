@@ -25,14 +25,25 @@ export type BadgeIcon =
   | 'trophy'
   | 'award'
   | 'star'
-  | 'zap'
-  | 'target';
+  | 'zap';
+
+/** Colour family for a badge. The UI maps each tone to its actual colours. */
+export type BadgeTone =
+  | 'emerald'
+  | 'teal'
+  | 'violet'
+  | 'orange'
+  | 'gold'
+  | 'rose'
+  | 'sun'
+  | 'sky';
 
 export interface Badge {
   id: string;
   title: string;
   description: string;
   icon: BadgeIcon;
+  tone: BadgeTone;
   value: number;
   target: number;
   earned: boolean;
@@ -180,6 +191,7 @@ export function computeStats(
     title: string,
     description: string,
     icon: BadgeIcon,
+    tone: BadgeTone,
     value: number,
     target: number,
   ): Badge => ({
@@ -187,20 +199,21 @@ export function computeStats(
     title,
     description,
     icon,
+    tone,
     value: Math.min(value, target),
     target,
     earned: value >= target,
   });
 
   const badges: Badge[] = [
-    badge('first-step', 'First step', 'Complete your first lesson', 'footprints', lessonsCompleted, 1),
-    badge('getting-going', 'Getting going', 'Complete 10 lessons', 'book', lessonsCompleted, 10),
-    badge('seeker', 'Knowledge seeker', 'Complete 25 lessons', 'medal', lessonsCompleted, 25),
-    badge('on-fire', 'On fire', 'Reach a 3 day streak', 'flame', longestStreak, 3),
-    badge('week-warrior', 'Week warrior', 'Reach a 7 day streak', 'trophy', longestStreak, 7),
-    badge('unstoppable', 'Unstoppable', 'Reach a 30 day streak', 'award', longestStreak, 30),
-    badge('century', 'Century', 'Earn 100 XP', 'star', totalXp, 100),
-    badge('rising-star', 'Rising star', 'Earn 500 XP', 'zap', totalXp, 500),
+    badge('first-step', 'First step', 'Complete your first lesson', 'footprints', 'emerald', lessonsCompleted, 1),
+    badge('getting-going', 'Getting going', 'Complete 10 lessons', 'book', 'teal', lessonsCompleted, 10),
+    badge('seeker', 'Knowledge seeker', 'Complete 25 lessons', 'medal', 'violet', lessonsCompleted, 25),
+    badge('on-fire', 'On fire', 'Reach a 3 day streak', 'flame', 'orange', longestStreak, 3),
+    badge('week-warrior', 'Week warrior', 'Reach a 7 day streak', 'trophy', 'gold', longestStreak, 7),
+    badge('unstoppable', 'Unstoppable', 'Reach a 30 day streak', 'award', 'rose', longestStreak, 30),
+    badge('century', 'Century', 'Earn 100 XP', 'star', 'sun', totalXp, 100),
+    badge('rising-star', 'Rising star', 'Earn 500 XP', 'zap', 'sky', totalXp, 500),
   ];
 
   return {

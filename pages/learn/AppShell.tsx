@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Settings,
   Sparkles,
+  Trophy,
   UserRound,
   X,
   Zap,
@@ -55,6 +56,7 @@ const navItems = [
   { label: 'Create', icon: Sparkles, to: '/create' },
   { label: 'Explore', icon: Compass, to: '/explore' },
   { label: 'Library', icon: Library, to: '/library' },
+  { label: 'Leaderboard', icon: Trophy, to: '/leaderboard' },
 ];
 
 // Module-level caches survive remounts (e.g. Create -> Personalize -> back), so the
