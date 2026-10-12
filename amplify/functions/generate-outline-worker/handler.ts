@@ -208,7 +208,7 @@ export const handler = async (event: WorkerEvent, context: { awsRequestId: strin
       id: courseId,
       title: outline.title,
       description: outline.description,
-      outline: stored,
+      outline: JSON.stringify(stored),
       status: "READY",
       generationError: null,
     });

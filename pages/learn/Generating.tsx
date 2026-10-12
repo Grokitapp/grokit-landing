@@ -322,8 +322,6 @@ export default function Generating() {
       <main className={pageClasses}>
         <BackToCreate onClick={goBack} />
 
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-80 w-80 -translate-x-1/2 -translate-y-1/2 rounded-full bg-orange/[0.06] blur-3xl" />
-
         <div className="relative flex w-full max-w-xl flex-col items-center text-center">
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-orange">
             Your next adventure
@@ -337,7 +335,7 @@ export default function Generating() {
             Turning your idea into a clear path, one step at a time.
           </p>
 
-          <div className="my-8 flex h-40 w-40 items-center justify-center rounded-full border border-[#37464F] bg-[#202F35]/80 shadow-[0_0_70px_rgba(255,107,0,0.08)] sm:h-48 sm:w-48">
+          <div className="my-8 flex h-40 w-40 items-center justify-center sm:h-48 sm:w-48">
             <img
               src={grokitMascot}
               alt="Grokit is preparing your journey"

@@ -188,8 +188,8 @@ export const handler = async (event: WorkerEvent, context: { awsRequestId: strin
     const saved = await client.models.Lesson.update({
       id: lessonId,
       coreContent: content.coreContent,
-      keyTerms: content.keyTerms,
-      quiz: content.quiz,
+      keyTerms: JSON.stringify(content.keyTerms),
+      quiz: JSON.stringify(content.quiz),
       status: "READY",
       generationError: null,
     });
