@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { ArrowLeft, AtSign, Check, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowLeft, AtSign, Check, Loader2, RefreshCw, User } from 'lucide-react';
 
 import {
   USERNAME_CHANGE_LIMIT,
@@ -10,9 +10,13 @@ import {
   announceUsernameChanged,
   changeUsername,
   checkUsernameAvailability,
+  NAME_MAX_LENGTH,
+  getDisplayName,
   getProfile,
   getUsernameChangeStatus,
+  updateDisplayName,
   updateLearningProfile,
+  validateDisplayName,
   validateUsername,
 } from '../../lib/profile';
 import {
@@ -67,6 +71,124 @@ const sectionTitleClasses = 'font-display text-lg font-extrabold text-white';
 
 const formatDateTime = (date: Date) =>
   date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+
+// -----------------------------------------------------------------------------
+// Name
+// -----------------------------------------------------------------------------
+
+function NameSection() {
+  const [current, setCurrent] = useState('');
+  const [draft, setDraft] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const name = await getDisplayName();
+
+        if (cancelled) return;
+
+        setCurrent(name);
+        setDraft(name);
+      } catch (loadError) {
+        console.error('[EditProfile] Failed to load name:', loadError);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const validation = validateDisplayName(draft);
+  const dirty = draft.trim().replace(/\s+/g, ' ') !== current;
+  const canSave = !loading && !saving && dirty && validation.ok;
+
+  const save = async () => {
+    if (!canSave) return;
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const name = await updateDisplayName(draft);
+
+      setCurrent(name);
+      setDraft(name);
+      setSaved(true);
+    } catch (caught) {
+      console.error('[EditProfile] Name update failed:', caught);
+      setError('We couldn’t save your name right now. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <section aria-labelledby="name-title">
+      <h3 id="name-title" className={sectionTitleClasses}>
+        Name
+      </h3>
+
+      <div className="mt-3 flex items-center gap-2 rounded-xl border-2 border-[#37464F] bg-[#131F24] px-4 transition-colors focus-within:border-orange/60">
+        <User className="h-4 w-4 shrink-0 text-[#60757E]" aria-hidden="true" />
+
+        <input
+          value={draft}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setSaved(false);
+            setError(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault();
+              void save();
+            }
+          }}
+          disabled={loading || saving}
+          maxLength={NAME_MAX_LENGTH + 1}
+          placeholder="Your name"
+          aria-label="Name"
+          autoComplete="name"
+          className={inputClasses}
+        />
+      </div>
+
+      <p role="status" className="mt-2 min-h-[20px] text-xs font-semibold">
+        {dirty && draft.trim() && !validation.ok && (
+          <span className="text-red-300">{validation.message}</span>
+        )}
+        {error && <span className="block text-red-300">{error}</span>}
+      </p>
+
+      <p className="mt-1 text-xs leading-5 text-[#78909A]">
+        This is the name shown on your profile. You can change it any time.
+      </p>
+
+      <div className="mt-4 flex items-center gap-3">
+        <button type="button" onClick={() => void save()} disabled={!canSave} className={primaryButtonClasses}>
+          {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+          Save name
+        </button>
+
+        {saved && (
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-300" role="status">
+            <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
+            Name saved
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
 
 // -----------------------------------------------------------------------------
 // Username
@@ -685,7 +807,7 @@ export default function EditProfile() {
   }, [load]);
 
   return (
-    <div className="mx-auto min-h-[100dvh] w-full max-w-[720px] px-4 py-6 sm:px-7 sm:py-10">
+    <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
       <header className="mb-6 flex items-center gap-3">
         <Link
           to="/profile"
@@ -701,7 +823,7 @@ export default function EditProfile() {
             Edit profile
           </h1>
           <p className="mt-0.5 text-sm text-[#91A4AC]">
-            Update your username and how Grokit personalizes your journeys.
+            Update your name, username and how Grokit personalizes your journeys.
           </p>
         </div>
       </header>
@@ -743,6 +865,10 @@ export default function EditProfile() {
 
       {status === 'ready' && profile && (
         <div className="space-y-6">
+          <div className={cardClasses}>
+            <NameSection />
+          </div>
+
           <div className={cardClasses}>
             <UsernameSection profile={profile} onSaved={load} />
           </div>

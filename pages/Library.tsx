@@ -10,8 +10,8 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 import {
+  Bookmark,
   Calendar,
-  Globe,
   Loader2,
   NotebookPen,
   Plus,
@@ -32,10 +32,10 @@ import {
   type SavedJourney,
 } from '../lib/library';
 import {
-  BookmarkButton,
   JourneyTile,
   MessageState,
   SearchField,
+  TileMenu,
   TileSkeleton,
 } from './learn/components/JourneyTile';
 
@@ -65,7 +65,7 @@ const SEARCH_PLACEHOLDERS: Record<TabId, string> = {
 };
 
 const gridClasses =
-  'mt-6 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4';
+  'mt-6 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4';
 
 function matches(query: string, ...fields: (string | null | undefined)[]) {
   const haystack = fields.join(' ').toLowerCase();
@@ -100,7 +100,7 @@ function courseMeta(course: CourseRecord, author: string) {
 
       if (!date) return '';
 
-      return `Created on ${date}`;
+      return `Created ${date}`;
     }
   }
 }
@@ -115,16 +115,9 @@ function courseByline(course: CourseRecord, author: string) {
 }
 
 function savedMeta(journey: SavedJourney) {
-  const parts: string[] = [];
-  const zones = journey.zoneCount ?? 0;
   const lessons = journey.lessonCount ?? 0;
 
-  if (zones > 0) parts.push(`${zones} ${zones === 1 ? 'zone' : 'zones'}`);
-  if (lessons > 0) {
-    parts.push(`${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}`);
-  }
-
-  return parts.join(' · ');
+  return lessons > 0 ? `${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}` : '';
 }
 
 // The signed-in learner's public name (username first, then account name).
@@ -138,7 +131,9 @@ function useAuthorName() {
       let name = '';
 
       try {
-        name = (await getProfile())?.username?.trim() || '';
+        const username = (await getProfile())?.username?.trim() || '';
+
+        name = username ? `@${username}` : '';
       } catch {
         // Fall back to the account name below.
       }
@@ -613,13 +608,6 @@ export default function Library() {
               }
               meta={courseMeta(course, author)}
               byline={courseByline(course, author)}
-              metaIcon={
-                journeysTab.data?.publicCourseIds.has(course.id) ? (
-                  <Globe className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                ) : (
-                  <Calendar className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                )
-              }
               onOpen={() => navigate(`/learn/course/${course.id}`)}
             />
           ))}
@@ -660,13 +648,25 @@ export default function Library() {
               imageUrl={item.heroImageUrl}
               badge={item.category}
               meta={savedMeta(item)}
+              byline={item.authorUsername ? `by @${item.authorUsername}` : undefined}
               onOpen={() => openSaved(item)}
               action={
-                <BookmarkButton
-                  saved
-                  busy={pendingUnsaves.has(item.id)}
+                <TileMenu
                   label={item.title}
-                  onToggle={() => void handleUnsave(item)}
+                  items={[
+                    {
+                      label: 'Remove from saved',
+                      icon: (
+                        <Bookmark
+                          className="h-4 w-4"
+                          fill="currentColor"
+                          aria-hidden="true"
+                        />
+                      ),
+                      disabled: pendingUnsaves.has(item.id),
+                      onClick: () => void handleUnsave(item),
+                    },
+                  ]}
                 />
               }
             />

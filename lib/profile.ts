@@ -1,5 +1,5 @@
 import { generateClient } from 'aws-amplify/data';
-import { fetchUserAttributes } from 'aws-amplify/auth';
+import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import type { Schema } from '../amplify/data/resource';
 
 const client = generateClient<Schema>();
@@ -209,4 +209,41 @@ export function announceUsernameChanged(username: string) {
   window.dispatchEvent(
     new CustomEvent<string>(USERNAME_CHANGED_EVENT, { detail: username }),
   );
+}
+
+// -----------------------------------------------------------------------------
+// Display name (stored as the Cognito `name` attribute)
+// -----------------------------------------------------------------------------
+
+export const NAME_MAX_LENGTH = 50;
+
+/** The learner's saved name, or '' if they haven't set one. */
+export async function getDisplayName(): Promise<string> {
+  const attributes = await fetchUserAttributes();
+
+  return attributes.name?.trim() ?? '';
+}
+
+export function validateDisplayName(
+  raw: string,
+): { ok: true; name: string } | { ok: false; message: string } {
+  const name = raw.trim().replace(/\s+/g, ' ');
+
+  if (!name) return { ok: false, message: 'Please enter your name.' };
+
+  if (name.length > NAME_MAX_LENGTH) {
+    return { ok: false, message: `Keep your name under ${NAME_MAX_LENGTH} characters.` };
+  }
+
+  return { ok: true, name };
+}
+
+export async function updateDisplayName(raw: string): Promise<string> {
+  const result = validateDisplayName(raw);
+
+  if (!result.ok) throw new Error(result.message);
+
+  await updateUserAttributes({ userAttributes: { name: result.name } });
+
+  return result.name;
 }

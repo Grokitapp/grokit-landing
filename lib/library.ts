@@ -69,6 +69,7 @@ export async function saveJourney(journey: PublicJourney): Promise<SavedJourney>
       heroImageUrl: journey.heroImageUrl ?? undefined,
       zoneCount: journey.zoneCount ?? undefined,
       lessonCount: journey.lessonCount ?? undefined,
+      authorUsername: journey.authorUsername ?? undefined,
     },
     USER_POOL,
   );

@@ -95,6 +95,7 @@ function ProfileSkeleton() {
 export default function Profile() {
   const { stats, loading, error, refresh } = useGamification();
   const [name, setName] = useState('');
+  const [fullName, setFullName] = useState('');
   const [profile, setProfile] = useState<Awaited<ReturnType<typeof getProfile>>>(null);
 
   const reloadProfile = useCallback(async () => {
@@ -118,6 +119,7 @@ export default function Profile() {
 
         if (cancelled) return;
 
+        setFullName(attributes.name?.trim() || '');
         setName(
           attributes.name ||
             attributes.preferred_username ||
@@ -138,7 +140,7 @@ export default function Profile() {
 
   // The username (when set) is the public-facing name; the email prefix is only a fallback.
   const username = profile?.username?.trim() || '';
-  const displayName = username || name;
+  const displayName = fullName || username || name;
   const initial = displayName.trim().charAt(0).toUpperCase() || 'Y';
 
   const learningSince = stats?.firstActivityAt?.toLocaleDateString(undefined, {
@@ -197,6 +199,10 @@ export default function Profile() {
             <h1 className="mt-5 break-words font-display text-3xl font-extrabold text-white">
               {displayName || ' '}
             </h1>
+
+            {fullName && username && (
+              <p className="mt-1 text-sm font-semibold text-[#C8D3DA]">@{username}</p>
+            )}
 
             <p className="mt-1 text-sm text-[#91A4AC]">
               {learningSince

@@ -147,6 +147,7 @@ const schema = a.schema({
       heroImageUrl: a.string(),
       zoneCount: a.integer(),
       lessonCount: a.integer(),
+      authorUsername: a.string(),
       featured: a.boolean().default(false),
     })
     .authorization((allow) => [
@@ -166,6 +167,7 @@ const schema = a.schema({
       heroImageUrl: a.string(),
       zoneCount: a.integer(),
       lessonCount: a.integer(),
+      authorUsername: a.string(),
     })
     .authorization((allow) => [
       allow.owner(),

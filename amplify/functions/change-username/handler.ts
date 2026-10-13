@@ -15,7 +15,8 @@ import {
 const db = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 interface AppSyncEvent {
-  info: { fieldName: string };
+  fieldName?: string;
+  info?: { fieldName?: string };
   arguments: { username?: string; profileId?: string };
   identity?: { sub?: string } | null;
 }
@@ -242,9 +243,10 @@ export const handler = async (event: AppSyncEvent): Promise<UsernameResult> => {
 
   if (!sub) throw new Error('Unauthorized');
 
-  const { username = '', profileId = '' } = event.arguments;
+  const { username = '', profileId = '' } = event.arguments ?? {};
+  const fieldName = event.fieldName ?? event.info?.fieldName;
 
-  switch (event.info.fieldName) {
+  switch (fieldName) {
     case 'checkUsername':
       return checkUsername(sub, username);
 
@@ -256,6 +258,6 @@ export const handler = async (event: AppSyncEvent): Promise<UsernameResult> => {
       return changeUsername(sub, profileId, username);
 
     default:
-      throw new Error(`Unsupported operation: ${event.info.fieldName}`);
+      throw new Error(`Unsupported operation: ${String(fieldName)}`);
   }
 };

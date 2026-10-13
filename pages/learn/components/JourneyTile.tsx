@@ -1,9 +1,36 @@
-import type { ReactNode } from 'react';
-import { Bookmark, BookOpen, Compass, RefreshCw, Search } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  Bookmark,
+  Compass,
+  MoreVertical,
+  RefreshCw,
+  Search,
+} from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // Shared building blocks for the Explore and Library screens.
 // -----------------------------------------------------------------------------
+
+// Journeys without a cover image get a stable gradient picked from their title,
+// so the same journey always looks the same.
+const COVER_GRADIENTS = [
+  'from-[#2F7A78] to-[#173B4B]',
+  'from-[#3A7CA5] to-[#1B3350]',
+  'from-[#4C8F6B] to-[#1C4040]',
+  'from-[#5B6FB5] to-[#222F5B]',
+  'from-[#8A5CA8] to-[#34244F]',
+  'from-[#B0663E] to-[#4A2A2A]',
+];
+
+function gradientFor(seed: string) {
+  let hash = 0;
+
+  for (const char of seed) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+
+  return COVER_GRADIENTS[hash % COVER_GRADIENTS.length];
+}
 
 export function JourneyTile({
   title,
@@ -11,81 +38,163 @@ export function JourneyTile({
   badge,
   meta,
   byline,
-  metaIcon,
   fluid = false,
   action,
   onOpen,
 }: {
   title: string;
   imageUrl?: string | null;
+  /** Pill pinned to the top-left of the cover. */
   badge?: string | null;
+  /** Bottom-right text, e.g. "12 lessons". */
   meta?: string;
-  /** Optional third line under the meta line, e.g. "by Name". */
+  /** Bottom-left text, e.g. "by @name". */
   byline?: string;
-  metaIcon?: ReactNode;
   /** Fill the available width (grids) instead of a fixed row-card width. */
   fluid?: boolean;
-  /** Small control pinned to the image's top-right corner (e.g. bookmark). */
+  /** Control pinned to the top-right corner (e.g. a TileMenu). */
   action?: ReactNode;
   onOpen: () => void;
 }) {
   return (
     <div
-      className={`group relative flex flex-col overflow-hidden rounded-2xl border border-[#2D4149] bg-[#17262C] transition duration-200 hover:-translate-y-0.5 hover:border-orange/50 hover:shadow-[0_12px_32px_rgba(0,0,0,0.35)] focus-within:border-orange/50 ${
-        fluid ? 'w-full' : 'w-[240px] shrink-0 snap-start sm:w-[250px]'
+      className={`group relative h-[200px] transition-transform duration-200 hover:-translate-y-0.5 ${
+        fluid ? 'w-full' : 'w-[280px] shrink-0 snap-start sm:w-[300px]'
       }`}
     >
       <button
         type="button"
         onClick={onOpen}
         aria-label={`Open ${title}`}
-        className="flex flex-1 flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange"
+        className="absolute inset-0 overflow-hidden rounded-2xl border border-[#2D4149] text-left transition duration-200 group-hover:border-orange/50 group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
       >
-        <div className="relative h-[130px] w-full overflow-hidden bg-[#1D3037]">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt=""
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        {imageUrl ? (
+          <img
+            src={imageUrl}
+            alt=""
+            loading="lazy"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className={`absolute inset-0 bg-gradient-to-br ${gradientFor(title)}`}
+          >
+            <Compass
+              className="absolute left-1/2 top-5 h-20 w-20 -translate-x-1/2 text-white/15"
+              aria-hidden="true"
             />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#223A43] to-[#14232A]">
-              <Compass className="h-9 w-9 text-orange/70" aria-hidden="true" />
-            </div>
-          )}
+          </div>
+        )}
 
-          {badge && (
-            <span className="absolute left-3 top-3 max-w-[calc(100%-4rem)] truncate rounded-full bg-black/55 px-3 py-1 text-xs font-bold text-white backdrop-blur">
-              {badge}
-            </span>
-          )}
-        </div>
+        {/* Keeps the title readable on any cover. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent"
+        />
 
-        <div className="flex flex-1 flex-col p-4">
-          <h3 className="line-clamp-2 min-h-[2.75rem] font-display text-base font-extrabold leading-snug text-white">
+        {badge && (
+          <span className="absolute left-3 top-3 max-w-[calc(100%-4rem)] truncate rounded-full bg-black/45 px-3 py-1 text-xs font-bold text-white backdrop-blur">
+            {badge}
+          </span>
+        )}
+
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <h3 className="line-clamp-2 font-display text-lg font-extrabold leading-tight text-white [text-shadow:0_1px_6px_rgba(0,0,0,0.45)]">
             {title}
           </h3>
 
-          {meta && (
-            <p className="mt-2 flex items-center gap-2 text-xs font-semibold text-[#91A4AC]">
-              {metaIcon ?? (
-                <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              )}
-              <span className="truncate">{meta}</span>
-            </p>
-          )}
-
-          {meta && byline && (
-            // pl-[1.375rem] = icon width + gap, so the text lines up with the meta text.
-            <p className="mt-1 truncate pl-[1.375rem] text-xs font-semibold text-[#718993]">
-              {byline}
-            </p>
+          {(byline || meta) && (
+            <div className="mt-2 flex items-center justify-between gap-3 text-xs font-semibold text-white/80">
+              <span className="min-w-0 truncate">{byline}</span>
+              {meta && <span className="shrink-0">{meta}</span>}
+            </div>
           )}
         </div>
       </button>
 
-      {action && <div className="absolute right-3 top-3">{action}</div>}
+      {action && <div className="absolute right-3 top-3 z-10">{action}</div>}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// The "⋮" menu on a card
+// -----------------------------------------------------------------------------
+
+export interface TileMenuItem {
+  label: string;
+  icon?: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
+export function TileMenu({
+  items,
+  label,
+}: {
+  items: TileMenuItem[];
+  /** The journey's title, used for the button's accessible name. */
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label={`More options for ${label}`}
+        className="flex h-8 w-8 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+      >
+        <MoreVertical className="h-4 w-4" aria-hidden="true" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-10 min-w-[180px] rounded-xl border border-[#2D4149] bg-[#17262C] p-1 shadow-[0_12px_32px_rgba(0,0,0,0.5)]"
+        >
+          {items.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              role="menuitem"
+              disabled={item.disabled}
+              onClick={() => {
+                setOpen(false);
+                item.onClick();
+              }}
+              className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-bold text-[#D7E0E3] transition-colors hover:bg-[#223640] hover:text-white focus-visible:bg-[#223640] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50"
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -109,7 +218,7 @@ export function BookmarkButton({
       aria-pressed={saved}
       aria-label={saved ? `Remove ${label} from saved` : `Save ${label}`}
       title={saved ? 'Saved' : 'Save for later'}
-      className={`flex h-8 w-8 items-center justify-center rounded-full bg-black/55 backdrop-blur transition hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:opacity-60 ${
+      className={`flex h-8 w-8 items-center justify-center rounded-full bg-black/45 backdrop-blur transition hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:opacity-60 ${
         saved ? 'text-orange' : 'text-white'
       }`}
     >
@@ -125,14 +234,16 @@ export function BookmarkButton({
 export function TileSkeleton({ fluid = false }: { fluid?: boolean }) {
   return (
     <div
-      className={`overflow-hidden rounded-2xl border border-[#243840] bg-[#15242A] ${
-        fluid ? 'w-full' : 'w-[240px] shrink-0 sm:w-[250px]'
+      className={`relative h-[200px] overflow-hidden rounded-2xl border border-[#243840] bg-[#1A2D34] ${
+        fluid ? 'w-full' : 'w-[280px] shrink-0 sm:w-[300px]'
       }`}
     >
-      <div className="h-[130px] bg-[#1F333B]" />
-      <div className="space-y-3 p-4">
-        <div className="h-4 w-4/5 rounded bg-[#233A43]" />
-        <div className="h-3 w-2/5 rounded bg-[#1F333B]" />
+      <div className="absolute inset-x-0 bottom-0 space-y-3 p-4">
+        <div className="h-4 w-4/5 rounded bg-[#26414B]" />
+        <div className="flex justify-between">
+          <div className="h-3 w-1/4 rounded bg-[#223840]" />
+          <div className="h-3 w-1/5 rounded bg-[#223840]" />
+        </div>
       </div>
     </div>
   );

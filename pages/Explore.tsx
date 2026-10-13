@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Bookmark, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 
 import { listPublicJourneys, type PublicJourney } from '../lib/explore';
 import {
@@ -9,10 +9,10 @@ import {
   unsaveJourney,
 } from '../lib/library';
 import {
-  BookmarkButton,
   JourneyTile,
   MessageState,
   SearchField,
+  TileMenu,
   TileSkeleton,
 } from './learn/components/JourneyTile';
 
@@ -69,16 +69,9 @@ function matchesQuery(journey: PublicJourney, query: string) {
 }
 
 function formatMeta(journey: PublicJourney) {
-  const parts: string[] = [];
-  const zones = journey.zoneCount ?? 0;
   const lessons = journey.lessonCount ?? 0;
 
-  if (zones > 0) parts.push(`${zones} ${zones === 1 ? 'zone' : 'zones'}`);
-  if (lessons > 0) {
-    parts.push(`${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}`);
-  }
-
-  return parts.join(' · ');
+  return lessons > 0 ? `${lessons} ${lessons === 1 ? 'lesson' : 'lessons'}` : '';
 }
 
 const hideScrollbar =
@@ -107,14 +100,31 @@ function renderTile(
       imageUrl={journey.heroImageUrl}
       badge={journey.category}
       meta={formatMeta(journey)}
+      byline={journey.authorUsername ? `by @${journey.authorUsername}` : undefined}
       fluid={fluid}
       onOpen={() => handlers.onOpen(journey)}
       action={
-        <BookmarkButton
-          saved={handlers.isSaved(journey)}
-          busy={handlers.isSavePending(journey)}
+        <TileMenu
           label={journey.title}
-          onToggle={() => handlers.onToggleSave(journey)}
+          items={[
+            {
+              label: handlers.isSaved(journey) ? 'Remove from saved' : 'Save for later',
+              icon: (
+                <Bookmark
+                  className="h-4 w-4"
+                  fill={handlers.isSaved(journey) ? 'currentColor' : 'none'}
+                  aria-hidden="true"
+                />
+              ),
+              disabled: handlers.isSavePending(journey),
+              onClick: () => handlers.onToggleSave(journey),
+            },
+            {
+              label: 'Create from this',
+              icon: <Play className="h-4 w-4" aria-hidden="true" />,
+              onClick: () => handlers.onOpen(journey),
+            },
+          ]}
         />
       }
     />
@@ -224,7 +234,7 @@ function JourneyRow({
         onScroll={updateEdges}
         className={`-mx-1 -mb-2 mt-2 px-1 py-2 ${
           expanded
-            ? 'grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4'
+            ? 'grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4'
             : `flex snap-x gap-4 overflow-x-auto scroll-smooth ${hideScrollbar}`
         }`}
       >
@@ -447,7 +457,7 @@ export default function Explore() {
                 Results
               </h2>
 
-              <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
+              <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
                 {results.map((journey) => renderTile(journey, handlers, true))}
               </div>
             </section>

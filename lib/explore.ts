@@ -1,5 +1,6 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
+import { getProfile } from './profile';
 
 const client = generateClient<Schema>();
 
@@ -87,12 +88,24 @@ export interface PublishJourneyInput {
   heroImageUrl?: string | null;
   zoneCount: number;
   lessonCount: number;
+  /** Defaults to the signed-in learner's username. */
+  authorUsername?: string | null;
 }
 
 /** Make a journey visible to every signed-in learner in Explore. */
 export async function publishJourney(
   input: PublishJourneyInput,
 ): Promise<PublicJourney> {
+  let authorUsername = input.authorUsername?.trim() || '';
+
+  if (!authorUsername) {
+    try {
+      authorUsername = (await getProfile())?.username?.trim() || '';
+    } catch {
+      // The byline is optional; publish without it.
+    }
+  }
+
   const { data, errors } = await client.models.PublicJourney.create(
     {
       courseId: input.courseId,
@@ -102,6 +115,7 @@ export async function publishJourney(
       heroImageUrl: input.heroImageUrl || undefined,
       zoneCount: input.zoneCount,
       lessonCount: input.lessonCount,
+      authorUsername: authorUsername || undefined,
       featured: false,
     },
     USER_POOL,
