@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import {
   BookOpen,
   Flame,
   Loader2,
+  Pencil,
   RefreshCw,
   Trophy,
   Zap,
@@ -17,6 +18,10 @@ import {
   cardClasses,
 } from './learn/components/GamificationCards';
 import { useGamification } from '../lib/gamification';
+import { getProfile } from '../lib/profile';
+
+// Loaded on demand: only needed when the learner opens "Edit profile".
+const EditProfileModal = lazy(() => import('./profile/EditProfileModal'));
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -93,6 +98,20 @@ function ProfileSkeleton() {
 export default function Profile() {
   const { stats, loading, error, refresh } = useGamification();
   const [name, setName] = useState('');
+  const [profile, setProfile] = useState<Awaited<ReturnType<typeof getProfile>>>(null);
+  const [editing, setEditing] = useState(false);
+
+  const reloadProfile = useCallback(async () => {
+    try {
+      setProfile(await getProfile());
+    } catch (loadError) {
+      console.error('[Profile] Failed to load profile:', loadError);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reloadProfile();
+  }, [reloadProfile]);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,7 +140,10 @@ export default function Profile() {
     };
   }, []);
 
-  const initial = name.trim().charAt(0).toUpperCase() || 'Y';
+  // The username (when set) is the public-facing name; the email prefix is only a fallback.
+  const username = profile?.username?.trim() || '';
+  const displayName = username || name;
+  const initial = displayName.trim().charAt(0).toUpperCase() || 'Y';
 
   const learningSince = stats?.firstActivityAt?.toLocaleDateString(undefined, {
     month: 'long',
@@ -162,11 +184,11 @@ export default function Profile() {
               aria-hidden="true"
               className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-[#8F3FB5] font-display text-5xl font-extrabold text-white shadow-[0_6px_0_#6B2A88]"
             >
-              {name ? initial : <Loader2 className="h-8 w-8 animate-spin" />}
+              {displayName ? initial : <Loader2 className="h-8 w-8 animate-spin" />}
             </div>
 
             <h1 className="mt-5 break-words font-display text-3xl font-extrabold text-white">
-              {name || ' '}
+              {displayName || ' '}
             </h1>
 
             <p className="mt-1 text-sm text-[#91A4AC]">
@@ -174,6 +196,31 @@ export default function Profile() {
                 ? `Learning since ${learningSince}`
                 : 'Complete a lesson to start your story'}
             </p>
+
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                disabled={!profile}
+                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#37464F] px-4 text-sm font-bold text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:pointer-events-none disabled:opacity-50"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Edit profile
+              </button>
+            </div>
+
+            {profile && !username && (
+              <p className="mt-3 text-xs text-[#91A4AC]">
+                You don’t have a username yet.{' '}
+                <button
+                  type="button"
+                  onClick={() => setEditing(true)}
+                  className="font-bold text-orange transition hover:text-white"
+                >
+                  Add one
+                </button>
+              </p>
+            )}
           </section>
 
           {/* Statistics */}
@@ -250,6 +297,16 @@ export default function Profile() {
             </p>
           )}
         </div>
+      )}
+
+      {editing && profile && (
+        <Suspense fallback={null}>
+          <EditProfileModal
+            profile={profile}
+            onClose={() => setEditing(false)}
+            onSaved={reloadProfile}
+          />
+        </Suspense>
       )}
     </div>
   );

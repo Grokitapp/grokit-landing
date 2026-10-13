@@ -3,6 +3,7 @@ import { generateOutline } from '../functions/generate-outline/resource';
 import { generateOutlineWorker } from '../functions/generate-outline-worker/resource';
 import { generateLesson } from '../functions/generate-lesson/resource';
 import { generateLessonWorker } from '../functions/generate-lesson-worker/resource';
+import { changeUsername } from '../functions/change-username/resource';
 
 const schema = a.schema({
   Course: a
@@ -88,9 +89,39 @@ const schema = a.schema({
       goals: a.string().array(),
       learnPrompt: a.string(),
       onboardingCompleted: a.boolean().default(false),
+
+      // Username state is read-only for the client. Only the change-username
+      // function (which writes to DynamoDB directly) can set these, so the
+      // uniqueness and "2 changes per 15 days" rules can't be bypassed.
+      username: a
+        .string()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      usernameChangedAt: a
+        .string()
+        .array()
+        .authorization((allow) => [allow.owner().to(['read'])]),
+      usernameVersion: a
+        .integer()
+        .authorization((allow) => [allow.owner().to(['read'])]),
     })
     .authorization((allow) => [
       allow.owner(),
+    ]),
+
+  // One row per taken username. The handle (lowercase) IS the primary key, so
+  // DynamoDB itself guarantees uniqueness and lookups stay O(1) at any scale.
+  // Clients can only read their own claim; the function does all the writing.
+  UsernameClaim: a
+    .model({
+      handle: a.string().required(),
+      owner: a.string().required(),
+    })
+    .identifier(['handle'])
+    .authorization((allow) => [
+      allow
+        .ownerDefinedIn('owner')
+        .identityClaim('sub')
+        .to(['read']),
     ]),
 
   UserProgress: a
@@ -152,6 +183,40 @@ const schema = a.schema({
     .authorization((allow) => [
       allow.owner(),
     ]),
+
+  // Result of a username check / change. Expected outcomes (taken, invalid,
+  // rate limited) come back here rather than as GraphQL errors.
+  UsernameResult: a.customType({
+    ok: a.boolean().required(),
+    code: a.string().required(),
+    message: a.string(),
+    username: a.string(),
+    nextChangeAt: a.string(),
+    changesRemaining: a.integer(),
+  }),
+
+  changeUsername: a
+    .mutation()
+    .arguments({
+      profileId: a.id().required(),
+      username: a.string().required(),
+    })
+    .returns(a.ref('UsernameResult'))
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(changeUsername)),
+
+  checkUsername: a
+    .query()
+    .arguments({
+      username: a.string().required(),
+    })
+    .returns(a.ref('UsernameResult'))
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(changeUsername)),
 
   generateOutline: a
     .mutation()

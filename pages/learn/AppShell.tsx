@@ -26,6 +26,7 @@ import { fetchUserAttributes } from 'aws-amplify/auth';
 import { GrokitLogo } from '../../components/Grokitlogo';
 import { signOutUser } from '../auth/authService';
 import { listCourses } from '../../lib/courseGeneration';
+import { USERNAME_CHANGED_EVENT, getProfile } from '../../lib/profile';
 import {
   JOURNEY_CHANGED_EVENT,
   type JourneyChange,
@@ -328,9 +329,15 @@ export default function AppShell({
       try {
         const attributes = await fetchUserAttributes();
 
+        // The username (when the learner has set one) wins over the email prefix.
+        const username = await getProfile()
+          .then((profile) => profile?.username?.trim() || '')
+          .catch(() => '');
+
         if (cancelled) return;
 
         const resolvedName =
+          username ||
           attributes.name ||
           attributes.preferred_username ||
           attributes.email?.split('@')[0] ||
@@ -349,6 +356,23 @@ export default function AppShell({
       cancelled = true;
     };
   }, [providedUserName]);
+
+  // Reflect a username change from the profile screen right away.
+  useEffect(() => {
+    const handleUsernameChanged = (event: Event) => {
+      const next = (event as CustomEvent<string>).detail;
+
+      if (!next) return;
+
+      cachedUserName = next;
+      setUserName(next);
+    };
+
+    window.addEventListener(USERNAME_CHANGED_EVENT, handleUsernameChanged);
+
+    return () =>
+      window.removeEventListener(USERNAME_CHANGED_EVENT, handleUsernameChanged);
+  }, []);
 
   // Close menus when clicking outside or pressing Escape.
   useEffect(() => {

@@ -11,6 +11,7 @@ import { generateOutlineWorker } from "./functions/generate-outline-worker/resou
 import { generateLesson } from "./functions/generate-lesson/resource";
 import { generateLessonWorker } from "./functions/generate-lesson-worker/resource";
 import { linkGoogleUser } from "./functions/link-google-user/resource";
+import { changeUsername } from "./functions/change-username/resource";
 
 const backend = defineBackend({
   auth,
@@ -20,6 +21,7 @@ const backend = defineBackend({
   generateLesson,
   generateLessonWorker,
   linkGoogleUser,
+  changeUsername,
 });
 
 /* ---------------------------------------------------------------------------
@@ -84,3 +86,14 @@ linkGoogleUserLambda.addToRolePolicy(
     resources: [userPoolArn],
   }),
 );
+
+// Usernames
+const userProfileTable = backend.data.resources.tables["UserProfile"];
+const usernameClaimTable = backend.data.resources.tables["UsernameClaim"];
+const changeUsernameLambda = backend.changeUsername.resources.lambda;
+
+backend.changeUsername.addEnvironment("USER_PROFILE_TABLE_NAME", userProfileTable.tableName);
+backend.changeUsername.addEnvironment("USERNAME_CLAIM_TABLE_NAME", usernameClaimTable.tableName);
+
+userProfileTable.grantReadWriteData(changeUsernameLambda);
+usernameClaimTable.grantReadWriteData(changeUsernameLambda);
