@@ -15,6 +15,7 @@ const CourseOverview = lazy(() => import('./learn/CourseOverview'));
 const PhaseDetail = lazy(() => import('./learn/PhaseDetail'));
 const LessonPlayer = lazy(() => import('./learn/LessonPlayer'));
 const Profile = lazy(() => import('./Profile'));
+const EditProfile = lazy(() => import('./profile/EditProfile'));
 const Explore = lazy(() => import('./Explore'));
 const Library = lazy(() => import('./Library'));
 const Leaderboard = lazy(() => import('./Leaderboard'));
@@ -34,6 +35,7 @@ export default function App() {
         <Route path="/library" element={<Library />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/edit" element={<EditProfile />} />
         <Route path="/learn/course/:courseId" element={<CourseOverview />} />
         <Route
           path="/learn/course/:courseId/phase/:phaseId"

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AtSign, Check, Loader2, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import { ArrowLeft, AtSign, Check, Loader2, RefreshCw } from 'lucide-react';
 
 import {
   USERNAME_CHANGE_LIMIT,
@@ -9,6 +10,7 @@ import {
   announceUsernameChanged,
   changeUsername,
   checkUsernameAvailability,
+  getProfile,
   getUsernameChangeStatus,
   updateLearningProfile,
   validateUsername,
@@ -43,13 +45,6 @@ export interface EditableProfile {
   comprehensionPreferences?: MaybeStrings;
   desiredOutcomes?: MaybeStrings;
   timeCommitment?: string | null;
-}
-
-interface EditProfileModalProps {
-  profile: EditableProfile;
-  onClose: () => void;
-  /** Called after anything is saved so the page can reload the profile. */
-  onSaved: () => void | Promise<void>;
 }
 
 const toStrings = (value: MaybeStrings): string[] =>
@@ -658,75 +653,105 @@ function LearningSection({
 }
 
 // -----------------------------------------------------------------------------
-// Modal
+// Page
 // -----------------------------------------------------------------------------
 
-export default function EditProfileModal({
-  profile,
-  onClose,
-  onSaved,
-}: EditProfileModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
+const cardClasses =
+  'rounded-2xl border-2 border-[#37464F] bg-[#19282E] p-5 sm:p-7';
 
-  // Close on Escape, lock page scroll while open, and move focus into the dialog.
+export default function EditProfile() {
+  const [profile, setProfile] =
+    useState<Awaited<ReturnType<typeof getProfile>>>(null);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+
+  const load = useCallback(async () => {
+    try {
+      const result = await getProfile();
+
+      if (!result) throw new Error('PROFILE_NOT_FOUND');
+
+      setProfile(result);
+      setStatus('ready');
+    } catch (loadError) {
+      console.error('[EditProfile] Failed to load profile:', loadError);
+
+      // A failed background refresh must not replace a form the learner is using.
+      setStatus((current) => (current === 'ready' ? current : 'error'));
+    }
+  }, []);
+
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-
-    document.body.style.overflow = 'hidden';
-    dialogRef.current?.focus();
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus?.();
-    };
-  }, [onClose]);
+    void load();
+  }, [load]);
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 sm:items-center sm:p-6"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-profile-title"
-        tabIndex={-1}
-        className="flex max-h-[92dvh] w-full max-w-[680px] flex-col overflow-hidden rounded-t-3xl border border-[#37464F] bg-[#19282E] shadow-[0_24px_80px_rgba(0,0,0,0.5)] outline-none sm:rounded-3xl"
-      >
-        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-[#2D4149] px-5 py-4 sm:px-6">
-          <h2 id="edit-profile-title" className="font-display text-xl font-extrabold text-white">
+    <div className="mx-auto min-h-[100dvh] w-full max-w-[720px] px-4 py-6 sm:px-7 sm:py-10">
+      <header className="mb-6 flex items-center gap-3">
+        <Link
+          to="/profile"
+          aria-label="Back to profile"
+          title="Back to profile"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+        >
+          <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+        </Link>
+
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-extrabold text-white sm:text-3xl">
             Edit profile
+          </h1>
+          <p className="mt-0.5 text-sm text-[#91A4AC]">
+            Update your username and how Grokit personalizes your journeys.
+          </p>
+        </div>
+      </header>
+
+      {status === 'loading' && (
+        <div
+          aria-busy="true"
+          aria-label="Loading your profile"
+          className="animate-pulse space-y-6"
+        >
+          <div className="h-56 rounded-2xl bg-[#19282E]" />
+          <div className="h-96 rounded-2xl bg-[#19282E]" />
+        </div>
+      )}
+
+      {status === 'error' && (
+        <section
+          role="alert"
+          className="flex flex-col items-center py-16 text-center"
+        >
+          <h2 className="font-display text-xl font-extrabold text-white">
+            We couldn’t load your profile
           </h2>
+          <p className="mt-2 text-sm text-[#91A4AC]">Please try again.</p>
 
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-[#91A4AC] transition hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            onClick={() => {
+              setStatus('loading');
+              void load();
+            }}
+            className={`${primaryButtonClasses} mt-6`}
           >
-            <X className="h-5 w-5" aria-hidden="true" />
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+            Try again
           </button>
-        </header>
+        </section>
+      )}
 
-        <div className="min-h-0 flex-1 space-y-9 overflow-y-auto px-5 py-6 sm:px-6">
-          <UsernameSection profile={profile} onSaved={onSaved} />
+      {status === 'ready' && profile && (
+        <div className="space-y-6">
+          <div className={cardClasses}>
+            <UsernameSection profile={profile} onSaved={load} />
+          </div>
 
-          <div className="h-px bg-[#2D4149]" aria-hidden="true" />
-
-          <LearningSection profile={profile} onSaved={onSaved} />
+          <div className={cardClasses}>
+            <LearningSection profile={profile} onSaved={load} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

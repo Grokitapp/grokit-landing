@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import {
   BookOpen,
@@ -12,16 +12,13 @@ import {
 import { fetchUserAttributes } from 'aws-amplify/auth';
 
 import {
-  BadgeGrid,
   StreakCalendar,
   StreakCard,
   cardClasses,
 } from './learn/components/GamificationCards';
 import { useGamification } from '../lib/gamification';
 import { getProfile } from '../lib/profile';
-
-// Loaded on demand: only needed when the learner opens "Edit profile".
-const EditProfileModal = lazy(() => import('./profile/EditProfileModal'));
+import BadgeRings from './profile/BadgeRings';
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -99,7 +96,6 @@ export default function Profile() {
   const { stats, loading, error, refresh } = useGamification();
   const [name, setName] = useState('');
   const [profile, setProfile] = useState<Awaited<ReturnType<typeof getProfile>>>(null);
-  const [editing, setEditing] = useState(false);
 
   const reloadProfile = useCallback(async () => {
     try {
@@ -179,7 +175,18 @@ export default function Profile() {
       ) : (
         <div className="space-y-10">
           {/* Hero */}
-          <section className={`${cardClasses} px-5 py-8 text-center sm:px-8`}>
+          <section
+            className={`${cardClasses} relative px-5 py-8 text-center sm:px-8`}
+          >
+            <Link
+              to="/profile/edit"
+              aria-label="Edit profile"
+              title="Edit profile"
+              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            >
+              <Pencil className="h-4 w-4" aria-hidden="true" />
+            </Link>
+
             <div
               aria-hidden="true"
               className="mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-[#8F3FB5] font-display text-5xl font-extrabold text-white shadow-[0_6px_0_#6B2A88]"
@@ -197,28 +204,38 @@ export default function Profile() {
                 : 'Complete a lesson to start your story'}
             </p>
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                disabled={!profile}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-[#37464F] px-4 text-sm font-bold text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:pointer-events-none disabled:opacity-50"
+            <div className="mx-auto mt-6 max-w-xs">
+              <div className="flex items-baseline justify-between text-xs font-bold">
+                <span className="text-white">Level {stats.level}</span>
+                <span className="text-[#91A4AC]">
+                  {stats.levelXp}/{stats.levelSize} XP
+                </span>
+              </div>
+
+              <div
+                role="progressbar"
+                aria-label={`Progress to level ${stats.level + 1}`}
+                aria-valuemin={0}
+                aria-valuemax={stats.levelSize}
+                aria-valuenow={stats.levelXp}
+                className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#0D181C]"
               >
-                <Pencil className="h-4 w-4" aria-hidden="true" />
-                Edit profile
-              </button>
+                <div
+                  className="h-full rounded-full bg-orange transition-[width] duration-500"
+                  style={{ width: `${(stats.levelXp / stats.levelSize) * 100}%` }}
+                />
+              </div>
             </div>
 
             {profile && !username && (
-              <p className="mt-3 text-xs text-[#91A4AC]">
+              <p className="mt-4 text-xs text-[#91A4AC]">
                 You don’t have a username yet.{' '}
-                <button
-                  type="button"
-                  onClick={() => setEditing(true)}
+                <Link
+                  to="/profile/edit"
                   className="font-bold text-orange transition hover:text-white"
                 >
                   Add one
-                </button>
+                </Link>
               </p>
             )}
           </section>
@@ -281,7 +298,7 @@ export default function Profile() {
               </p>
             </div>
 
-            <BadgeGrid badges={stats.badges} />
+            <BadgeRings badges={stats.badges} />
           </section>
 
           {stats.lessonsCompleted === 0 && (
@@ -299,15 +316,6 @@ export default function Profile() {
         </div>
       )}
 
-      {editing && profile && (
-        <Suspense fallback={null}>
-          <EditProfileModal
-            profile={profile}
-            onClose={() => setEditing(false)}
-            onSaved={reloadProfile}
-          />
-        </Suspense>
-      )}
     </div>
   );
 }

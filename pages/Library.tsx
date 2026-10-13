@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router';
+import { fetchUserAttributes } from 'aws-amplify/auth';
 import {
   Calendar,
   Globe,
@@ -19,6 +20,7 @@ import {
 
 import { listCourses } from '../lib/courseGeneration';
 import { listPublicJourneys } from '../lib/explore';
+import { getProfile } from '../lib/profile';
 import {
   createNote,
   deleteNote,
@@ -85,7 +87,7 @@ function formatDate(value?: string | null) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function courseMeta(course: CourseRecord) {
+function courseMeta(course: CourseRecord, author: string) {
   switch (course.status) {
     case 'GENERATING':
       return 'Generating...';
@@ -96,7 +98,9 @@ function courseMeta(course: CourseRecord) {
     default: {
       const date = formatDate(course.createdAt);
 
-      return date ? `Created ${date}` : '';
+      if (!date) return '';
+
+      return author ? `Created ${date} by ${author}` : `Created ${date}`;
     }
   }
 }
@@ -112,6 +116,49 @@ function savedMeta(journey: SavedJourney) {
   }
 
   return parts.join(' · ');
+}
+
+// The signed-in learner's public name (username first, then account name).
+function useAuthorName() {
+  const [author, setAuthor] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      let name = '';
+
+      try {
+        name = (await getProfile())?.username?.trim() || '';
+      } catch {
+        // Fall back to the account name below.
+      }
+
+      if (!name) {
+        try {
+          const attributes = await fetchUserAttributes();
+
+          name =
+            attributes.name ||
+            attributes.preferred_username ||
+            attributes.email?.split('@')[0] ||
+            '';
+        } catch {
+          // The label is optional; leave it out if nothing loads.
+        }
+      }
+
+      if (!cancelled) setAuthor(name);
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return author;
 }
 
 // Loads a tab's data the first time the tab is opened, then keeps it.
@@ -393,6 +440,7 @@ export default function Library() {
     ? (requestedTab as TabId)
     : 'journeys';
 
+  const author = useAuthorName();
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim();
 
@@ -554,7 +602,7 @@ export default function Library() {
                   ? 'Public'
                   : null
               }
-              meta={courseMeta(course)}
+              meta={courseMeta(course, author)}
               metaIcon={
                 journeysTab.data?.publicCourseIds.has(course.id) ? (
                   <Globe className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
