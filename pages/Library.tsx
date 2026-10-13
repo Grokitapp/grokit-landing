@@ -100,9 +100,18 @@ function courseMeta(course: CourseRecord, author: string) {
 
       if (!date) return '';
 
-      return author ? `Created ${date} by ${author}` : `Created ${date}`;
+      return `Created on ${date}`;
     }
   }
+}
+
+// Shown on its own line under the date, e.g. "by workbuddytwo".
+function courseByline(course: CourseRecord, author: string) {
+  if (!author) return '';
+  if (course.status === 'GENERATING' || course.status === 'FAILED' || course.status === 'DRAFT') return '';
+  if (!formatDate(course.createdAt)) return '';
+
+  return `by ${author}`;
 }
 
 function savedMeta(journey: SavedJourney) {
@@ -603,6 +612,7 @@ export default function Library() {
                   : null
               }
               meta={courseMeta(course, author)}
+              byline={courseByline(course, author)}
               metaIcon={
                 journeysTab.data?.publicCourseIds.has(course.id) ? (
                   <Globe className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

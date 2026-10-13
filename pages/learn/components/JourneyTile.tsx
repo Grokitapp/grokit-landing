@@ -10,6 +10,7 @@ export function JourneyTile({
   imageUrl,
   badge,
   meta,
+  byline,
   metaIcon,
   fluid = false,
   action,
@@ -19,6 +20,8 @@ export function JourneyTile({
   imageUrl?: string | null;
   badge?: string | null;
   meta?: string;
+  /** Optional third line under the meta line, e.g. "by Name". */
+  byline?: string;
   metaIcon?: ReactNode;
   /** Fill the available width (grids) instead of a fixed row-card width. */
   fluid?: boolean;
@@ -70,6 +73,13 @@ export function JourneyTile({
                 <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               )}
               <span className="truncate">{meta}</span>
+            </p>
+          )}
+
+          {meta && byline && (
+            // pl-[1.375rem] = icon width + gap, so the text lines up with the meta text.
+            <p className="mt-1 truncate pl-[1.375rem] text-xs font-semibold text-[#718993]">
+              {byline}
             </p>
           )}
         </div>
