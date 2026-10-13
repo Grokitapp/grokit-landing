@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Bookmark, ChevronLeft, ChevronRight, Play } from 'lucide-react';
 
+import { cacheKeys, useCachedQuery } from '../lib/cache';
 import { listPublicJourneys, type PublicJourney } from '../lib/explore';
 import {
   listSavedJourneys,
@@ -27,6 +28,12 @@ interface JourneyRowData {
 }
 
 const FOR_YOU_LIMIT = 12;
+
+// The public catalogue changes slowly, so a copy under 5 minutes old is shown
+// without re-checking. Publishing or unpublishing refreshes it right away.
+const CATALOGUE_FRESH_MS = 5 * 60_000;
+
+const NO_JOURNEYS: PublicJourney[] = [];
 
 function buildRows(journeys: PublicJourney[]): JourneyRowData[] {
   if (journeys.length === 0) return [];
@@ -279,62 +286,31 @@ function ExploreSkeleton() {
 export default function Explore() {
   const navigate = useNavigate();
 
-  const [journeys, setJourneys] = useState<PublicJourney[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
+  // Both lists come from the shared cache, so Explore opens instantly after the
+  // first visit and stays in step with Library's Saved tab.
+  const journeysQuery = useCachedQuery(
+    cacheKeys.publicJourneys,
+    listPublicJourneys,
+    { staleMs: CATALOGUE_FRESH_MS },
+  );
+  const savedQuery = useCachedQuery(cacheKeys.savedJourneys, listSavedJourneys);
+
+  const journeys = journeysQuery.data ?? NO_JOURNEYS;
+  const loading = journeysQuery.loading;
+  const error = journeysQuery.error;
+
   const [query, setQuery] = useState('');
 
-  // public journey id -> saved record id
-  const [savedIds, setSavedIds] = useState<Map<string, string>>(new Map());
+  // public journey id -> saved record id. (If the saved list can't load, the
+  // bookmarks just look empty; browsing still works.)
+  const savedIds = useMemo(
+    () =>
+      new Map(
+        (savedQuery.data ?? []).map((item) => [item.publicJourneyId, item.id]),
+      ),
+    [savedQuery.data],
+  );
   const [pendingSaves, setPendingSaves] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const load = async () => {
-      setLoading(true);
-      setError(false);
-
-      try {
-        const result = await listPublicJourneys();
-
-        if (!cancelled) setJourneys(result);
-      } catch {
-        if (!cancelled) setError(true);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    void load();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reloadKey]);
-
-  // Which journeys are already bookmarked. Failing here only hides the filled
-  // bookmark state; browsing still works.
-  useEffect(() => {
-    let cancelled = false;
-
-    listSavedJourneys()
-      .then((saved) => {
-        if (cancelled) return;
-
-        setSavedIds(
-          new Map(saved.map((item) => [item.publicJourneyId, item.id])),
-        );
-      })
-      .catch((savedError) => {
-        console.error('[Explore] Failed to load saved journeys:', savedError);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const toggleSave = useCallback(
     async (journey: PublicJourney) => {
@@ -347,16 +323,8 @@ export default function Explore() {
       try {
         if (savedRecordId) {
           await unsaveJourney(savedRecordId);
-
-          setSavedIds((current) => {
-            const next = new Map(current);
-            next.delete(journey.id);
-            return next;
-          });
         } else {
-          const created = await saveJourney(journey);
-
-          setSavedIds((current) => new Map(current).set(journey.id, created.id));
+          await saveJourney(journey);
         }
       } catch (saveError) {
         console.error('[Explore] Failed to update saved journey:', saveError);
@@ -435,7 +403,7 @@ export default function Explore() {
             action={{
               label: 'Try again',
               retry: true,
-              onClick: () => setReloadKey((value) => value + 1),
+              onClick: () => void journeysQuery.refetch(),
             }}
           />
         ) : journeys.length === 0 ? (

@@ -1,8 +1,6 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type FormEvent,
 } from 'react';
@@ -18,6 +16,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
+import { cacheKeys, useCachedQuery } from '../lib/cache';
 import { listCourses } from '../lib/courseGeneration';
 import { listPublicJourneys } from '../lib/explore';
 import { getProfile } from '../lib/profile';
@@ -165,52 +164,17 @@ function useAuthorName() {
   return author;
 }
 
-// Loads a tab's data the first time the tab is opened, then keeps it.
-function useTabData<T>(active: boolean, loader: () => Promise<T>) {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
-
-  const requestedAttempt = useRef(-1);
-  const mounted = useRef(true);
-
-  useEffect(() => {
-    mounted.current = true;
-
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!active || requestedAttempt.current === attempt) return;
-
-    requestedAttempt.current = attempt;
-    setLoading(true);
-    setError(false);
-
-    loader()
-      .then((result) => {
-        if (mounted.current) setData(result);
-      })
-      .catch((loadError) => {
-        console.error('[Library] Failed to load tab:', loadError);
-        if (mounted.current) setError(true);
-      })
-      .finally(() => {
-        if (mounted.current) setLoading(false);
-      });
-  }, [active, attempt, loader]);
-
-  const retry = useCallback(() => setAttempt((value) => value + 1), []);
+// Tab data comes from the shared cache: a tab opened before shows its last
+// result instantly and refreshes quietly in the background.
+function useTabData<T>(key: string, active: boolean, loader: () => Promise<T>) {
+  const query = useCachedQuery(key, loader, { enabled: active });
 
   return {
-    data,
-    setData,
-    error,
-    retry,
-    loading: loading || (active && data === null && !error),
+    data: query.data,
+    setData: query.setData,
+    error: query.error,
+    retry: query.refetch,
+    loading: query.loading,
   };
 }
 
@@ -448,9 +412,9 @@ export default function Library() {
   const [query, setQuery] = useState('');
   const trimmedQuery = query.trim();
 
-  const journeysTab = useTabData(tab === 'journeys', loadMyJourneys);
-  const savedTab = useTabData(tab === 'saved', listSavedJourneys);
-  const notesTab = useTabData(tab === 'notes', listNotes);
+  const journeysTab = useTabData(cacheKeys.myJourneys, tab === 'journeys', loadMyJourneys);
+  const savedTab = useTabData(cacheKeys.savedJourneys, tab === 'saved', listSavedJourneys);
+  const notesTab = useTabData(cacheKeys.notes, tab === 'notes', listNotes);
 
   // null = closed, 'new' = blank editor, otherwise the note being edited
   const [editing, setEditing] = useState<Note | 'new' | null>(null);

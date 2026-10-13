@@ -1,6 +1,7 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import { getProfile } from './profile';
+import { cacheKeys, invalidate, refreshIfCached } from './cache';
 
 const client = generateClient<Schema>();
 
@@ -227,6 +228,9 @@ export async function createCourseFromPrompt(
       throw new Error('COURSE_GENERATION_FAILED');
     }
 
+    // A new journey exists now; the Library list must pick it up.
+    invalidate(cacheKeys.myJourneys);
+
     return finished;
   } catch (error) {
     console.error('[courseGeneration] Course generation failed:', error);
@@ -401,6 +405,38 @@ export async function listProgressForCourse(courseId: string) {
 }
 
 /**
+ * Everything the journey page needs, in one request. The page caches this, so a
+ * journey that was opened before appears instantly and refreshes in the
+ * background.
+ */
+export async function loadJourneyRaw(courseId: string) {
+  requireId(courseId, 'COURSE_ID_REQUIRED');
+
+  const [course, phases, lessons, progress] = await Promise.all([
+    getCourse(courseId),
+    listPhasesForCourse(courseId),
+    listLessonsForCourse(courseId),
+    listProgressForCourse(courseId),
+  ]);
+
+  if (!course) throw new Error('JOURNEY_NOT_FOUND');
+
+  return { course, phases, lessons, progress };
+}
+
+export type JourneyRaw = Awaited<ReturnType<typeof loadJourneyRaw>>;
+
+/**
+ * Refresh this journey's cached copy right away (if it has one), so its path
+ * shows the new progress the moment the learner returns to it.
+ */
+function refreshJourneyCache(courseId: string): void {
+  void refreshIfCached(cacheKeys.journey(courseId), () =>
+    loadJourneyRaw(courseId),
+  );
+}
+
+/**
  * Mark a lesson complete.
  *
  * Existing completion records are reused. Progression is checked again
@@ -449,6 +485,7 @@ export async function markLessonComplete(
 
   if (existing) {
     await advancePhaseIfComplete(courseId, lessonId);
+    refreshJourneyCache(courseId);
     return existing;
   }
 
@@ -470,6 +507,7 @@ export async function markLessonComplete(
   // Completion is saved before progression. If unlocking fails, a retry
   // can reuse the existing completion record and retry progression.
   await advancePhaseIfComplete(courseId, lessonId);
+  refreshJourneyCache(courseId);
 
   return data;
 }

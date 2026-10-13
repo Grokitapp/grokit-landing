@@ -34,16 +34,8 @@ import JourneyPath, {
   type PathLessonStatus,
   type PathZone,
 } from './components/JourneyPath';
-import {
-  getCourse,
-  listLessonsForCourse,
-  listPhasesForCourse,
-  listProgressForCourse,
-} from '../../lib/courseGeneration';
-import {
-  JOURNEY_CHANGED_EVENT,
-  type JourneyChange,
-} from '../../lib/courseActions';
+import { cacheKeys, useCachedQuery } from '../../lib/cache';
+import { loadJourneyRaw, type JourneyRaw } from '../../lib/courseGeneration';
 import { useGamification } from '../../lib/gamification';
 import {
   getPublicJourneyForCourse,
@@ -696,6 +688,75 @@ function EmptyJourney({ onRetry }: { onRetry: () => void }) {
 }
 
 // -----------------------------------------------------------------------------
+// Mapping: raw records -> what the path screen draws
+// -----------------------------------------------------------------------------
+
+function buildJourney(raw: JourneyRaw): JourneyData {
+  const { course } = raw;
+
+  const completedLessonIds = new Set(
+    raw.progress.map((item) => item.lessonId),
+  );
+
+  const lessonsByPhase = new Map<string, JourneyRaw['lessons']>();
+
+  for (const lesson of raw.lessons) {
+    const phaseLessons = lessonsByPhase.get(lesson.phaseId) ?? [];
+    phaseLessons.push(lesson);
+    lessonsByPhase.set(lesson.phaseId, phaseLessons);
+  }
+
+  const mappedZones: PathZone[] = raw.phases
+    .map((phase) => {
+      const locked = phase.locked ?? false;
+
+      const phaseLessons = [...(lessonsByPhase.get(phase.id) ?? [])].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+
+      // Same rule as PhaseDetail: the first unfinished lesson is open,
+      // everything after it is locked. A locked zone locks everything.
+      let nextLessonAssigned = false;
+
+      const pathLessons: PathLesson[] = phaseLessons.map((lesson) => {
+        let status: PathLessonStatus;
+
+        if (completedLessonIds.has(lesson.id)) {
+          status = 'completed';
+        } else if (!locked && !nextLessonAssigned) {
+          status = 'unlocked';
+          nextLessonAssigned = true;
+        } else {
+          status = 'locked';
+        }
+
+        return { id: lesson.id, title: lesson.title, status };
+      });
+
+      return {
+        id: phase.id,
+        order: phase.order,
+        title: phase.title,
+        completedLessons: pathLessons.filter(
+          (lesson) => lesson.status === 'completed',
+        ).length,
+        totalLessons: pathLessons.length,
+        locked,
+        lessons: pathLessons,
+      };
+    })
+    .sort((a, b) => a.order - b.order);
+
+  return {
+    title: course.title,
+    description: course.description ?? '',
+    topic: course.topic ?? course.title,
+    heroImageUrl: course.heroImageUrl ?? '',
+    zones: mappedZones,
+  };
+}
+
+// -----------------------------------------------------------------------------
 // Component
 // -----------------------------------------------------------------------------
 
@@ -705,140 +766,26 @@ export default function CourseOverview() {
 
   const location = useLocation();
 
-  const [journey, setJourney] = useState<JourneyData>(EMPTY_JOURNEY);
   const [view, setView] = useState<JourneyView>('path');
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [reloadKey, setReloadKey] = useState(0);
 
-  // Prevent stale requests from replacing the latest result.
-  const requestVersion = useRef(0);
+  const hasCourseId = Boolean(courseId?.trim());
 
-  const loadJourney = useCallback(async () => {
-    const requestId = ++requestVersion.current;
+  // The journey comes from the shared cache: one that was opened before shows
+  // instantly and refreshes quietly in the background. The skeleton only shows
+  // the first time. Renames, deletes and finished lessons update the cache.
+  const query = useCachedQuery(
+    cacheKeys.journey(courseId ?? ''),
+    () => loadJourneyRaw(courseId as string),
+    { enabled: hasCourseId },
+  );
 
-    if (!courseId?.trim()) {
-      setJourney(EMPTY_JOURNEY);
-      setLoading(false);
-      setLoadError(true);
-      return;
-    }
+  const loading = hasCourseId && query.loading;
+  const loadError = !hasCourseId || query.error;
 
-    setLoading(true);
-    setLoadError(false);
-
-    try {
-      const [course, phaseRecords, lessons, progress] = await Promise.all([
-        getCourse(courseId),
-        listPhasesForCourse(courseId),
-        listLessonsForCourse(courseId),
-        listProgressForCourse(courseId),
-      ]);
-
-      if (requestId !== requestVersion.current) return;
-
-      if (!course) {
-        throw new Error('JOURNEY_NOT_FOUND');
-      }
-
-      const completedLessonIds = new Set(
-        progress.map((item) => item.lessonId),
-      );
-
-      const lessonsByPhase = new Map<string, typeof lessons>();
-
-      for (const lesson of lessons) {
-        const phaseLessons = lessonsByPhase.get(lesson.phaseId) ?? [];
-        phaseLessons.push(lesson);
-        lessonsByPhase.set(lesson.phaseId, phaseLessons);
-      }
-
-      const mappedZones: PathZone[] = phaseRecords
-        .map((phase) => {
-          const locked = phase.locked ?? false;
-
-          const phaseLessons = [...(lessonsByPhase.get(phase.id) ?? [])].sort(
-            (a, b) => (a.order ?? 0) - (b.order ?? 0),
-          );
-
-          // Same rule as PhaseDetail: the first unfinished lesson is open,
-          // everything after it is locked. A locked zone locks everything.
-          let nextLessonAssigned = false;
-
-          const pathLessons: PathLesson[] = phaseLessons.map((lesson) => {
-            let status: PathLessonStatus;
-
-            if (completedLessonIds.has(lesson.id)) {
-              status = 'completed';
-            } else if (!locked && !nextLessonAssigned) {
-              status = 'unlocked';
-              nextLessonAssigned = true;
-            } else {
-              status = 'locked';
-            }
-
-            return { id: lesson.id, title: lesson.title, status };
-          });
-
-          return {
-            id: phase.id,
-            order: phase.order,
-            title: phase.title,
-            completedLessons: pathLessons.filter(
-              (lesson) => lesson.status === 'completed',
-            ).length,
-            totalLessons: pathLessons.length,
-            locked,
-            lessons: pathLessons,
-          };
-        })
-        .sort((a, b) => a.order - b.order);
-
-      setJourney({
-        title: course.title,
-        description: course.description ?? '',
-        topic: course.topic ?? course.title,
-        heroImageUrl: course.heroImageUrl ?? '',
-        zones: mappedZones,
-      });
-    } catch (error) {
-      if (requestId !== requestVersion.current) return;
-
-      // Keep provider and backend details out of the interface.
-      console.error('[CourseOverview] Failed to load journey:', error);
-      setLoadError(true);
-    } finally {
-      if (requestId === requestVersion.current) {
-        setLoading(false);
-      }
-    }
-  }, [courseId]);
-
-  useEffect(() => {
-    void loadJourney();
-
-    return () => {
-      requestVersion.current += 1;
-    };
-  }, [loadJourney, reloadKey]);
-
-  // Keep the title in sync when the journey is renamed from the menu.
-  useEffect(() => {
-    const handleChange = (event: Event) => {
-      const change = (event as CustomEvent<JourneyChange>).detail;
-
-      if (!change) return;
-
-      if (change.id !== courseId || change.action !== 'rename') return;
-
-      setJourney((current) => ({ ...current, title: change.title }));
-    };
-
-    window.addEventListener(JOURNEY_CHANGED_EVENT, handleChange);
-
-    return () =>
-      window.removeEventListener(JOURNEY_CHANGED_EVENT, handleChange);
-  }, [courseId]);
+  const journey = useMemo(
+    () => (query.data ? buildJourney(query.data) : EMPTY_JOURNEY),
+    [query.data],
+  );
 
   // Switching journeys always starts on the path.
   useEffect(() => {
@@ -876,9 +823,11 @@ export default function CourseOverview() {
   if (game) lastGameRef.current = game;
   const railStats = game ?? lastGameRef.current;
 
+  const { refetch } = query;
+
   const retry = useCallback(() => {
-    setReloadKey((current) => current + 1);
-  }, []);
+    void refetch();
+  }, [refetch]);
 
   // Tapping a node opens that lesson's start sheet on the zone page.
   const openLesson = useCallback(

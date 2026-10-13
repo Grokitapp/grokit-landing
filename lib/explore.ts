@@ -1,6 +1,7 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import { getProfile } from './profile';
+import { cacheKeys, invalidate } from './cache';
 
 const client = generateClient<Schema>();
 
@@ -126,6 +127,10 @@ export async function publishJourney(
     throw new Error('PUBLISH_FAILED');
   }
 
+  // Explore gains a journey, and the owner's Library gets its "Public" badge.
+  invalidate(cacheKeys.publicJourneys);
+  invalidate(cacheKeys.myJourneys);
+
   return data;
 }
 
@@ -140,4 +145,7 @@ export async function unpublishJourney(publicJourneyId: string) {
     console.error('[explore] Failed to unpublish journey:', errors);
     throw new Error('UNPUBLISH_FAILED');
   }
+
+  invalidate(cacheKeys.publicJourneys);
+  invalidate(cacheKeys.myJourneys);
 }

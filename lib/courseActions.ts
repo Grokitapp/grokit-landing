@@ -1,5 +1,7 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
+import type { JourneyRaw } from './courseGeneration';
+import { cacheKeys, removeCached, setCached } from './cache';
 
 const client = generateClient<Schema>();
 
@@ -89,6 +91,21 @@ export async function renameCourse(courseId: string, title: string) {
 
   assertNoErrors(errors);
 
+  // Keep every cached copy of this title in step, so nothing shows the old name.
+  setCached<JourneyRaw>(cacheKeys.journey(courseId), (current) => ({
+    ...current,
+    course: { ...current.course, title: nextTitle },
+  }));
+  setCached<{ courses: { id: string; title: string }[] }>(
+    cacheKeys.myJourneys,
+    (current) => ({
+      ...current,
+      courses: current.courses.map((course) =>
+        course.id === courseId ? { ...course, title: nextTitle } : course,
+      ),
+    }),
+  );
+
   return data;
 }
 
@@ -128,4 +145,10 @@ export async function deleteCourse(courseId: string) {
   );
 
   assertNoErrors(errors);
+
+  removeCached(cacheKeys.journey(courseId));
+  setCached<{ courses: { id: string }[] }>(cacheKeys.myJourneys, (current) => ({
+    ...current,
+    courses: current.courses.filter((course) => course.id !== courseId),
+  }));
 }

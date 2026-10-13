@@ -1,6 +1,7 @@
 import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import type { PublicJourney } from './explore';
+import { cacheKeys, setCached } from './cache';
 
 const client = generateClient<Schema>();
 
@@ -79,6 +80,12 @@ export async function saveJourney(journey: PublicJourney): Promise<SavedJourney>
     throw new Error('SAVE_FAILED');
   }
 
+  // Explore and Library both read this list; update it for both at once.
+  setCached<SavedJourney[]>(cacheKeys.savedJourneys, (current) => [
+    data,
+    ...current.filter((item) => item.id !== data.id),
+  ]);
+
   return data;
 }
 
@@ -92,6 +99,10 @@ export async function unsaveJourney(savedId: string): Promise<void> {
     console.error('[library] Failed to unsave journey:', errors);
     throw new Error('UNSAVE_FAILED');
   }
+
+  setCached<SavedJourney[]>(cacheKeys.savedJourneys, (current) =>
+    current.filter((item) => item.id !== savedId),
+  );
 }
 
 // ─── Notes ──────────────────────────────────────────────────────────────────
