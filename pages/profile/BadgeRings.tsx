@@ -1,19 +1,32 @@
 import {
   Award,
   BookOpen,
+  CalendarCheck,
   Check,
+  Crown,
   Flame,
   Footprints,
+  Gem,
+  GraduationCap,
   Medal,
+  Mountain,
+  Rocket,
+  Shield,
+  Sparkles,
   Star,
   Trophy,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
 
-import type { Badge, BadgeIcon, BadgeTone } from '../../lib/gamification';
+import type { BadgeIcon, BadgeTone } from '../../lib/gamification';
+import type {
+  ExtraBadgeIcon,
+  ExtraBadgeTone,
+  ProfileBadge,
+} from '../../lib/badges';
 
-const ICONS: Record<BadgeIcon, LucideIcon> = {
+const ICONS: Record<BadgeIcon | ExtraBadgeIcon, LucideIcon> = {
   footprints: Footprints,
   book: BookOpen,
   medal: Medal,
@@ -22,9 +35,17 @@ const ICONS: Record<BadgeIcon, LucideIcon> = {
   award: Award,
   star: Star,
   zap: Zap,
+  graduation: GraduationCap,
+  crown: Crown,
+  shield: Shield,
+  sparkles: Sparkles,
+  rocket: Rocket,
+  gem: Gem,
+  calendar: CalendarCheck,
+  mountain: Mountain,
 };
 
-const TONE_COLORS: Record<BadgeTone, string> = {
+const TONE_COLORS: Record<BadgeTone | ExtraBadgeTone, string> = {
   emerald: '#34D399',
   teal: '#2DD4BF',
   violet: '#A78BFA',
@@ -33,6 +54,10 @@ const TONE_COLORS: Record<BadgeTone, string> = {
   rose: '#FB7185',
   sun: '#FACC15',
   sky: '#38BDF8',
+  indigo: '#818CF8',
+  pink: '#F472B6',
+  lime: '#A3E635',
+  cyan: '#22D3EE',
 };
 
 const SIZE = 88;
@@ -40,7 +65,7 @@ const STROKE = 7;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function BadgeRing({ badge }: { badge: Badge }) {
+function BadgeRing({ badge }: { badge: ProfileBadge }) {
   const Icon = ICONS[badge.icon];
   const color = TONE_COLORS[badge.tone];
   const fraction = badge.target > 0 ? Math.min(badge.value / badge.target, 1) : 0;
@@ -134,7 +159,7 @@ function BadgeRing({ badge }: { badge: Badge }) {
   );
 }
 
-export default function BadgeRings({ badges }: { badges: Badge[] }) {
+export default function BadgeRings({ badges }: { badges: ProfileBadge[] }) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       {badges.map((badge) => (

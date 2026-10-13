@@ -2,6 +2,8 @@ import { defineBackend } from "@aws-amplify/backend";
 import { Stack } from "aws-cdk-lib";
 import { EventInvokeConfig } from "aws-cdk-lib/aws-lambda";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
+import { StartingPosition } from "aws-cdk-lib/aws-lambda";
+import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 
 import { auth } from "./auth/resource";
 import { data } from "./data/resource";
@@ -12,6 +14,8 @@ import { generateLesson } from "./functions/generate-lesson/resource";
 import { generateLessonWorker } from "./functions/generate-lesson-worker/resource";
 import { linkGoogleUser } from "./functions/link-google-user/resource";
 import { changeUsername } from "./functions/change-username/resource";
+import { leaderboardSync } from "./functions/leaderboard-sync/resource";
+import { leaderboardWeekly } from "./functions/leaderboard-weekly/resource";
 
 const backend = defineBackend({
   auth,
@@ -22,6 +26,8 @@ const backend = defineBackend({
   generateLessonWorker,
   linkGoogleUser,
   changeUsername,
+  leaderboardSync,
+  leaderboardWeekly,
 });
 
 /* ---------------------------------------------------------------------------
@@ -97,3 +103,44 @@ backend.changeUsername.addEnvironment("USERNAME_CLAIM_TABLE_NAME", usernameClaim
 
 userProfileTable.grantReadWriteData(changeUsernameLambda);
 usernameClaimTable.grantReadWriteData(changeUsernameLambda);
+
+/* ---------------------------------------------------------------------------
+ * Weekly leaderboard
+ *
+ * leaderboardSync is triggered by the UserProgress table stream (every lesson a learner completes adds XP to their weekly entry) and also answers the
+ * syncLeaderboardIdentity mutation. leaderboardWeekly runs daily and closes the finished week (promotions and demotions). Both talk to DynamoDB
+ * directly, so clients can never write XP or leagues themselves.
+ * ------------------------------------------------------------------------- */
+
+const userProgressTable = backend.data.resources.tables["UserProgress"];
+const leagueMemberTable = backend.data.resources.tables["LeagueMember"];
+const leaderboardEntryTable = backend.data.resources.tables["LeaderboardEntry"];
+const leagueCounterTable = backend.data.resources.tables["LeagueCounter"];
+
+const leaderboardSyncLambda = backend.leaderboardSync.resources.lambda;
+const leaderboardWeeklyLambda = backend.leaderboardWeekly.resources.lambda;
+
+for (const fn of [backend.leaderboardSync, backend.leaderboardWeekly]) {
+  fn.addEnvironment("LEAGUE_MEMBER_TABLE_NAME", leagueMemberTable.tableName);
+  fn.addEnvironment("LEADERBOARD_ENTRY_TABLE_NAME", leaderboardEntryTable.tableName);
+  fn.addEnvironment("LEAGUE_COUNTER_TABLE_NAME", leagueCounterTable.tableName);
+}
+
+backend.leaderboardSync.addEnvironment("USER_PROFILE_TABLE_NAME", userProfileTable.tableName);
+
+for (const lambda of [leaderboardSyncLambda, leaderboardWeeklyLambda]) {
+  leagueMemberTable.grantReadWriteData(lambda);
+  leaderboardEntryTable.grantReadWriteData(lambda);
+  leagueCounterTable.grantReadWriteData(lambda);
+}
+
+userProfileTable.grantReadData(leaderboardSyncLambda);
+
+leaderboardSyncLambda.addEventSource(
+  new DynamoEventSource(userProgressTable, {
+    startingPosition: StartingPosition.LATEST,
+    batchSize: 25,
+    retryAttempts: 3,
+    bisectBatchOnError: true,
+  }),
+);

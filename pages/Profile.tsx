@@ -1,10 +1,13 @@
+import { useMemo, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import {
   BookOpen,
+  CalendarDays,
   Flame,
   Loader2,
   Pencil,
   RefreshCw,
+  Star,
   Trophy,
   Zap,
 } from 'lucide-react';
@@ -16,7 +19,11 @@ import {
 } from './learn/components/GamificationCards';
 import { useGamification } from '../lib/gamification';
 import { useAccountNames, useProfileRecord } from '../lib/profile';
+import { buildProfileBadges } from '../lib/badges';
+import { useLeaderboard } from '../lib/leaderboard';
+import { leagueAt } from '../lib/leagues';
 import BadgeRings from './profile/BadgeRings';
+import LeagueEmblem from './profile/LeagueEmblem';
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -31,41 +38,66 @@ const sectionTitleClasses =
 
 function StatTile({
   icon: Icon,
+  visual,
+  to,
   value,
   label,
-  color,
+  color = '#FFFFFF',
   filled = false,
 }: {
-  icon: typeof Flame;
+  icon?: typeof Flame;
+  /** Custom visual (e.g. a league emblem) shown instead of an icon. */
+  visual?: ReactNode;
+  /** Makes the whole tile a link. */
+  to?: string;
   value: number | string;
   label: string;
   /** Accent colour (hex) for the icon and its soft background. */
-  color: string;
+  color?: string;
   /** Fill the icon shape (e.g. a lit flame). */
   filled?: boolean;
 }) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border-2 border-[#37464F] bg-[#19282E] px-4 py-3.5">
+  const content = (
+    <>
       <span
-        aria-hidden="true"
+        aria-hidden={visual ? undefined : 'true'}
         className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
-        style={{ backgroundColor: `${color}22` }}
+        style={{ backgroundColor: visual ? undefined : `${color}22` }}
       >
-        <Icon
-          className="h-7 w-7"
-          style={{ color }}
-          fill={filled ? color : 'none'}
-        />
+        {visual ??
+          (Icon && (
+            <Icon
+              className="h-7 w-7"
+              style={{ color }}
+              fill={filled ? color : 'none'}
+            />
+          ))}
       </span>
 
       <div className="min-w-0">
-        <p className="font-display text-xl font-extrabold leading-none text-white">
+        <p className="truncate font-display text-xl font-extrabold leading-none text-white">
           {value}
         </p>
         <p className="mt-1 text-sm text-[#91A4AC]">{label}</p>
       </div>
-    </div>
+    </>
   );
+
+  const baseClasses =
+    'flex items-center gap-3 rounded-2xl border-2 border-[#37464F] bg-[#19282E] px-4 py-3.5';
+
+  if (to) {
+    return (
+      <Link
+        to={to}
+        className={`${baseClasses} transition hover:border-[#536871] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange`}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className={baseClasses}>{content}</div>;
 }
 
 function ProfileSkeleton() {
@@ -77,7 +109,7 @@ function ProfileSkeleton() {
     >
       <div className="h-56 rounded-2xl bg-[#19282E]" />
       <div className="grid grid-cols-2 gap-3">
-        {[0, 1, 2, 3].map((item) => (
+        {[0, 1, 2, 3, 4, 5].map((item) => (
           <div key={item} className="h-[72px] rounded-2xl bg-[#19282E]" />
         ))}
       </div>
@@ -107,6 +139,25 @@ export default function Profile() {
     month: 'long',
     year: 'numeric',
   });
+
+  // When the profile record was created is when the learner joined.
+  const createdAtRaw = (
+    profile as unknown as { createdAt?: string | null } | null | undefined
+  )?.createdAt;
+  const joinedDate = createdAtRaw ? new Date(createdAtRaw) : null;
+  const joinedLabel =
+    joinedDate && !Number.isNaN(joinedDate.getTime())
+      ? joinedDate.toLocaleDateString(undefined, {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      : '';
+
+  // The learner's real league (moved up or down each week on the leaderboard).
+  const { data: board } = useLeaderboard();
+  const league = leagueAt(board?.leagueIndex ?? 0);
+  const badges = useMemo(() => (stats ? buildProfileBadges(stats) : []), [stats]);
 
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
@@ -164,11 +215,38 @@ export default function Profile() {
               <p className="mt-1 text-sm font-semibold text-[#C8D3DA]">@{username}</p>
             )}
 
-            <p className="mt-1 text-sm text-[#91A4AC]">
-              {learningSince
-                ? `Learning since ${learningSince}`
-                : 'Complete a lesson to start your story'}
+            <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-[#91A4AC]">
+              <CalendarDays className="h-4 w-4" aria-hidden="true" />
+              {joinedLabel
+                ? `Joined on ${joinedLabel}`
+                : learningSince
+                  ? `Learning since ${learningSince}`
+                  : 'Complete a lesson to start your story'}
             </p>
+
+            <Link
+              to="/leaderboard"
+              className="mx-auto mt-6 block max-w-sm rounded-2xl border border-[#37464F] bg-[#131F24] px-4 py-3 text-left transition hover:border-[#536871] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            >
+              <div className="flex items-center gap-3">
+                <LeagueEmblem league={league} size={40} glow />
+
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-display text-base font-extrabold text-white">
+                    {league.name} League
+                  </p>
+                  <p className="text-xs font-semibold text-[#91A4AC]">
+                    Level {stats.level} · {stats.totalXp} XP
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-3 text-xs font-semibold text-[#91A4AC]">
+                {board?.myRank
+                  ? `Rank #${board.myRank} of ${board.rows.length} this week · ${board.myXp} XP`
+                  : 'Complete a lesson to join this week’s league'}
+              </p>
+            </Link>
 
             {profile && !username && (
               <p className="mt-4 text-xs text-[#91A4AC]">
@@ -216,6 +294,18 @@ export default function Profile() {
                 value={stats.longestStreak}
                 label="Longest streak"
               />
+              <StatTile
+                to="/leaderboard"
+                visual={<LeagueEmblem league={league} size={34} />}
+                value={league.name}
+                label="Current league"
+              />
+              <StatTile
+                icon={Star}
+                color="#A78BFA"
+                value={stats.level}
+                label="Level"
+              />
             </div>
           </section>
 
@@ -236,12 +326,12 @@ export default function Profile() {
               </h2>
 
               <p className="text-sm font-semibold text-[#91A4AC]">
-                {stats.badges.filter((badge) => badge.earned).length} of{' '}
-                {stats.badges.length} earned
+                {badges.filter((badge) => badge.earned).length} of{' '}
+                {badges.length} earned
               </p>
             </div>
 
-            <BadgeRings badges={stats.badges} />
+            <BadgeRings badges={badges} />
           </section>
 
           {stats.lessonsCompleted === 0 && (

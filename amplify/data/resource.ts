@@ -4,6 +4,7 @@ import { generateOutlineWorker } from '../functions/generate-outline-worker/reso
 import { generateLesson } from '../functions/generate-lesson/resource';
 import { generateLessonWorker } from '../functions/generate-lesson-worker/resource';
 import { changeUsername } from '../functions/change-username/resource';
+import { leaderboardSync } from '../functions/leaderboard-sync/resource';
 
 const schema = a.schema({
   Course: a
@@ -135,6 +136,62 @@ const schema = a.schema({
       allow.owner(),
     ]),
 
+  // ---------------------------------------------------------------------------
+  // Weekly leaderboard. Every learner can READ these (they only hold public names and XP); nothing here is writable from the browser. The
+  // leaderboard-sync and leaderboard-weekly functions write straight to DynamoDB, so XP and leagues can't be faked.
+  // ---------------------------------------------------------------------------
+
+  // A learner's current league (0 = Bronze ... 7 = Diamond) and how last week
+  // went. One row per learner, keyed by their Cognito sub.
+  LeagueMember: a
+    .model({
+      userId: a.string().required(),
+      displayName: a.string(),
+      username: a.string(),
+      league: a.integer(),
+      lastWeekId: a.string(),
+      lastRank: a.integer(),
+      lastResult: a.string(),
+      lastWeekXp: a.integer(),
+    })
+    .identifier(['userId'])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+    ]),
+
+  // One row per learner per week: their XP and the group (cohortId) they
+  // compete in. Everyone in a group is read with the cohortId index.
+  LeaderboardEntry: a
+    .model({
+      weekId: a.string().required(),
+      userId: a.string().required(),
+      cohortId: a.string().required(),
+      league: a.integer().required(),
+      xp: a.integer().required(),
+      displayName: a.string(),
+      username: a.string(),
+      lastXpAt: a.string(),
+    })
+    .identifier(['weekId', 'userId'])
+    .secondaryIndexes((index) => [
+      index('cohortId').sortKeys(['xp']).queryField('listByCohort'),
+    ])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+    ]),
+
+  // Internal counters: how many learners joined each league this week (used to
+  // fill groups of 30) and "week finished" markers.
+  LeagueCounter: a
+    .model({
+      bucket: a.string().required(),
+      count: a.integer(),
+    })
+    .identifier(['bucket'])
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+    ]),
+
   // A published copy of a journey that every signed-in learner can browse in
   // Explore. Learners can read these; only the owner can create or edit them.
   PublicJourney: a
@@ -219,6 +276,19 @@ const schema = a.schema({
       allow.authenticated(),
     ])
     .handler(a.handler.function(changeUsername)),
+
+  // Copies the learner's public name and username onto their leaderboard rows.
+  syncLeaderboardIdentity: a
+    .mutation()
+    .arguments({
+      profileId: a.id().required(),
+      displayName: a.string().required(),
+    })
+    .returns(a.boolean())
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(leaderboardSync)),
 
   generateOutline: a
     .mutation()
