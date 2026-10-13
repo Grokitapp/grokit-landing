@@ -1,8 +1,13 @@
 import { generateClient } from 'aws-amplify/data';
 import { fetchUserAttributes, updateUserAttributes } from 'aws-amplify/auth';
 import type { Schema } from '../amplify/data/resource';
+import { getCached, invalidate, setCached, useCachedResource } from './cache';
 
 const client = generateClient<Schema>();
+
+// Cache keys. Screens read these through the hooks at the bottom of this file.
+export const PROFILE_CACHE_KEY = 'profile:record';
+export const ACCOUNT_CACHE_KEY = 'profile:account';
 
 // Username rules live in one shared file so the browser and the backend
 // function can never disagree.
@@ -108,18 +113,21 @@ export async function saveProfile(fields: ProfileFields) {
   const email = await getEmail();
   const existing = await findExistingProfile();
 
-  if (existing) {
-    return client.models.UserProfile.update({
-      id: existing.id,
-      ...fields,
-    });
-  }
+  const result = existing
+    ? await client.models.UserProfile.update({
+        id: existing.id,
+        ...fields,
+      })
+    : await client.models.UserProfile.create({
+        email,
+        onboardingCompleted: false,
+        ...fields,
+      });
 
-  return client.models.UserProfile.create({
-    email,
-    onboardingCompleted: false,
-    ...fields,
-  });
+  // Anything showing the cached profile refetches it.
+  invalidate(PROFILE_CACHE_KEY);
+
+  return result;
 }
 
 /**
@@ -199,7 +207,11 @@ export async function changeUsername(
     username,
   });
 
-  return toUsernameResult(data, errors);
+  const result = toUsernameResult(data, errors);
+
+  if (result.ok) invalidate(PROFILE_CACHE_KEY);
+
+  return result;
 }
 
 /** Lets other parts of the app (the sidebar) react to a username change. */
@@ -245,5 +257,47 @@ export async function updateDisplayName(raw: string): Promise<string> {
 
   await updateUserAttributes({ userAttributes: { name: result.name } });
 
+  // We know the new value, so every screen can show it straight away.
+  const previous = getCached<AccountNames>(ACCOUNT_CACHE_KEY);
+
+  setCached<AccountNames>(ACCOUNT_CACHE_KEY, {
+    fullName: result.name,
+    fallback: previous?.fallback ?? 'You',
+  });
+
   return result.name;
+}
+
+// -----------------------------------------------------------------------------
+// Cached reads (stale-while-revalidate): pages open instantly with the last
+// known data and refresh quietly in the background.
+// -----------------------------------------------------------------------------
+
+export interface AccountNames {
+  /** The name the learner chose, or '' if they haven't set one. */
+  fullName: string;
+  /** What to show when there is no name or username. */
+  fallback: string;
+}
+
+export async function getAccountNames(): Promise<AccountNames> {
+  const attributes = await fetchUserAttributes();
+
+  return {
+    fullName: attributes.name?.trim() ?? '',
+    fallback:
+      attributes.preferred_username ||
+      attributes.email?.split('@')[0] ||
+      'You',
+  };
+}
+
+export function useProfileRecord() {
+  return useCachedResource(PROFILE_CACHE_KEY, getProfile);
+}
+
+export function useAccountNames() {
+  return useCachedResource(ACCOUNT_CACHE_KEY, getAccountNames, {
+    staleMs: 5 * 60_000,
+  });
 }

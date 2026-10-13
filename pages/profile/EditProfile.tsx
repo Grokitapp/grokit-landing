@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, AtSign, Check, Loader2, RefreshCw, User } from 'lucide-react';
 
@@ -11,11 +11,11 @@ import {
   changeUsername,
   checkUsernameAvailability,
   NAME_MAX_LENGTH,
-  getDisplayName,
-  getProfile,
   getUsernameChangeStatus,
   updateDisplayName,
   updateLearningProfile,
+  useAccountNames,
+  useProfileRecord,
   validateDisplayName,
   validateUsername,
 } from '../../lib/profile';
@@ -77,39 +77,24 @@ const formatDateTime = (date: Date) =>
 // -----------------------------------------------------------------------------
 
 function NameSection() {
-  const [current, setCurrent] = useState('');
-  const [draft, setDraft] = useState('');
-  const [loading, setLoading] = useState(true);
+  // Cached, so the saved name is already there when this page opens.
+  const { data: account, loading } = useAccountNames();
+  const current = account?.fullName ?? '';
+
+  // null = the learner hasn't typed anything; show the saved name.
+  const [draft, setDraft] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    void (async () => {
-      try {
-        const name = await getDisplayName();
-
-        if (cancelled) return;
-
-        setCurrent(name);
-        setDraft(name);
-      } catch (loadError) {
-        console.error('[EditProfile] Failed to load name:', loadError);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const validation = validateDisplayName(draft);
-  const dirty = draft.trim().replace(/\s+/g, ' ') !== current;
+  const value = draft ?? current;
+  const validation = validateDisplayName(value);
+  const normalized = validation.ok ? validation.name : value.trim();
+  const dirty = draft !== null && normalized !== current;
   const canSave = !loading && !saving && dirty && validation.ok;
+
+  const message =
+    error ?? (dirty && value.trim() && !validation.ok ? validation.message : null);
 
   const save = async () => {
     if (!canSave) return;
@@ -118,10 +103,9 @@ function NameSection() {
     setError(null);
 
     try {
-      const name = await updateDisplayName(draft);
+      await updateDisplayName(value);
 
-      setCurrent(name);
-      setDraft(name);
+      setDraft(null);
       setSaved(true);
     } catch (caught) {
       console.error('[EditProfile] Name update failed:', caught);
@@ -141,7 +125,7 @@ function NameSection() {
         <User className="h-4 w-4 shrink-0 text-[#60757E]" aria-hidden="true" />
 
         <input
-          value={draft}
+          value={value}
           onChange={(event) => {
             setDraft(event.target.value);
             setSaved(false);
@@ -157,21 +141,17 @@ function NameSection() {
           maxLength={NAME_MAX_LENGTH + 1}
           placeholder="Your name"
           aria-label="Name"
+          aria-invalid={Boolean(message)}
           autoComplete="name"
           className={inputClasses}
         />
       </div>
 
-      <p role="status" className="mt-2 min-h-[20px] text-xs font-semibold">
-        {dirty && draft.trim() && !validation.ok && (
-          <span className="text-red-300">{validation.message}</span>
-        )}
-        {error && <span className="block text-red-300">{error}</span>}
-      </p>
-
-      <p className="mt-1 text-xs leading-5 text-[#78909A]">
-        This is the name shown on your profile. You can change it any time.
-      </p>
+      {message && (
+        <p role="alert" className="mt-2 text-xs font-semibold text-red-300">
+          {message}
+        </p>
+      )}
 
       <div className="mt-4 flex items-center gap-3">
         <button type="button" onClick={() => void save()} disabled={!canSave} className={primaryButtonClasses}>
@@ -179,7 +159,7 @@ function NameSection() {
           Save name
         </button>
 
-        {saved && (
+        {saved && !dirty && (
           <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-300" role="status">
             <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
             Name saved
@@ -333,18 +313,17 @@ function UsernameSection({
     else void save();
   };
 
+  // One short note: the format rules until a username exists, then the change limit.
   const hint = (() => {
-    if (!hasUsername) {
-      return 'Your first username is free and doesn’t count toward the limit.';
-    }
+    if (!hasUsername) return USERNAME_RULES_SUMMARY;
 
     if (locked) {
       return limits.nextAt
-        ? `You’ve used all ${USERNAME_CHANGE_LIMIT} changes. You can change it again on ${formatDateTime(limits.nextAt)}.`
-        : `You’ve used all ${USERNAME_CHANGE_LIMIT} changes for now.`;
+        ? `No changes left. You can change it again on ${formatDateTime(limits.nextAt)}.`
+        : 'No changes left for now.';
     }
 
-    return `${limits.remaining} of ${USERNAME_CHANGE_LIMIT} changes left. You can change it ${USERNAME_CHANGE_LIMIT} times every ${USERNAME_CHANGE_WINDOW_DAYS} days.`;
+    return `${limits.remaining} of ${USERNAME_CHANGE_LIMIT} changes left every ${USERNAME_CHANGE_WINDOW_DAYS} days.`;
   })();
 
   return (
@@ -394,15 +373,18 @@ function UsernameSection({
         </span>
       </div>
 
-      <p id="username-status" role="status" className="mt-2 min-h-[20px] text-xs font-semibold">
-        {check.kind === 'error' && <span className="text-red-300">{check.message}</span>}
-        {check.kind === 'ok' && <span className="text-emerald-300">That username is available.</span>}
-        {check.kind === 'same' && <span className="text-[#91A4AC]">This is your current username.</span>}
-        {error && <span className="block text-red-300">{error}</span>}
-      </p>
+      {(check.kind === 'error' || check.kind === 'ok' || error) && (
+        <p id="username-status" role="status" className="mt-2 text-xs font-semibold">
+          {check.kind === 'error' && <span className="text-red-300">{check.message}</span>}
+          {check.kind === 'ok' && !error && (
+            <span className="text-emerald-300">That username is available.</span>
+          )}
+          {error && <span className="block text-red-300">{error}</span>}
+        </p>
+      )}
 
-      <p id="username-hint" className="mt-1 text-xs leading-5 text-[#78909A]">
-        {USERNAME_RULES_SUMMARY} {hint}
+      <p id="username-hint" className="mt-2 text-xs leading-5 text-[#78909A]">
+        {hint}
       </p>
 
       {confirming ? (
@@ -453,6 +435,37 @@ function UsernameSection({
 // Learning profile (the onboarding answers)
 // -----------------------------------------------------------------------------
 
+function QuestionCard({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count?: ReactNode;
+  children: ReactNode;
+}) {
+  const id = useId();
+
+  return (
+    <section
+      aria-labelledby={id}
+      className="rounded-2xl border-2 border-[#37464F] bg-[#19282E] p-5 sm:p-6"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h3
+          id={id}
+          className="font-display text-base font-extrabold text-white sm:text-lg"
+        >
+          {title}
+        </h3>
+        {count}
+      </div>
+
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
 function MultiField({
   title,
   options,
@@ -495,15 +508,17 @@ function MultiField({
   };
 
   return (
-    <fieldset className="min-w-0">
-      <legend className="flex w-full items-baseline justify-between gap-3">
-        <span className="text-sm font-extrabold text-white">{title}</span>
-        <span className={`text-xs font-bold ${atMax ? 'text-orange' : 'text-[#78909A]'}`}>
+    <QuestionCard
+      title={title}
+      count={
+        <span
+          className={`shrink-0 text-xs font-bold ${atMax ? 'text-orange' : 'text-[#78909A]'}`}
+        >
           {selected.length}/{max}
         </span>
-      </legend>
-
-      <div className="mt-3 flex flex-wrap gap-2">
+      }
+    >
+      <div className="flex flex-wrap gap-2">
         {[...builtIn, ...custom].map((option) => (
           <PillOption
             key={option}
@@ -514,7 +529,7 @@ function MultiField({
         ))}
       </div>
 
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-4 flex items-center gap-2">
         <input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -539,7 +554,7 @@ function MultiField({
           Add
         </button>
       </div>
-    </fieldset>
+    </QuestionCard>
   );
 }
 
@@ -555,10 +570,8 @@ function SingleField({
   onChange: (id: string) => void;
 }) {
   return (
-    <fieldset className="min-w-0">
-      <legend className="text-sm font-extrabold text-white">{title}</legend>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+    <QuestionCard title={title}>
+      <div className="grid gap-3 sm:grid-cols-2">
         {options.map((option) => {
           const isSelected = selected === option.id;
 
@@ -595,7 +608,7 @@ function SingleField({
           );
         })}
       </div>
-    </fieldset>
+    </QuestionCard>
   );
 }
 
@@ -651,6 +664,15 @@ function LearningSection({
     answers.desiredOutcomes.length > 0 &&
     answers.timeCommitment !== null;
 
+  // The "saved" confirmation fades out on its own.
+  useEffect(() => {
+    if (!saved) return;
+
+    const timer = window.setTimeout(() => setSaved(false), 2500);
+
+    return () => window.clearTimeout(timer);
+  }, [saved]);
+
   const save = async () => {
     if (!dirty || !complete || saving) return;
 
@@ -682,17 +704,29 @@ function LearningSection({
     }
   };
 
-  return (
-    <section aria-labelledby="learning-title">
-      <h3 id="learning-title" className={sectionTitleClasses}>
-        Your learning profile
-      </h3>
-      <p className="mt-1 text-xs leading-5 text-[#78909A]">
-        These answers help Grokit personalize new journeys. Changes apply to
-        journeys you create from now on.
-      </p>
+  const discard = () => {
+    setAnswers(baseline);
+    setSaved(false);
+    setError(null);
+  };
 
-      <div className="mt-5 space-y-7">
+  const showBar = dirty || saved || Boolean(error);
+
+  return (
+    <section aria-labelledby="learning-title" className="pt-4">
+      <div className="mb-4">
+        <h2
+          id="learning-title"
+          className="font-display text-xl font-extrabold text-white sm:text-2xl"
+        >
+          Your learning profile
+        </h2>
+        <p className="mt-1 text-sm text-[#91A4AC]">
+          Used to personalize new journeys. Existing journeys won’t change.
+        </p>
+      </div>
+
+      <div className="space-y-4">
         <MultiField
           title="What brings you here?"
           options={MOTIVATION_OPTIONS}
@@ -740,36 +774,49 @@ function LearningSection({
         />
       </div>
 
-      {error && (
-        <p role="alert" className="mt-5 rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 text-xs font-medium text-red-200">
-          {error}
-        </p>
-      )}
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => void save()}
-          disabled={!dirty || !complete || saving}
-          className={primaryButtonClasses}
+      {showBar && (
+        <div
+          role="region"
+          aria-label="Save changes"
+          className="sticky bottom-4 z-10 mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border-2 border-[#37464F] bg-[#19282E]/95 px-4 py-3 shadow-[0_12px_32px_rgba(0,0,0,0.45)] backdrop-blur"
         >
-          {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
-          Save changes
-        </button>
+          <p
+            role={error ? 'alert' : 'status'}
+            className={`min-w-0 text-sm font-semibold ${
+              error
+                ? 'text-red-300'
+                : saved && !dirty
+                  ? 'text-emerald-300'
+                  : 'text-[#C8D3DA]'
+            }`}
+          >
+            {error ??
+              (dirty
+                ? complete
+                  ? 'You have unsaved changes.'
+                  : 'Pick at least one answer for every question.'
+                : 'Changes saved.')}
+          </p>
 
-        {dirty && !complete && (
-          <span className="text-xs font-semibold text-[#91A4AC]">
-            Pick at least one answer for every question.
-          </span>
-        )}
+          {dirty && (
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={discard} disabled={saving} className={secondaryButtonClasses}>
+                Discard
+              </button>
 
-        {saved && !dirty && (
-          <span role="status" className="inline-flex items-center gap-1 text-xs font-bold text-emerald-300">
-            <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
-            Saved
-          </span>
-        )}
-      </div>
+              <button
+                type="button"
+                onClick={() => void save()}
+                disabled={!complete || saving}
+                className={primaryButtonClasses}
+              >
+                {saving && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+                Save changes
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -782,29 +829,9 @@ const cardClasses =
   'rounded-2xl border-2 border-[#37464F] bg-[#19282E] p-5 sm:p-7';
 
 export default function EditProfile() {
-  const [profile, setProfile] =
-    useState<Awaited<ReturnType<typeof getProfile>>>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-
-  const load = useCallback(async () => {
-    try {
-      const result = await getProfile();
-
-      if (!result) throw new Error('PROFILE_NOT_FOUND');
-
-      setProfile(result);
-      setStatus('ready');
-    } catch (loadError) {
-      console.error('[EditProfile] Failed to load profile:', loadError);
-
-      // A failed background refresh must not replace a form the learner is using.
-      setStatus((current) => (current === 'ready' ? current : 'error'));
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  // Cached: reopening this page shows the last known profile immediately and
+  // refreshes it quietly in the background.
+  const { data: profile, loading, refresh } = useProfileRecord();
 
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
@@ -828,18 +855,19 @@ export default function EditProfile() {
         </div>
       </header>
 
-      {status === 'loading' && (
+      {loading && (
         <div
           aria-busy="true"
           aria-label="Loading your profile"
           className="animate-pulse space-y-6"
         >
-          <div className="h-56 rounded-2xl bg-[#19282E]" />
-          <div className="h-96 rounded-2xl bg-[#19282E]" />
+          <div className="h-36 rounded-2xl bg-[#19282E]" />
+          <div className="h-44 rounded-2xl bg-[#19282E]" />
+          <div className="h-72 rounded-2xl bg-[#19282E]" />
         </div>
       )}
 
-      {status === 'error' && (
+      {!loading && !profile && (
         <section
           role="alert"
           className="flex flex-col items-center py-16 text-center"
@@ -851,10 +879,7 @@ export default function EditProfile() {
 
           <button
             type="button"
-            onClick={() => {
-              setStatus('loading');
-              void load();
-            }}
+            onClick={() => void refresh()}
             className={`${primaryButtonClasses} mt-6`}
           >
             <RefreshCw className="h-4 w-4" aria-hidden="true" />
@@ -863,19 +888,17 @@ export default function EditProfile() {
         </section>
       )}
 
-      {status === 'ready' && profile && (
+      {profile && (
         <div className="space-y-6">
           <div className={cardClasses}>
             <NameSection />
           </div>
 
           <div className={cardClasses}>
-            <UsernameSection profile={profile} onSaved={load} />
+            <UsernameSection profile={profile} onSaved={refresh} />
           </div>
 
-          <div className={cardClasses}>
-            <LearningSection profile={profile} onSaved={load} />
-          </div>
+          <LearningSection profile={profile} onSaved={refresh} />
         </div>
       )}
     </div>

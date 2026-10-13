@@ -100,7 +100,7 @@ function courseMeta(course: CourseRecord, author: string) {
 
       if (!date) return '';
 
-      return `Created ${date}`;
+      return `Created on ${date}`;
     }
   }
 }

@@ -1,4 +1,3 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import {
   BookOpen,
@@ -9,7 +8,6 @@ import {
   Trophy,
   Zap,
 } from 'lucide-react';
-import { fetchUserAttributes } from 'aws-amplify/auth';
 
 import {
   StreakCalendar,
@@ -17,7 +15,7 @@ import {
   cardClasses,
 } from './learn/components/GamificationCards';
 import { useGamification } from '../lib/gamification';
-import { getProfile } from '../lib/profile';
+import { useAccountNames, useProfileRecord } from '../lib/profile';
 import BadgeRings from './profile/BadgeRings';
 
 // -----------------------------------------------------------------------------
@@ -77,7 +75,7 @@ function ProfileSkeleton() {
       aria-label="Loading your profile"
       className="animate-pulse space-y-6"
     >
-      <div className="h-72 rounded-2xl bg-[#19282E]" />
+      <div className="h-56 rounded-2xl bg-[#19282E]" />
       <div className="grid grid-cols-2 gap-3">
         {[0, 1, 2, 3].map((item) => (
           <div key={item} className="h-[72px] rounded-2xl bg-[#19282E]" />
@@ -94,53 +92,15 @@ function ProfileSkeleton() {
 
 export default function Profile() {
   const { stats, loading, error, refresh } = useGamification();
-  const [name, setName] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [profile, setProfile] = useState<Awaited<ReturnType<typeof getProfile>>>(null);
+  // Cached: opening this page again shows the last known name immediately.
+  const { data: profile } = useProfileRecord();
+  const { data: account } = useAccountNames();
 
-  const reloadProfile = useCallback(async () => {
-    try {
-      setProfile(await getProfile());
-    } catch (loadError) {
-      console.error('[Profile] Failed to load profile:', loadError);
-    }
-  }, []);
-
-  useEffect(() => {
-    void reloadProfile();
-  }, [reloadProfile]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadName = async () => {
-      try {
-        const attributes = await fetchUserAttributes();
-
-        if (cancelled) return;
-
-        setFullName(attributes.name?.trim() || '');
-        setName(
-          attributes.name ||
-            attributes.preferred_username ||
-            attributes.email?.split('@')[0] ||
-            'You',
-        );
-      } catch {
-        if (!cancelled) setName('You');
-      }
-    };
-
-    void loadName();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const fullName = account?.fullName ?? '';
 
   // The username (when set) is the public-facing name; the email prefix is only a fallback.
   const username = profile?.username?.trim() || '';
-  const displayName = fullName || username || name;
+  const displayName = fullName || username || account?.fallback || '';
   const initial = displayName.trim().charAt(0).toUpperCase() || 'Y';
 
   const learningSince = stats?.firstActivityAt?.toLocaleDateString(undefined, {
@@ -209,29 +169,6 @@ export default function Profile() {
                 ? `Learning since ${learningSince}`
                 : 'Complete a lesson to start your story'}
             </p>
-
-            <div className="mx-auto mt-6 max-w-xs">
-              <div className="flex items-baseline justify-between text-xs font-bold">
-                <span className="text-white">Level {stats.level}</span>
-                <span className="text-[#91A4AC]">
-                  {stats.levelXp}/{stats.levelSize} XP
-                </span>
-              </div>
-
-              <div
-                role="progressbar"
-                aria-label={`Progress to level ${stats.level + 1}`}
-                aria-valuemin={0}
-                aria-valuemax={stats.levelSize}
-                aria-valuenow={stats.levelXp}
-                className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#0D181C]"
-              >
-                <div
-                  className="h-full rounded-full bg-orange transition-[width] duration-500"
-                  style={{ width: `${(stats.levelXp / stats.levelSize) * 100}%` }}
-                />
-              </div>
-            </div>
 
             {profile && !username && (
               <p className="mt-4 text-xs text-[#91A4AC]">
