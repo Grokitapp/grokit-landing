@@ -12,7 +12,6 @@ import {
   Loader2,
   LogOut,
   Mail,
-  Moon,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -26,7 +25,6 @@ import { resetGamification } from '../lib/gamification';
 import {
   APP_LANGUAGES,
   CONTENT_LANGUAGES,
-  THEME_OPTIONS,
   USAGE_GROUPS,
   USAGE_LABELS,
   formatReset,
@@ -34,7 +32,6 @@ import {
   type UsageItem,
   updateSettings,
   useSettings,
-  type ThemePreference,
 } from '../lib/settings';
 
 // -----------------------------------------------------------------------------
@@ -668,20 +665,6 @@ export default function Settings() {
 
         {/* Preferences */}
         <Section id="preferences" title="Preferences">
-          <Row
-            icon={Moon}
-            title="Appearance"
-            description="Choose a light or dark theme, or follow your device settings."
-            control={
-              <SelectControl
-                label="Appearance"
-                value={settings.theme}
-                onChange={(theme) => updateSettings({ theme: theme as ThemePreference })}
-                options={THEME_OPTIONS}
-              />
-            }
-          />
-
           <Row
             icon={Languages}
             title="App language"

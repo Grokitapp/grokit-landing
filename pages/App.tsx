@@ -20,6 +20,7 @@ const Explore = lazy(() => import('./Explore'));
 const Library = lazy(() => import('./Library'));
 const Leaderboard = lazy(() => import('./Leaderboard'));
 const Settings = lazy(() => import('./Settings'));
+const Usage = lazy(() => import('./Settings').then((module) => ({ default: module.Usage })));
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/edit" element={<EditProfile />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/settings/usage" element={<Usage />} />
         <Route path="/learn/course/:courseId" element={<CourseOverview />} />
         <Route
           path="/learn/course/:courseId/phase/:phaseId"

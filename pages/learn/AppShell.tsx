@@ -934,8 +934,8 @@ function LogoutConfirmation({ onCancel }: { onCancel: () => void }) {
           Are you sure you want to log out?
         </h2>
 
-        <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
-          You&apos;ll need to sign in again to continue learning with Grokit.
+        <p className="mt-2 text-sm leading-6 text-[#C8D3DA]">
+          You’ll need to sign in again to continue learning with Grokit.
         </p>
 
         {error && (
