@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router';
+import { Link, useLocation, useNavigate } from 'react-router';
 import { ArrowLeft } from 'lucide-react';
 import { GrokitLogo } from '../components/Grokitlogo';
 import type { ReactNode } from 'react';
@@ -31,10 +31,28 @@ function Section({ number, title, children }: { number: number; title: string; c
   );
 }
 
+function useGoBack() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Prefer the page that sent us here (e.g. Settings), then browser history,
+  // and only fall back to home if the page was opened directly.
+  return () => {
+    const from = (location.state as { from?: unknown } | null)?.from;
+
+    if (typeof from === 'string' && from.startsWith('/')) navigate(from);
+    else if (location.key !== 'default') navigate(-1);
+    else navigate('/');
+  };
+}
+
 function InlineLink({ to, children }: { to: string; children: ReactNode }) {
+  const location = useLocation();
+
   return (
     <Link
       to={to}
+      state={location.state}
       className="text-[#FF6B00] underline decoration-[#FF6B00]/60 underline-offset-2 transition-colors hover:text-[#FF8A3D]"
     >
       {children}
@@ -66,7 +84,7 @@ function Bullet({ children }: { children: ReactNode }) {
 }
 
 export default function PrivacyPolicy() {
-  const navigate = useNavigate();
+  const goBack = useGoBack();
 
   return (
     <div className="min-h-[100dvh] bg-[#06131D] text-white">
@@ -90,7 +108,7 @@ export default function PrivacyPolicy() {
 
           <button
             type="button"
-            onClick={() => navigate(-1)}
+            onClick={goBack}
             aria-label="Back"
             className="pointer-events-auto flex h-10 w-10 shrink-0 items-center justify-center bg-transparent p-0 text-[#71858E] transition-colors duration-200 hover:text-white focus:outline-none focus-visible:text-white"
           >

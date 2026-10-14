@@ -1,34 +1,40 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type SubmitEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
-import {
-  deleteUser,
-  fetchUserAttributes,
-  signOut,
-  updatePassword,
-} from 'aws-amplify/auth';
+import { deleteUser, fetchUserAttributes, updatePassword } from 'aws-amplify/auth';
 import {
   ArrowLeft,
+  ArrowRight,
   Check,
   ChevronRight,
   Globe,
   KeyRound,
+  Languages,
   Loader2,
   LogOut,
   Mail,
+  Moon,
+  RefreshCw,
   ShieldCheck,
   Sparkles,
   Trash2,
-  UserRound,
   Volume2,
-  Wind,
 } from 'lucide-react';
 
 import { cardClasses } from './learn/components/GamificationCards';
+import { signOutUser } from './auth/authService';
 import { resetGamification } from '../lib/gamification';
 import {
+  APP_LANGUAGES,
   CONTENT_LANGUAGES,
+  THEME_OPTIONS,
+  USAGE_GROUPS,
+  USAGE_LABELS,
+  formatReset,
+  useUsage,
+  type UsageItem,
   updateSettings,
   useSettings,
+  type ThemePreference,
 } from '../lib/settings';
 
 // -----------------------------------------------------------------------------
@@ -78,6 +84,50 @@ function Section({
         {children}
       </div>
     </section>
+  );
+}
+
+function UsageMeter({
+  label,
+  item,
+}: {
+  label: string;
+  item: UsageItem;
+}) {
+  const { used, limit } = item;
+  const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const full = limit > 0 && used >= limit;
+  const reset = formatReset(item.resetsAt, item.timeZone);
+
+  return (
+    <div className="px-5 py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="text-[15px] font-extrabold text-white">{label}</p>
+          {reset && <p className="mt-0.5 text-xs text-[#91A4AC]">{reset}</p>}
+        </div>
+
+        <p className="shrink-0 text-sm font-semibold text-[#C8D3DA]">
+          {used} of {limit} used
+        </p>
+      </div>
+
+      <div
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={limit}
+        aria-valuenow={Math.min(used, limit)}
+        className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[#2D3C43]"
+      >
+        <div
+          className={`h-full rounded-full transition-[width] duration-300 ${
+            full ? 'bg-[#E5365B]' : 'bg-orange'
+          }`}
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -149,6 +199,36 @@ function Switch({
   );
 }
 
+function SelectControl({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: ReadonlyArray<{ value: string; label: string }>;
+}) {
+  return (
+    <select
+      aria-label={label}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      className={`h-11 max-w-[170px] rounded-xl border-2 border-[#37464F] bg-[#131F24] px-3 text-sm font-bold text-white ${focusRing}`}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+const toOptions = (values: ReadonlyArray<string>) =>
+  values.map((value) => ({ value, label: value }));
+
 // -----------------------------------------------------------------------------
 // Change password (email sign-in only)
 // -----------------------------------------------------------------------------
@@ -168,7 +248,7 @@ function PasswordRow() {
     setError('');
   };
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (busy) return;
@@ -410,6 +490,109 @@ function DeleteDialog({ onClose }: { onClose: () => void }) {
 }
 
 // -----------------------------------------------------------------------------
+// Sign-out confirmation
+// -----------------------------------------------------------------------------
+
+function SignOutDialog({ onClose }: { onClose: () => void }) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !busy) onClose();
+    };
+
+    window.addEventListener('keydown', onKey);
+
+    return () => window.removeEventListener('keydown', onKey);
+  }, [busy, onClose]);
+
+  const confirm = async () => {
+    if (busy) return;
+
+    setBusy(true);
+    setError('');
+
+    try {
+      await signOutUser();
+      resetGamification();
+      navigate('/', { replace: true });
+    } catch (caught) {
+      console.error('[settings] sign out failed:', caught);
+      setError('Unable to sign out right now. Please try again.');
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="signout-title"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      onClick={() => !busy && onClose()}
+    >
+      <div
+        className="w-full max-w-md rounded-2xl border-2 border-[#37464F] bg-[#19282E] p-6"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange/10 text-orange">
+          <LogOut className="h-5 w-5" aria-hidden="true" />
+        </div>
+
+        <h2
+          id="signout-title"
+          className="mt-5 font-display text-xl font-extrabold text-white"
+        >
+          Are you sure you want to sign out?
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-[#C8D3DA]">
+          You’ll need to sign in again to continue learning with Grokit.
+        </p>
+
+        {error && (
+          <p role="alert" className="mt-3 text-sm font-semibold text-[#FB7185]">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            className={secondaryButtonClasses}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            onClick={() => void confirm()}
+            disabled={busy}
+            className={primaryButtonClasses}
+          >
+            {busy ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                Signing out...
+              </>
+            ) : (
+              <>
+                Sign out
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // Page
 // -----------------------------------------------------------------------------
 
@@ -420,8 +603,9 @@ export default function Settings() {
   const [email, setEmail] = useState('');
   // Learners who signed in with Google have no Grokit password to change.
   const [usesGoogle, setUsesGoogle] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const { data: usage } = useUsage();
 
   useEffect(() => {
     let active = true;
@@ -441,19 +625,6 @@ export default function Settings() {
       active = false;
     };
   }, []);
-
-  const handleSignOut = async () => {
-    setSigningOut(true);
-
-    try {
-      await signOut();
-      resetGamification();
-      navigate('/', { replace: true });
-    } catch (caught) {
-      console.error('[settings] sign out failed:', caught);
-      setSigningOut(false);
-    }
-  };
 
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
@@ -493,44 +664,76 @@ export default function Settings() {
           />
 
           {!usesGoogle && email && <PasswordRow />}
-
-          <Link to="/profile/edit" className={linkRowClasses}>
-            <span className="flex min-w-0 items-center gap-3.5">
-              <UserRound className="h-5 w-5 shrink-0 text-[#C8D3DA]" aria-hidden="true" />
-              <span className="min-w-0">
-                Edit profile
-                <span className="mt-0.5 block text-sm font-normal text-[#91A4AC]">
-                  Name, username and your learning profile
-                </span>
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-[#78909A]" aria-hidden="true" />
-          </Link>
         </Section>
 
-        {/* Lessons */}
-        <Section id="lessons" title="Lessons">
+        {/* Preferences */}
+        <Section id="preferences" title="Preferences">
           <Row
-            icon={Globe}
-            title="Lesson language"
-            description="The language Grokit writes new lessons in."
+            icon={Moon}
+            title="Appearance"
+            description="Choose a light or dark theme, or follow your device settings."
             control={
-              <select
-                aria-label="Lesson language"
-                value={settings.contentLanguage}
-                onChange={(event) =>
-                  updateSettings({ contentLanguage: event.target.value })
-                }
-                className={`h-11 max-w-[170px] rounded-xl border-2 border-[#37464F] bg-[#131F24] px-3 text-sm font-bold text-white ${focusRing}`}
-              >
-                {CONTENT_LANGUAGES.map((language) => (
-                  <option key={language} value={language}>
-                    {language}
-                  </option>
-                ))}
-              </select>
+              <SelectControl
+                label="Appearance"
+                value={settings.theme}
+                onChange={(theme) => updateSettings({ theme: theme as ThemePreference })}
+                options={THEME_OPTIONS}
+              />
             }
           />
+
+          <Row
+            icon={Languages}
+            title="App language"
+            description="The language used for buttons, navigation, settings and other app controls."
+            control={
+              <SelectControl
+                label="App language"
+                value={settings.appLanguage}
+                onChange={(appLanguage) => updateSettings({ appLanguage })}
+                options={toOptions(APP_LANGUAGES)}
+              />
+            }
+          />
+
+          <Row
+            icon={Globe}
+            title="Content language"
+            description="The language used for generated learning content and AI responses."
+            control={
+              <SelectControl
+                label="Content language"
+                value={settings.contentLanguage}
+                onChange={(contentLanguage) => updateSettings({ contentLanguage })}
+                options={toOptions(CONTENT_LANGUAGES)}
+              />
+            }
+          />
+        </Section>
+
+        {/* Usage */}
+        <Section
+          id="usage"
+          title="Usage"
+          hint="Keep track of your daily and monthly limits."
+        >
+          {usage ? (
+            <>
+              <UsageMeter label={USAGE_LABELS.lessonsTaken} item={usage.items.lessonsTaken} />
+              <UsageMeter label={USAGE_LABELS.coursesCreated} item={usage.items.coursesCreated} />
+            </>
+          ) : (
+            <p className="px-5 py-4 text-sm text-[#91A4AC]">Loading usage…</p>
+          )}
+
+          <div className="px-5 py-4">
+            <Link
+              to="/settings/usage"
+              className={`${secondaryButtonClasses} w-full uppercase tracking-wider`}
+            >
+              View all usage
+            </Link>
+          </div>
         </Section>
 
         {/* Experience */}
@@ -547,29 +750,16 @@ export default function Settings() {
               />
             }
           />
-
-          <Row
-            icon={Wind}
-            title="Reduce motion"
-            description="Turn off animations and transitions."
-            control={
-              <Switch
-                label="Reduce motion"
-                checked={settings.reduceMotion}
-                onChange={(reduceMotion) => updateSettings({ reduceMotion })}
-              />
-            }
-          />
         </Section>
 
         {/* About */}
         <Section id="about" title="About Grokit">
-          <Link to="/privacy" className={linkRowClasses}>
+          <Link to="/privacy" state={{ from: '/settings' }} className={linkRowClasses}>
             Privacy policy
             <ChevronRight className="h-4 w-4 text-[#78909A]" aria-hidden="true" />
           </Link>
 
-          <Link to="/terms" className={linkRowClasses}>
+          <Link to="/terms" state={{ from: '/settings' }} className={linkRowClasses}>
             Terms of service
             <ChevronRight className="h-4 w-4 text-[#78909A]" aria-hidden="true" />
           </Link>
@@ -589,15 +779,10 @@ export default function Settings() {
         <div className="space-y-4">
           <button
             type="button"
-            onClick={() => void handleSignOut()}
-            disabled={signingOut}
+            onClick={() => setConfirmingSignOut(true)}
             className={`${secondaryButtonClasses} w-full !min-h-12 !text-[15px]`}
           >
-            {signingOut ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-            ) : (
-              <LogOut className="h-4 w-4" aria-hidden="true" />
-            )}
+            <LogOut className="h-4 w-4" aria-hidden="true" />
             Sign out
           </button>
 
@@ -627,8 +812,125 @@ export default function Settings() {
         </div>
       </div>
 
+      {confirmingSignOut && (
+        <SignOutDialog onClose={() => setConfirmingSignOut(false)} />
+      )}
+
       {confirmingDelete && (
         <DeleteDialog onClose={() => setConfirmingDelete(false)} />
+      )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Usage page (route: /settings/usage)
+// -----------------------------------------------------------------------------
+
+/** Where the "Upgrade to Pro" button goes. */
+const UPGRADE_PATH = '/pricing';
+
+export function Usage() {
+  const navigate = useNavigate();
+  const { data, loading, error, refresh } = useUsage();
+
+  return (
+    <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
+      <Link
+        to="/settings"
+        className="mb-6 inline-flex items-center gap-2 rounded-lg text-sm font-bold text-[#91A4AC] transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Back to Settings
+      </Link>
+
+      <header className="mb-8 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="font-display text-2xl font-extrabold text-white sm:text-3xl">
+            Usage
+          </h1>
+          <p className="mt-0.5 text-sm text-[#91A4AC]">
+            See how much daily and monthly usage you have left.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => void refresh()}
+          disabled={loading}
+          className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl border border-[#37464F] px-4 text-sm font-bold text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:pointer-events-none disabled:opacity-50"
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          )}
+          Refresh
+        </button>
+      </header>
+
+      {error && !data && (
+        <p
+          role="alert"
+          className="rounded-2xl border-2 border-[#E5365B]/40 bg-[#E5365B]/5 p-5 text-sm font-semibold text-[#FB7185]"
+        >
+          We couldn’t load your usage. Please try refreshing.
+        </p>
+      )}
+
+      {!data && loading && (
+        <div className="flex justify-center py-16" role="status" aria-label="Loading usage">
+          <Loader2 className="h-6 w-6 animate-spin text-[#91A4AC]" aria-hidden="true" />
+        </div>
+      )}
+
+      {data && (
+        <div className="space-y-10">
+          {USAGE_GROUPS.map((group) => (
+            <Section
+              key={group.title}
+              id={`usage-${group.title.toLowerCase()}`}
+              title={group.title}
+            >
+              {group.keys.map((key) => (
+                <UsageMeter key={key} label={USAGE_LABELS[key]} item={data.items[key]} />
+              ))}
+            </Section>
+          ))}
+
+          {data.plan === 'free' && (
+            <section
+              aria-labelledby="upgrade-title"
+              className="flex flex-col gap-4 rounded-2xl border-2 border-orange/40 bg-orange/5 p-5 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <h2
+                  id="upgrade-title"
+                  className="font-display text-lg font-extrabold text-white"
+                >
+                  Get more with Pro
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-[#C8D3DA]">
+                  Increase your daily and monthly learning and creation limits.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => navigate(UPGRADE_PATH)}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange px-5 text-sm font-extrabold text-white shadow-[0_3px_0_#C94713] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#131F24]"
+              >
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                Upgrade to Pro
+              </button>
+            </section>
+          )}
+
+          <p className="text-xs leading-5 text-[#78909A]">
+            Usage refreshes when you open this page. Reset times use your learning
+            timezone, except live voice, which uses UTC.
+          </p>
+        </div>
       )}
     </div>
   );
