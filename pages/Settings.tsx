@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   ChevronRight,
   Globe,
   KeyRound,
@@ -12,6 +13,7 @@ import {
   Loader2,
   LogOut,
   Mail,
+  Moon,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -25,13 +27,15 @@ import { resetGamification } from '../lib/gamification';
 import {
   APP_LANGUAGES,
   CONTENT_LANGUAGES,
-  USAGE_GROUPS,
+  THEME_OPTIONS,
   USAGE_LABELS,
   formatReset,
   useUsage,
   type UsageItem,
+  type UsageKey,
   updateSettings,
   useSettings,
+  type ThemePreference,
 } from '../lib/settings';
 
 // -----------------------------------------------------------------------------
@@ -41,7 +45,7 @@ import {
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#131F24]';
 
-const linkRowClasses = `flex items-center justify-between gap-3 px-5 py-4 text-[15px] font-extrabold text-white transition hover:bg-[#1F3037] ${focusRing}`;
+const linkRowClasses = `flex items-center justify-between gap-3 px-5 py-4 text-[15px] font-extrabold text-white transition ${focusRing}`;
 
 const primaryButtonClasses =
   'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-orange px-5 text-sm font-extrabold text-white shadow-[0_3px_0_#C94713] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#19282E] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none';
@@ -75,6 +79,7 @@ function Section({
       >
         {title}
       </h2>
+
       {hint && <p className="mt-1 text-sm text-[#91A4AC]">{hint}</p>}
 
       <div className={`${cardClasses} mt-4 divide-y divide-[#2D3C43] !p-0`}>
@@ -92,7 +97,8 @@ function UsageMeter({
   item: UsageItem;
 }) {
   const { used, limit } = item;
-  const percent = limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
+  const percent =
+    limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const full = limit > 0 && used >= limit;
   const reset = formatReset(item.resetsAt, item.timeZone);
 
@@ -390,7 +396,6 @@ function DeleteDialog({ onClose }: { onClose: () => void }) {
     };
 
     window.addEventListener('keydown', onKey);
-
     return () => window.removeEventListener('keydown', onKey);
   }, [busy, onClose]);
 
@@ -501,7 +506,6 @@ function SignOutDialog({ onClose }: { onClose: () => void }) {
     };
 
     window.addEventListener('keydown', onKey);
-
     return () => window.removeEventListener('keydown', onKey);
   }, [busy, onClose]);
 
@@ -598,7 +602,6 @@ export default function Settings() {
   const settings = useSettings();
 
   const [email, setEmail] = useState('');
-  // Learners who signed in with Google have no Grokit password to change.
   const [usesGoogle, setUsesGoogle] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -646,25 +649,33 @@ export default function Settings() {
       </header>
 
       <div className="space-y-10">
-        {/* Account */}
         <Section id="account" title="Account">
-          <Row
-            icon={Mail}
-            title="Email"
-            description={email || 'Loading…'}
-          />
-
+          <Row icon={Mail} title="Email" description={email || 'Loading…'} />
           <Row
             icon={ShieldCheck}
             title="Sign-in method"
             description={usesGoogle ? 'Google' : 'Email and password'}
           />
-
           {!usesGoogle && email && <PasswordRow />}
         </Section>
 
-        {/* Preferences */}
         <Section id="preferences" title="Preferences">
+          <Row
+            icon={Moon}
+            title="Appearance"
+            description="Choose a light or dark theme, or follow your device settings."
+            control={
+              <SelectControl
+                label="Appearance"
+                value={settings.theme}
+                onChange={(theme) =>
+                  updateSettings({ theme: theme as ThemePreference })
+                }
+                options={THEME_OPTIONS}
+              />
+            }
+          />
+
           <Row
             icon={Languages}
             title="App language"
@@ -694,7 +705,6 @@ export default function Settings() {
           />
         </Section>
 
-        {/* Usage */}
         <Section
           id="usage"
           title="Usage"
@@ -702,8 +712,14 @@ export default function Settings() {
         >
           {usage ? (
             <>
-              <UsageMeter label={USAGE_LABELS.lessonsTaken} item={usage.items.lessonsTaken} />
-              <UsageMeter label={USAGE_LABELS.coursesCreated} item={usage.items.coursesCreated} />
+              <UsageMeter
+                label={USAGE_LABELS.lessonsTaken}
+                item={usage.items.lessonsTaken}
+              />
+              <UsageMeter
+                label={USAGE_LABELS.coursesCreated}
+                item={usage.items.coursesCreated}
+              />
             </>
           ) : (
             <p className="px-5 py-4 text-sm text-[#91A4AC]">Loading usage…</p>
@@ -719,7 +735,6 @@ export default function Settings() {
           </div>
         </Section>
 
-        {/* Experience */}
         <Section id="experience" title="Experience">
           <Row
             icon={Volume2}
@@ -735,7 +750,6 @@ export default function Settings() {
           />
         </Section>
 
-        {/* About */}
         <Section id="about" title="About Grokit">
           <Link to="/privacy" state={{ from: '/settings' }} className={linkRowClasses}>
             Privacy policy
@@ -758,7 +772,6 @@ export default function Settings() {
           </div>
         </Section>
 
-        {/* Session + danger */}
         <div className="space-y-4">
           <button
             type="button"
@@ -807,15 +820,31 @@ export default function Settings() {
 }
 
 // -----------------------------------------------------------------------------
-// Usage page (route: /settings/usage)
+// Usage page (/settings/usage)
 // -----------------------------------------------------------------------------
 
-/** Where the "Upgrade to Pro" button goes. */
 const UPGRADE_PATH = '/pricing';
+
+const PRIMARY_USAGE_GROUPS: ReadonlyArray<{
+  title: string;
+  keys: UsageKey[];
+}> = [
+  { title: 'Learning', keys: ['lessonsTaken', 'aiChats'] },
+  { title: 'Creation', keys: ['coursesCreated', 'lessonsGenerated'] },
+];
+
+const MORE_USAGE_KEYS: UsageKey[] = [
+  'liveVoice',
+  'lessonVideos',
+  'learningImages',
+  'planningMessages',
+  'sourceFiles',
+];
 
 export function Usage() {
   const navigate = useNavigate();
   const { data, loading, error, refresh } = useUsage();
+  const [showMoreLimits, setShowMoreLimits] = useState(false);
 
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
@@ -832,8 +861,8 @@ export function Usage() {
           <h1 className="font-display text-2xl font-extrabold text-white sm:text-3xl">
             Usage
           </h1>
-          <p className="mt-0.5 text-sm text-[#91A4AC]">
-            See how much daily and monthly usage you have left.
+          <p className="mt-1 text-sm text-[#91A4AC]">
+            Keep track of your daily and monthly limits.
           </p>
         </div>
 
@@ -862,24 +891,82 @@ export function Usage() {
       )}
 
       {!data && loading && (
-        <div className="flex justify-center py-16" role="status" aria-label="Loading usage">
-          <Loader2 className="h-6 w-6 animate-spin text-[#91A4AC]" aria-hidden="true" />
+        <div
+          className="flex justify-center py-16"
+          role="status"
+          aria-label="Loading usage"
+        >
+          <Loader2
+            className="h-6 w-6 animate-spin text-[#91A4AC]"
+            aria-hidden="true"
+          />
         </div>
       )}
 
       {data && (
-        <div className="space-y-10">
-          {USAGE_GROUPS.map((group) => (
+        <div className="space-y-8">
+          {PRIMARY_USAGE_GROUPS.map((group) => (
             <Section
               key={group.title}
               id={`usage-${group.title.toLowerCase()}`}
               title={group.title}
             >
               {group.keys.map((key) => (
-                <UsageMeter key={key} label={USAGE_LABELS[key]} item={data.items[key]} />
+                <UsageMeter
+                  key={key}
+                  label={USAGE_LABELS[key]}
+                  item={data.items[key]}
+                />
               ))}
             </Section>
           ))}
+
+          <section
+            aria-labelledby="more-limits-title"
+            className={`${cardClasses} overflow-hidden !p-0`}
+          >
+            <button
+              type="button"
+              aria-expanded={showMoreLimits}
+              aria-controls="more-usage-limits"
+              onClick={() => setShowMoreLimits((current) => !current)}
+              className="flex min-h-14 w-full items-center justify-between gap-3 px-5 py-4 text-left transition hover:bg-[#1F3037] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange"
+            >
+              <span>
+                <span
+                  id="more-limits-title"
+                  className="block text-sm font-extrabold text-white"
+                >
+                  More limits
+                </span>
+                <span className="mt-1 block text-xs text-[#91A4AC]">
+                  Voice, media, and other feature usage
+                </span>
+              </span>
+
+              <ChevronDown
+                className={`h-5 w-5 shrink-0 text-[#91A4AC] transition-transform ${
+                  showMoreLimits ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            {showMoreLimits && (
+              <div
+                id="more-usage-limits"
+                className="divide-y divide-[#2D3C43] border-t border-[#2D3C43]"
+              >
+                {MORE_USAGE_KEYS.map((key) => (
+                  <UsageMeter
+                    key={key}
+                    label={USAGE_LABELS[key]}
+                    item={data.items[key]}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
           {data.plan === 'free' && (
             <section
@@ -910,8 +997,8 @@ export function Usage() {
           )}
 
           <p className="text-xs leading-5 text-[#78909A]">
-            Usage refreshes when you open this page. Reset times use your learning
-            timezone, except live voice, which uses UTC.
+            Usage refreshes when you open this page. Reset times use your
+            learning timezone, except live voice, which uses UTC.
           </p>
         </div>
       )}
