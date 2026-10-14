@@ -494,12 +494,6 @@ export function NextBadgeCard({ stats }: { stats: GamificationStats }) {
               </li>
             )}
           </ul>
-
-          <p className="mt-3 text-[11px] font-medium text-[#78909A]">
-            {remainingBadges > 0
-              ? `${visibleBadges.length} shown · ${remainingBadges} more to discover`
-              : `${totalCount} badges to collect`}
-          </p>
         </>
       )}
 
