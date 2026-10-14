@@ -199,26 +199,25 @@ export const USAGE_GROUPS: ReadonlyArray<{ title: string; keys: UsageKey[] }> = 
 // Formatting
 // -----------------------------------------------------------------------------
 
-/** "Resets Oct 15, 2026 at 12:00 AM" (adds "UTC" when shown in UTC). */
-export function formatReset(resetsAt: string, timeZone?: string): string {
+/** Formats a reset instant in India Standard Time. */
+export function formatReset(resetsAt: string, timeZone = 'Asia/Kolkata'): string {
   const date = new Date(resetsAt);
 
   if (Number.isNaN(date.getTime())) return '';
 
-  const zone = timeZone ? { timeZone } : {};
-  const day = new Intl.DateTimeFormat('en-US', {
-    month: 'short',
+  const day = new Intl.DateTimeFormat('en-IN', {
+    timeZone,
     day: 'numeric',
+    month: 'short',
     year: 'numeric',
-    ...zone,
   }).format(date);
-  const time = new Intl.DateTimeFormat('en-US', {
+  const time = new Intl.DateTimeFormat('en-IN', {
+    timeZone,
     hour: 'numeric',
     minute: '2-digit',
-    ...zone,
   }).format(date);
 
-  return `Resets ${day} at ${time}${timeZone === 'UTC' ? ' UTC' : ''}`;
+  return `Resets ${day} at ${time}`;
 }
 
 // -----------------------------------------------------------------------------
@@ -234,19 +233,41 @@ export function formatReset(resetsAt: string, timeZone?: string): string {
  */
 export async function fetchUsage(): Promise<UsageSnapshot> {
   const now = new Date();
-  const nextMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const nextMonthUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  const istParts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(now);
+  const part = (type: string) => istParts.find((item) => item.type === type)?.value;
+  const year = Number(part('year'));
+  const month = Number(part('month'));
+  const day = Number(part('day'));
+  const pad = (value: number) => String(value).padStart(2, '0');
+
+  // Use IST calendar dates to build the next reset instants explicitly.
+  const nextDayCalendar = new Date(year, month - 1, day + 1);
+  const nextMonthYear = month === 12 ? year + 1 : year;
+  const nextMonthNumber = month === 12 ? 1 : month + 1;
+
+  const nextMidnight = new Date(
+    `${nextDayCalendar.getFullYear()}-${pad(nextDayCalendar.getMonth() + 1)}-${pad(nextDayCalendar.getDate())}T00:00:00+05:30`,
+  );
+  const nextMonth = new Date(
+    `${nextMonthYear}-${pad(nextMonthNumber)}-01T00:00:00+05:30`,
+  );
 
   const daily = (used: number, limit: number): UsageItem => ({
     used,
     limit,
     resetsAt: nextMidnight.toISOString(),
+    timeZone: 'Asia/Kolkata',
   });
   const monthly = (used: number, limit: number): UsageItem => ({
     used,
     limit,
     resetsAt: nextMonth.toISOString(),
+    timeZone: 'Asia/Kolkata',
   });
 
   return {
@@ -254,7 +275,7 @@ export async function fetchUsage(): Promise<UsageSnapshot> {
     items: {
       lessonsTaken: daily(0, 5),
       aiChats: daily(0, 10),
-      liveVoice: { used: 0, limit: 1, resetsAt: nextMonthUtc.toISOString(), timeZone: 'UTC' },
+      liveVoice: { used: 0, limit: 1, resetsAt: nextMonth.toISOString(), timeZone: 'Asia/Kolkata' },
       coursesCreated: monthly(2, 3),
       lessonsGenerated: daily(0, 5),
       podcastEpisodes: monthly(1, 3),

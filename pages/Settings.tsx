@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  ChevronDown,
   ChevronRight,
   Globe,
   KeyRound,
@@ -13,7 +12,6 @@ import {
   Loader2,
   LogOut,
   Mail,
-  Moon,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -27,7 +25,6 @@ import { resetGamification } from '../lib/gamification';
 import {
   APP_LANGUAGES,
   CONTENT_LANGUAGES,
-  THEME_OPTIONS,
   USAGE_LABELS,
   formatReset,
   useUsage,
@@ -35,7 +32,6 @@ import {
   type UsageKey,
   updateSettings,
   useSettings,
-  type ThemePreference,
 } from '../lib/settings';
 
 // -----------------------------------------------------------------------------
@@ -661,22 +657,6 @@ export default function Settings() {
 
         <Section id="preferences" title="Preferences">
           <Row
-            icon={Moon}
-            title="Appearance"
-            description="Choose a light or dark theme, or follow your device settings."
-            control={
-              <SelectControl
-                label="Appearance"
-                value={settings.theme}
-                onChange={(theme) =>
-                  updateSettings({ theme: theme as ThemePreference })
-                }
-                options={THEME_OPTIONS}
-              />
-            }
-          />
-
-          <Row
             icon={Languages}
             title="App language"
             description="The language used for buttons, navigation, settings and other app controls."
@@ -844,7 +824,6 @@ const MORE_USAGE_KEYS: UsageKey[] = [
 export function Usage() {
   const navigate = useNavigate();
   const { data, loading, error, refresh } = useUsage();
-  const [showMoreLimits, setShowMoreLimits] = useState(false);
 
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
@@ -921,53 +900,6 @@ export function Usage() {
             </Section>
           ))}
 
-          <section
-            aria-labelledby="more-limits-title"
-            className={`${cardClasses} overflow-hidden !p-0`}
-          >
-            <button
-              type="button"
-              aria-expanded={showMoreLimits}
-              aria-controls="more-usage-limits"
-              onClick={() => setShowMoreLimits((current) => !current)}
-              className="flex min-h-14 w-full items-center justify-between gap-3 px-5 py-4 text-left transition hover:bg-[#1F3037] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-orange"
-            >
-              <span>
-                <span
-                  id="more-limits-title"
-                  className="block text-sm font-extrabold text-white"
-                >
-                  More limits
-                </span>
-                <span className="mt-1 block text-xs text-[#91A4AC]">
-                  Voice, media, and other feature usage
-                </span>
-              </span>
-
-              <ChevronDown
-                className={`h-5 w-5 shrink-0 text-[#91A4AC] transition-transform ${
-                  showMoreLimits ? 'rotate-180' : ''
-                }`}
-                aria-hidden="true"
-              />
-            </button>
-
-            {showMoreLimits && (
-              <div
-                id="more-usage-limits"
-                className="divide-y divide-[#2D3C43] border-t border-[#2D3C43]"
-              >
-                {MORE_USAGE_KEYS.map((key) => (
-                  <UsageMeter
-                    key={key}
-                    label={USAGE_LABELS[key]}
-                    item={data.items[key]}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
           {data.plan === 'free' && (
             <section
               aria-labelledby="upgrade-title"
@@ -997,8 +929,7 @@ export function Usage() {
           )}
 
           <p className="text-xs leading-5 text-[#78909A]">
-            Usage refreshes when you open this page. Reset times use your
-            learning timezone, except live voice, which uses UTC.
+            Usage refreshes when you open this page. All reset times are shown in India Standard Time (IST).
           </p>
         </div>
       )}

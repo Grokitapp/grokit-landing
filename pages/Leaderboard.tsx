@@ -437,7 +437,7 @@ function HowLeaguesWork() {
       text: `Top ${PROMOTE_MAX} move up (at least ${MIN_XP_TO_PROMOTE} XP).`,
     },
     { icon: ChevronDown, color: '#FF6B6B', text: `Bottom ${DEMOTE_MAX} move down.` },
-    { icon: Clock, color: '#38BDF8', text: 'Weeks reset every Monday, 00:00 UTC.' },
+    { icon: Clock, color: '#38BDF8', text: 'Weeks reset every Monday at 12:00 AM IST.' },
   ];
 
   return (
