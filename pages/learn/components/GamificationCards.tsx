@@ -1,27 +1,17 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import {
-  Award,
-  BookOpen,
   Check,
   ChevronLeft,
   ChevronRight,
   Flame,
-  Footprints,
   Lock,
-  Medal,
-  Star,
-  Trophy,
   Zap,
 } from 'lucide-react';
 
-import {
-  dayKey,
-  type Badge,
-  type BadgeIcon,
-  type BadgeTone,
-  type GamificationStats,
-} from '../../../lib/gamification';
+import { dayKey, type GamificationStats } from '../../../lib/gamification';
+import type { ProfileBadge } from '../../../lib/badges';
+import { BADGE_ICONS } from '../../profile/badgeStyle';
 
 // -----------------------------------------------------------------------------
 // Shared styles
@@ -39,26 +29,19 @@ const activeDayStyle = {
   boxShadow: `0 3px 0 ${ORANGE.edge}`,
 };
 
-const iconMap: Record<BadgeIcon, typeof Award> = {
-  footprints: Footprints,
-  book: BookOpen,
-  medal: Medal,
-  flame: Flame,
-  trophy: Trophy,
-  award: Award,
-  star: Star,
-  zap: Zap,
-};
-
 /** Icons that look better with a soft fill once the badge is earned. */
-const FILLED_ICONS: ReadonlySet<BadgeIcon> = new Set(['flame', 'star', 'zap']);
+const FILLED_ICONS: ReadonlySet<ProfileBadge['icon']> = new Set([
+  'flame',
+  'star',
+  'zap',
+]);
 
 /**
  * Colours per badge tone: gradient top/bottom, the darker "edge" used for the
  * 3D bottom shadow, and the main accent for glows, rings and progress bars.
  */
 const TONES: Record<
-  BadgeTone,
+  ProfileBadge['tone'],
   { from: string; to: string; edge: string; main: string }
 > = {
   emerald: { from: '#4ADE80', to: '#16A34A', edge: '#0F7A37', main: '#22C55E' },
@@ -69,6 +52,10 @@ const TONES: Record<
   rose: { from: '#FF7A93', to: '#E5365B', edge: '#A8203F', main: '#F43F5E' },
   sun: { from: '#FDE047', to: '#EAB308', edge: '#A37A05', main: '#FACC15' },
   sky: { from: '#60C5FF', to: '#1D8FE1', edge: '#1366A8', main: '#38BDF8' },
+  indigo: { from: '#A5B4FC', to: '#6366F1', edge: '#4338CA', main: '#818CF8' },
+  pink: { from: '#F9A8D4', to: '#EC4899', edge: '#BE185D', main: '#F472B6' },
+  lime: { from: '#BEF264', to: '#65A30D', edge: '#4D7C0F', main: '#A3E635' },
+  cyan: { from: '#67E8F9', to: '#06B6D4', edge: '#0E7490', main: '#22D3EE' },
 };
 
 // -----------------------------------------------------------------------------
@@ -220,11 +207,11 @@ function BadgeMedal({
   badge,
   size = 'lg',
 }: {
-  badge: Badge;
+  badge: ProfileBadge;
   size?: 'md' | 'lg';
 }) {
   const tone = TONES[badge.tone];
-  const Icon = iconMap[badge.icon];
+  const Icon = BADGE_ICONS[badge.icon];
   const dimension = size === 'lg' ? 'h-16 w-16' : 'h-14 w-14';
   const iconSize = size === 'lg' ? 'h-7 w-7' : 'h-6 w-6';
 
@@ -274,7 +261,7 @@ function BadgeMedal({
   );
 }
 
-export function BadgeTile({ badge }: { badge: Badge }) {
+export function BadgeTile({ badge }: { badge: ProfileBadge }) {
   const tone = TONES[badge.tone];
   const ratio = badge.target > 0 ? badge.value / badge.target : 0;
 
@@ -342,7 +329,7 @@ export function BadgeTile({ badge }: { badge: Badge }) {
   );
 }
 
-export function BadgeGrid({ badges }: { badges: Badge[] }) {
+export function BadgeGrid({ badges }: { badges: ProfileBadge[] }) {
   return (
     <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {badges.map((badge) => (
@@ -353,9 +340,9 @@ export function BadgeGrid({ badges }: { badges: Badge[] }) {
 }
 
 /** Tiny medal used in the rail's "all badges at a glance" row. */
-function MiniMedal({ badge }: { badge: Badge }) {
+function MiniMedal({ badge }: { badge: ProfileBadge }) {
   const tone = TONES[badge.tone];
-  const Icon = iconMap[badge.icon];
+  const Icon = BADGE_ICONS[badge.icon];
 
   return (
     <li
@@ -382,7 +369,7 @@ function MiniMedal({ badge }: { badge: Badge }) {
 }
 
 /** The closest unearned badge, shown in the journey page rail. */
-export function NextBadgeCard({ badges }: { badges: Badge[] }) {
+export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
   const earnedCount = badges.filter((badge) => badge.earned).length;
 
   const next = [...badges]
