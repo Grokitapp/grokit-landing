@@ -7,8 +7,6 @@ import {
   Loader2,
   Pencil,
   RefreshCw,
-  Star,
-  Trophy,
   Zap,
 } from 'lucide-react';
 
@@ -109,7 +107,7 @@ function ProfileSkeleton() {
     >
       <div className="h-56 rounded-2xl bg-[#19282E]" />
       <div className="grid grid-cols-2 gap-3">
-        {[0, 1, 2, 3, 4, 5].map((item) => (
+        {[0, 1, 2, 3].map((item) => (
           <div key={item} className="h-[72px] rounded-2xl bg-[#19282E]" />
         ))}
       </div>
@@ -224,30 +222,6 @@ export default function Profile() {
                   : 'Complete a lesson to start your story'}
             </p>
 
-            <Link
-              to="/leaderboard"
-              className="mx-auto mt-6 block max-w-sm rounded-2xl border border-[#37464F] bg-[#131F24] px-4 py-3 text-left transition hover:border-[#536871] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
-            >
-              <div className="flex items-center gap-3">
-                <LeagueEmblem league={league} size={40} glow />
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-base font-extrabold text-white">
-                    {league.name} League
-                  </p>
-                  <p className="text-xs font-semibold text-[#91A4AC]">
-                    Level {stats.level} · {stats.totalXp} XP
-                  </p>
-                </div>
-              </div>
-
-              <p className="mt-3 text-xs font-semibold text-[#91A4AC]">
-                {board?.myRank
-                  ? `Rank #${board.myRank} of ${board.rows.length} this week · ${board.myXp} XP`
-                  : 'Complete a lesson to join this week’s league'}
-              </p>
-            </Link>
-
             {profile && !username && (
               <p className="mt-4 text-xs text-[#91A4AC]">
                 You don’t have a username yet.{' '}
@@ -289,22 +263,10 @@ export default function Profile() {
                 label="Lessons completed"
               />
               <StatTile
-                icon={Trophy}
-                color="#F59E0B"
-                value={stats.longestStreak}
-                label="Longest streak"
-              />
-              <StatTile
                 to="/leaderboard"
                 visual={<LeagueEmblem league={league} size={34} />}
                 value={league.name}
                 label="Current league"
-              />
-              <StatTile
-                icon={Star}
-                color="#A78BFA"
-                value={stats.level}
-                label="Level"
               />
             </div>
           </section>

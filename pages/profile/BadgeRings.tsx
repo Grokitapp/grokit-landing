@@ -1,64 +1,7 @@
-import {
-  Award,
-  BookOpen,
-  CalendarCheck,
-  Check,
-  Crown,
-  Flame,
-  Footprints,
-  Gem,
-  GraduationCap,
-  Medal,
-  Mountain,
-  Rocket,
-  Shield,
-  Sparkles,
-  Star,
-  Trophy,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react';
+import { Check } from 'lucide-react';
 
-import type { BadgeIcon, BadgeTone } from '../../lib/gamification';
-import type {
-  ExtraBadgeIcon,
-  ExtraBadgeTone,
-  ProfileBadge,
-} from '../../lib/badges';
-
-const ICONS: Record<BadgeIcon | ExtraBadgeIcon, LucideIcon> = {
-  footprints: Footprints,
-  book: BookOpen,
-  medal: Medal,
-  flame: Flame,
-  trophy: Trophy,
-  award: Award,
-  star: Star,
-  zap: Zap,
-  graduation: GraduationCap,
-  crown: Crown,
-  shield: Shield,
-  sparkles: Sparkles,
-  rocket: Rocket,
-  gem: Gem,
-  calendar: CalendarCheck,
-  mountain: Mountain,
-};
-
-const TONE_COLORS: Record<BadgeTone | ExtraBadgeTone, string> = {
-  emerald: '#34D399',
-  teal: '#2DD4BF',
-  violet: '#A78BFA',
-  orange: '#F4611F',
-  gold: '#F59E0B',
-  rose: '#FB7185',
-  sun: '#FACC15',
-  sky: '#38BDF8',
-  indigo: '#818CF8',
-  pink: '#F472B6',
-  lime: '#A3E635',
-  cyan: '#22D3EE',
-};
+import type { ProfileBadge } from '../../lib/badges';
+import { BADGE_COLORS, BADGE_ICONS } from './badgeStyle';
 
 const SIZE = 88;
 const STROKE = 7;
@@ -66,8 +9,8 @@ const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
 function BadgeRing({ badge }: { badge: ProfileBadge }) {
-  const Icon = ICONS[badge.icon];
-  const color = TONE_COLORS[badge.tone];
+  const Icon = BADGE_ICONS[badge.icon];
+  const color = BADGE_COLORS[badge.tone];
   const fraction = badge.target > 0 ? Math.min(badge.value / badge.target, 1) : 0;
   const progressLabel = `${badge.value}/${badge.target}`;
 
