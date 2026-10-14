@@ -23,11 +23,7 @@ import {
   Users,
 } from 'lucide-react';
 
-import {
-  NextBadgeCard,
-  StatChip,
-  StreakCard,
-} from './components/GamificationCards';
+import { NextBadgeCard, StreakCard } from './components/GamificationCards';
 import JourneyMenu from './components/JourneyMenu';
 import JourneyPath, {
   type PathLesson,
@@ -974,7 +970,7 @@ export default function CourseOverview() {
               {railStats ? (
                 <>
                   <StreakCard stats={railStats} />
-                  <NextBadgeCard badges={railStats.badges} />
+                  <NextBadgeCard stats={railStats} />
                 </>
               ) : (
                 <div aria-hidden="true" className="space-y-4 animate-pulse">

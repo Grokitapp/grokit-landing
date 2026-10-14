@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 import { dayKey, type GamificationStats } from '../../../lib/gamification';
-import type { ProfileBadge } from '../../../lib/badges';
+import { buildProfileBadges, type ProfileBadge } from '../../../lib/badges';
 import { BADGE_ICONS } from '../../profile/badgeStyle';
 
 // -----------------------------------------------------------------------------
@@ -29,17 +29,12 @@ const activeDayStyle = {
   boxShadow: `0 3px 0 ${ORANGE.edge}`,
 };
 
-/** Icons that look better with a soft fill once the badge is earned. */
 const FILLED_ICONS: ReadonlySet<ProfileBadge['icon']> = new Set([
   'flame',
   'star',
   'zap',
 ]);
 
-/**
- * Colours per badge tone: gradient top/bottom, the darker "edge" used for the
- * 3D bottom shadow, and the main accent for glows, rings and progress bars.
- */
 const TONES: Record<
   ProfileBadge['tone'],
   { from: string; to: string; edge: string; main: string }
@@ -59,7 +54,7 @@ const TONES: Record<
 };
 
 // -----------------------------------------------------------------------------
-// Compact stat chip (top bars, sidebar)
+// Compact stat chip
 // -----------------------------------------------------------------------------
 
 export function StatChip({
@@ -97,7 +92,7 @@ export function StatChip({
 }
 
 // -----------------------------------------------------------------------------
-// Streak card (this week)
+// Streak card
 // -----------------------------------------------------------------------------
 
 export function StreakCard({ stats }: { stats: GamificationStats }) {
@@ -176,7 +171,6 @@ export function StreakCard({ stats }: { stats: GamificationStats }) {
                 <Check className="h-4 w-4" strokeWidth={3} aria-hidden="true" />
               )}
             </span>
-
             <span
               className={`text-[11px] font-semibold ${
                 day.isToday ? 'text-white' : 'text-[#78909A]'
@@ -184,7 +178,6 @@ export function StreakCard({ stats }: { stats: GamificationStats }) {
             >
               {day.label}
             </span>
-
             <span className="sr-only">
               {day.active ? 'completed' : day.isFuture ? 'upcoming' : 'missed'}
             </span>
@@ -196,13 +189,9 @@ export function StreakCard({ stats }: { stats: GamificationStats }) {
 }
 
 // -----------------------------------------------------------------------------
-// Badges
+// Badge artwork
 // -----------------------------------------------------------------------------
 
-/**
- * The round badge artwork. Earned: the badge's own colour, glow and icon.
- * Not earned: the same icon, greyed out, with a small lock.
- */
 function BadgeMedal({
   badge,
   size = 'lg',
@@ -260,6 +249,10 @@ function BadgeMedal({
     </span>
   );
 }
+
+// -----------------------------------------------------------------------------
+// Badge tiles and full collection
+// -----------------------------------------------------------------------------
 
 export function BadgeTile({ badge }: { badge: ProfileBadge }) {
   const tone = TONES[badge.tone];
@@ -339,7 +332,6 @@ export function BadgeGrid({ badges }: { badges: ProfileBadge[] }) {
   );
 }
 
-/** Tiny medal used in the rail's badge collection preview. */
 function MiniMedal({ badge }: { badge: ProfileBadge }) {
   const tone = TONES[badge.tone];
   const Icon = BADGE_ICONS[badge.icon];
@@ -347,7 +339,7 @@ function MiniMedal({ badge }: { badge: ProfileBadge }) {
   return (
     <li
       title={`${badge.title}${badge.earned ? ' (earned)' : ' (locked)'}`}
-      className="flex h-8 w-8 items-center justify-center rounded-full"
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
       style={
         badge.earned
           ? {
@@ -359,7 +351,7 @@ function MiniMedal({ badge }: { badge: ProfileBadge }) {
     >
       <Icon
         aria-hidden="true"
-        className={`h-4 w-4 ${badge.earned ? 'text-white' : 'text-[#4F646D]'}`}
+        className={`h-4 w-4 ${badge.earned ? 'text-white' : 'text-[#60757E]'}`}
       />
       <span className="sr-only">
         {badge.title}: {badge.earned ? 'earned' : 'locked'}
@@ -369,13 +361,17 @@ function MiniMedal({ badge }: { badge: ProfileBadge }) {
 }
 
 // -----------------------------------------------------------------------------
-// Next badge card (journey sidebar)
+// Next badge card — builds the complete badge collection from stats
 // -----------------------------------------------------------------------------
 
-export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
-  const earnedCount = badges.filter((badge) => badge.earned).length;
+export function NextBadgeCard({ stats }: { stats: GamificationStats }) {
+  // Important: stats.badges contains the core set. buildProfileBadges adds
+  // the extra milestones, so the sidebar and Profile use the same collection.
+  const badges = useMemo(() => buildProfileBadges(stats), [stats]);
 
-  // Show the closest unearned milestone first.
+  const earnedCount = badges.filter((badge) => badge.earned).length;
+  const totalCount = badges.length;
+
   const next = [...badges]
     .filter((badge) => !badge.earned)
     .sort((a, b) => {
@@ -384,31 +380,31 @@ export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
       return bProgress - aProgress;
     })[0];
 
-  const ratio = next
-    ? Math.min(1, Math.max(0, next.value / Math.max(next.target, 1)))
-    : 1;
+  const progress = next ? Math.min(1, Math.max(0, next.value / Math.max(next.target, 1))) : 1;
 
-  // Show a limited preview in the sidebar; the full collection stays on Profile.
   const visibleBadges = badges.slice(0, 8);
-  const remainingBadges = Math.max(0, badges.length - visibleBadges.length);
+  const remainingBadges = Math.max(0, totalCount - visibleBadges.length);
 
-  const ringSize = 72;
+  const ringSize = 76;
   const ringStroke = 4;
   const ringRadius = (ringSize - ringStroke) / 2;
   const ringLength = 2 * Math.PI * ringRadius;
 
   return (
-    <section className={cardClasses} aria-label="Badges">
+    <section
+      className={`${cardClasses} overflow-hidden`}
+      aria-label="Badge collection"
+    >
       <div className="flex items-center justify-between gap-3">
         <h2 className={cardTitleClasses}>Badges</h2>
-        <span className="text-xs font-bold text-[#91A4AC]">
-          {earnedCount} of {badges.length} earned
+        <span className="shrink-0 text-xs font-bold tabular-nums text-[#91A4AC]">
+          {earnedCount} of {totalCount} earned
         </span>
       </div>
 
       {next ? (
-        <div className="mt-4 flex items-center gap-4">
-          <div className="relative flex h-[72px] w-[72px] shrink-0 items-center justify-center">
+        <div className="mt-4 flex items-center gap-3.5">
+          <div className="relative flex h-[76px] w-[76px] shrink-0 items-center justify-center">
             <svg
               viewBox={`0 0 ${ringSize} ${ringSize}`}
               className="absolute inset-0 h-full w-full -rotate-90"
@@ -431,8 +427,8 @@ export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
                 strokeWidth={ringStroke}
                 strokeLinecap="round"
                 strokeDasharray={ringLength}
-                strokeDashoffset={ringLength * (1 - ratio)}
-                className="transition-[stroke-dashoffset] duration-700 ease-out"
+                strokeDashoffset={ringLength * (1 - progress)}
+                className="transition-[stroke-dashoffset] duration-500 ease-out"
               />
             </svg>
 
@@ -441,57 +437,75 @@ export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
 
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-[#78909A]">Next badge</p>
-            <p className="text-sm font-extrabold text-white">{next.title}</p>
-            <p className="mt-0.5 text-xs text-[#91A4AC]">
+            <p className="mt-0.5 text-sm font-extrabold text-white">
+              {next.title}
+            </p>
+            <p className="mt-1 text-xs leading-5 text-[#91A4AC]">
               {next.description}
             </p>
 
-            <p
-              className="mt-1 text-xs font-extrabold"
-              style={{ color: TONES[next.tone].main }}
-            >
-              {next.value}/{next.target}
-            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[#0D181C]">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progress * 100}%`,
+                    backgroundColor: TONES[next.tone].main,
+                  }}
+                />
+              </div>
+              <span
+                className="shrink-0 text-xs font-extrabold tabular-nums"
+                style={{ color: TONES[next.tone].main }}
+              >
+                {next.value}/{next.target}
+              </span>
+            </div>
           </div>
         </div>
       ) : (
         <p className="mt-4 text-sm text-[#C8D3DA]">
-          {badges.length > 0
+          {totalCount > 0
             ? 'You’ve earned every badge. Legend!'
-            : 'Your badge journey starts with your first lesson.'}
+            : 'Complete your first lesson to start earning badges.'}
         </p>
       )}
 
-      <ul
-        className="mt-5 flex flex-wrap items-center gap-2"
-        aria-label={`Badge collection: ${badges.length} badges`}
-      >
-        {visibleBadges.map((badge) => (
-          <MiniMedal key={badge.id} badge={badge} />
-        ))}
-
-        {remainingBadges > 0 && (
-          <li
-            className="flex h-8 min-w-8 items-center justify-center rounded-full border border-[#37464F] bg-[#202F35] px-2 text-[10px] font-extrabold text-[#C8D3DA]"
-            title={`${remainingBadges} more badges`}
-            aria-label={`${remainingBadges} more badges`}
+      {totalCount > 0 && (
+        <>
+          <ul
+            className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-3"
+            aria-label={`Preview of ${totalCount} badges`}
           >
-            +{remainingBadges}
-          </li>
-        )}
-      </ul>
+            {visibleBadges.map((badge) => (
+              <MiniMedal key={badge.id} badge={badge} />
+            ))}
 
-      {badges.length > 0 && (
-        <p className="mt-2 text-[11px] text-[#78909A]">
-          {remainingBadges > 0
-            ? `${visibleBadges.length} shown · ${remainingBadges} more to discover`
-            : `${badges.length} badges to collect`}
-        </p>
+            {remainingBadges > 0 && (
+              <li>
+                <Link
+                  to="/profile"
+                  title={`View ${remainingBadges} more badges`}
+                  aria-label={`View ${remainingBadges} more badges`}
+                  className="flex h-8 min-w-8 items-center justify-center rounded-full border border-[#40515A] bg-[#25363D] px-2 text-[10px] font-extrabold text-[#C8D3DA] transition hover:border-orange hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+                >
+                  +{remainingBadges}
+                </Link>
+              </li>
+            )}
+          </ul>
+
+          <p className="mt-3 text-[11px] font-medium text-[#78909A]">
+            {remainingBadges > 0
+              ? `${visibleBadges.length} shown · ${remainingBadges} more to discover`
+              : `${totalCount} badges to collect`}
+          </p>
+        </>
       )}
 
       <Link
         to="/profile"
-        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-orange transition hover:text-white"
+        className="mt-4 inline-flex items-center gap-1.5 text-xs font-extrabold text-orange transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
       >
         View all badges
         <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -508,7 +522,6 @@ const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export function StreakCalendar({ stats }: { stats: GamificationStats }) {
   const [monthOffset, setMonthOffset] = useState(0);
-
   const todayKey = dayKey(new Date());
 
   const { monthStart, title, cells } = useMemo(() => {
@@ -520,7 +533,6 @@ export function StreakCalendar({ stats }: { stats: GamificationStats }) {
       0,
     ).getDate();
 
-    // Monday-first grid.
     const leading = (start.getDay() + 6) % 7;
 
     return {
@@ -550,8 +562,7 @@ export function StreakCalendar({ stats }: { stats: GamificationStats }) {
   const earliest = stats.firstActivityAt;
   const canGoBack =
     earliest !== null &&
-    monthStart >
-      new Date(earliest.getFullYear(), earliest.getMonth(), 1);
+    monthStart > new Date(earliest.getFullYear(), earliest.getMonth(), 1);
 
   const navButtonClasses =
     'flex h-8 w-8 items-center justify-center rounded-lg text-[#91A4AC] transition hover:bg-[#26373E] hover:text-white disabled:pointer-events-none disabled:opacity-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';
