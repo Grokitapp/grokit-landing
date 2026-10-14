@@ -7,6 +7,7 @@ import {
   Loader2,
   Pencil,
   RefreshCw,
+  Settings,
   Trophy,
   Zap,
 } from 'lucide-react';
@@ -188,14 +189,25 @@ export default function Profile() {
           <section
             className={`${cardClasses} relative px-5 py-8 text-center sm:px-8`}
           >
-            <Link
-              to="/profile/edit"
-              aria-label="Edit profile"
-              title="Edit profile"
-              className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
-            >
-              <Pencil className="h-4 w-4" aria-hidden="true" />
-            </Link>
+            <div className="absolute right-4 top-4 flex items-center gap-2">
+              <Link
+                to="/profile/edit"
+                aria-label="Edit profile"
+                title="Edit profile"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+              </Link>
+
+              <Link
+                to="/settings"
+                aria-label="Settings"
+                title="Settings"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+              >
+                <Settings className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
 
             <div
               aria-hidden="true"
