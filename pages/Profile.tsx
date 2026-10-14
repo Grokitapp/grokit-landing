@@ -7,6 +7,7 @@ import {
   Loader2,
   Pencil,
   RefreshCw,
+  Trophy,
   Zap,
 } from 'lucide-react';
 
@@ -19,9 +20,8 @@ import { useGamification } from '../lib/gamification';
 import { useAccountNames, useProfileRecord } from '../lib/profile';
 import { buildProfileBadges } from '../lib/badges';
 import { useLeaderboard } from '../lib/leaderboard';
-import { leagueAt } from '../lib/leagues';
 import BadgeRings from './profile/BadgeRings';
-import LeagueEmblem from './profile/LeagueEmblem';
+import LeagueCard from './profile/LeagueCard';
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -154,7 +154,6 @@ export default function Profile() {
 
   // The learner's real league (moved up or down each week on the leaderboard).
   const { data: board } = useLeaderboard();
-  const league = leagueAt(board?.leagueIndex ?? 0);
   const badges = useMemo(() => (stats ? buildProfileBadges(stats) : []), [stats]);
 
   return (
@@ -235,6 +234,9 @@ export default function Profile() {
             )}
           </section>
 
+          {/* League */}
+          <LeagueCard data={board} />
+
           {/* Statistics */}
           <section aria-labelledby="stats-title">
             <h2 id="stats-title" className={sectionTitleClasses}>
@@ -263,10 +265,10 @@ export default function Profile() {
                 label="Lessons completed"
               />
               <StatTile
-                to="/leaderboard"
-                visual={<LeagueEmblem league={league} size={34} />}
-                value={league.name}
-                label="Current league"
+                icon={Trophy}
+                color="#F59E0B"
+                value={stats.longestStreak}
+                label="Longest streak"
               />
             </div>
           </section>

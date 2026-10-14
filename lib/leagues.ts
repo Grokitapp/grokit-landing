@@ -1,3 +1,5 @@
+import { getZoneSizes } from '../amplify/functions/shared/leaderboard-rules';
+
 /**
  * Leagues are the XP "ranks" a learner climbs through. They are derived from
  * total XP only, so nothing needs to be stored.
@@ -86,4 +88,31 @@ export function getLeagueProgress(totalXp: number): LeagueProgress {
 /** League by position (0 = Bronze ... 7 = Diamond), safe for any number. */
 export function leagueAt(index: number): League {
   return LEAGUES[Math.min(Math.max(Math.trunc(index) || 0, 0), LEAGUES.length - 1)];
+}
+
+export type Zone = 'up' | 'mid' | 'down';
+
+/** Where a rank sits in a group: moving up, safe, or moving down. */
+export function zoneFor(rank: number, groupSize: number): Zone {
+  const { promote, demote } = getZoneSizes(groupSize);
+
+  if (rank <= promote) return 'up';
+  if (demote > 0 && rank > groupSize - demote) return 'down';
+
+  return 'mid';
+}
+
+/** "3 days left", "5 hours left". */
+export function formatTimeLeft(endsAt: Date): string {
+  const ms = endsAt.getTime() - Date.now();
+
+  if (ms <= 0) return 'Ending soon';
+
+  const days = Math.floor(ms / 86_400_000);
+
+  if (days >= 1) return `${days} day${days === 1 ? '' : 's'} left`;
+
+  const hours = Math.max(1, Math.floor(ms / 3_600_000));
+
+  return `${hours} hour${hours === 1 ? '' : 's'} left`;
 }

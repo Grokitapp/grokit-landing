@@ -1,4 +1,4 @@
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { Link } from 'react-router';
 import {
   ChevronDown,
@@ -23,7 +23,7 @@ import {
   type LeaderboardData,
   type LeaderboardRow,
 } from '../lib/leaderboard';
-import { LEAGUES, leagueAt } from '../lib/leagues';
+import { LEAGUES, formatTimeLeft, leagueAt, zoneFor } from '../lib/leagues';
 import { useAccountNames, useProfileRecord } from '../lib/profile';
 import LeagueEmblem from './profile/LeagueEmblem';
 
@@ -36,20 +36,6 @@ function avatarColor(userId: string): string {
   for (const char of userId) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
 
   return AVATAR_COLORS[hash % AVATAR_COLORS.length];
-}
-
-function timeLeft(endsAt: Date): string {
-  const ms = endsAt.getTime() - Date.now();
-
-  if (ms <= 0) return 'Ending soon';
-
-  const days = Math.floor(ms / 86_400_000);
-
-  if (days >= 1) return `${days} day${days === 1 ? '' : 's'} left`;
-
-  const hours = Math.max(1, Math.floor(ms / 3_600_000));
-
-  return `${hours} hour${hours === 1 ? '' : 's'} left`;
 }
 
 // -----------------------------------------------------------------------------
@@ -169,62 +155,136 @@ function LastWeekBanner({ data }: { data: LeaderboardData }) {
   );
 }
 
+function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="min-w-0 flex-1 rounded-xl border border-[#2D4149] bg-[#131F24]/70 px-3 py-2.5 text-center">
+      <p className="truncate font-display text-xl font-extrabold leading-none text-white">
+        {value}
+        {hint && <span className="ml-1 text-xs font-bold text-[#91A4AC]">{hint}</span>}
+      </p>
+      <p className="mt-1.5 text-xs font-semibold text-[#91A4AC]">{label}</p>
+    </div>
+  );
+}
+
+function LeagueRoad({ index }: { index: number }) {
+  const listRef = useRef<HTMLOListElement>(null);
+
+  // On small screens the road scrolls: start with the current league in view.
+  useEffect(() => {
+    const list = listRef.current;
+    const current = list?.querySelector<HTMLElement>('[aria-current="true"]');
+
+    if (list && current) {
+      list.scrollLeft = current.offsetLeft - list.clientWidth / 2 + current.offsetWidth / 2;
+    }
+  }, [index]);
+
+  return (
+    <ol
+      ref={listRef}
+      aria-label="All leagues"
+      className="relative mx-auto flex max-w-full items-end gap-3 overflow-x-auto px-3 pb-1 pt-2 [scrollbar-width:none] sm:justify-center sm:gap-5 [&::-webkit-scrollbar]:hidden"
+    >
+      {LEAGUES.map((item, position) => {
+        const current = position === index;
+
+        return (
+          <li
+            key={item.id}
+            title={`${item.name} League`}
+            aria-current={current ? 'true' : undefined}
+            className="flex shrink-0 flex-col items-center gap-1.5"
+          >
+            <LeagueEmblem league={item} size={current ? 34 : 28} locked={position > index} />
+            <span
+              aria-hidden="true"
+              className="h-1 w-6 rounded-full"
+              style={{ backgroundColor: current ? item.color : 'transparent' }}
+            />
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+const ZONE_STYLE = {
+  up: { color: '#58CC02', icon: ChevronUp },
+  mid: { color: '#C8D3DA', icon: Zap },
+  down: { color: '#FF6B6B', icon: ChevronDown },
+} as const;
+
 function LeagueHero({ data }: { data: LeaderboardData }) {
   const league = leagueAt(data.leagueIndex);
   const next = LEAGUES[data.leagueIndex + 1] ?? null;
   const { promote } = getZoneSizes(data.rows.length);
 
+  const rank = data.joined ? data.myRank : null;
+  const zone = rank ? zoneFor(rank, data.rows.length) : null;
+
+  let status = 'Complete a lesson to join this week’s group';
+  let statusColor = '#C8D3DA';
+  let StatusIcon: typeof Zap = Zap;
+
+  if (zone) {
+    ({ color: statusColor, icon: StatusIcon } = ZONE_STYLE[zone]);
+
+    if (zone === 'up' && data.myXp < MIN_XP_TO_PROMOTE) {
+      status = `Earn ${MIN_XP_TO_PROMOTE - data.myXp} more XP to move up`;
+    } else {
+      status =
+        zone === 'up'
+          ? 'You’re in the promotion zone'
+          : zone === 'down'
+            ? 'You’re in the demotion zone'
+            : 'You’re safe this week';
+    }
+  }
+
   return (
     <section
       aria-label="Your league"
-      className={`${cardClasses} overflow-hidden px-4 pb-8 pt-4 text-center sm:px-8`}
+      className={`${cardClasses} overflow-hidden px-4 pb-6 pt-8 text-center sm:px-8`}
       style={{
-        backgroundImage: `radial-gradient(ellipse at 50% 0%, ${league.color}33, transparent 62%)`,
+        backgroundImage: `radial-gradient(ellipse at 50% 0%, ${league.color}40, transparent 65%)`,
       }}
     >
-      {/* Padding gives the glow room so the scroll area never clips it. */}
-      <ol
-        aria-label="All leagues"
-        className="flex items-end gap-3 overflow-x-auto px-6 pb-4 pt-8 [scrollbar-width:none] sm:justify-center sm:gap-5 [&::-webkit-scrollbar]:hidden"
-      >
-        {LEAGUES.map((item, index) => (
-          <li
-            key={item.id}
-            title={`${item.name} League`}
-            aria-current={index === data.leagueIndex ? 'true' : undefined}
-            className="shrink-0"
-          >
-            <LeagueEmblem
-              league={item}
-              size={index === data.leagueIndex ? 108 : 54}
-              locked={index > data.leagueIndex}
-              glow={index === data.leagueIndex}
-            />
-          </li>
-        ))}
-      </ol>
+      <div className="flex justify-center">
+        <LeagueEmblem league={league} size={92} glow />
+      </div>
 
-      <h2 className="mt-3 font-display text-3xl font-extrabold text-white sm:text-4xl">
+      <h2 className="mt-4 font-display text-3xl font-extrabold text-white sm:text-4xl">
         {league.name} League
       </h2>
 
-      <p className="mt-2 text-sm font-semibold text-[#C8D3DA] sm:text-base">
+      <p className="mt-1.5 text-sm font-semibold text-[#C8D3DA] sm:text-base">
         {next
           ? promote > 0
-            ? `Top ${promote} advance to ${next.name} League`
-            : `Finish near the top to advance to ${next.name} League`
+            ? `Top ${promote} move up to ${next.name}`
+            : `Finish near the top to reach ${next.name}`
           : 'You’re in the top league'}
       </p>
 
+      <div className="mx-auto mt-6 flex max-w-md gap-2.5">
+        <StatChip label="Rank" value={rank ? `#${rank}` : '–'} hint={rank ? `of ${data.rows.length}` : undefined} />
+        <StatChip label="XP this week" value={String(data.myXp)} />
+        <StatChip label="Time left" value={formatTimeLeft(data.endsAt).replace(' left', '')} />
+      </div>
+
       <p
-        className="mt-1 inline-flex items-center gap-1.5 text-sm font-extrabold"
-        style={{ color: league.color }}
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-extrabold"
+        style={{ color: statusColor, backgroundColor: `${statusColor}1A` }}
       >
-        <Clock className="h-4 w-4" aria-hidden="true" />
-        {timeLeft(data.endsAt)}
+        <StatusIcon className="h-4 w-4" aria-hidden="true" />
+        {status}
       </p>
 
       <LastWeekBanner data={data} />
+
+      <div className="mt-7 border-t border-[#2D4149] pt-5">
+        <LeagueRoad index={data.leagueIndex} />
+      </div>
     </section>
   );
 }
@@ -366,18 +426,18 @@ function WeekChart({
 
 function HowLeaguesWork() {
   const items = [
-    { icon: Zap, color: '#FACC15', text: 'Earn XP by completing lessons.' },
+    {
+      icon: Zap,
+      color: '#FACC15',
+      text: `Earn XP from lessons. You’re grouped with up to ${COHORT_SIZE} learners.`,
+    },
     {
       icon: ChevronUp,
       color: '#58CC02',
-      text: `The top ${PROMOTE_MAX} of each group of ${COHORT_SIZE} move up a league (with at least ${MIN_XP_TO_PROMOTE} XP).`,
+      text: `Top ${PROMOTE_MAX} move up (at least ${MIN_XP_TO_PROMOTE} XP).`,
     },
-    {
-      icon: ChevronDown,
-      color: '#FF6B6B',
-      text: `The bottom ${DEMOTE_MAX} move down a league.`,
-    },
-    { icon: Clock, color: '#38BDF8', text: 'A new week starts every Monday (UTC).' },
+    { icon: ChevronDown, color: '#FF6B6B', text: `Bottom ${DEMOTE_MAX} move down.` },
+    { icon: Clock, color: '#38BDF8', text: 'Weeks reset every Monday, 00:00 UTC.' },
   ];
 
   return (
@@ -388,7 +448,7 @@ function HowLeaguesWork() {
 
       <ul className={`${cardClasses} space-y-4 p-5`}>
         {items.map(({ icon: Icon, color, text }) => (
-          <li key={text} className="flex items-start gap-3 text-sm leading-5 text-[#A9BAC0]">
+          <li key={text} className="flex items-center gap-3 text-sm leading-5 text-[#A9BAC0]">
             <span
               aria-hidden="true"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
@@ -396,7 +456,7 @@ function HowLeaguesWork() {
             >
               <Icon className="h-4 w-4" />
             </span>
-            <span className="pt-1.5">{text}</span>
+            <span>{text}</span>
           </li>
         ))}
       </ul>
