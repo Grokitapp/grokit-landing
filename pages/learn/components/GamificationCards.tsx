@@ -263,7 +263,7 @@ function BadgeMedal({
 
 export function BadgeTile({ badge }: { badge: ProfileBadge }) {
   const tone = TONES[badge.tone];
-  const ratio = badge.target > 0 ? badge.value / badge.target : 0;
+  const ratio = badge.target > 0 ? Math.min(1, Math.max(0, badge.value / badge.target)) : 0;
 
   return (
     <li
@@ -339,14 +339,14 @@ export function BadgeGrid({ badges }: { badges: ProfileBadge[] }) {
   );
 }
 
-/** Tiny medal used in the rail's "all badges at a glance" row. */
+/** Tiny medal used in the rail's badge collection preview. */
 function MiniMedal({ badge }: { badge: ProfileBadge }) {
   const tone = TONES[badge.tone];
   const Icon = BADGE_ICONS[badge.icon];
 
   return (
     <li
-      title={`${badge.title}${badge.earned ? ' (earned)' : ''}`}
+      title={`${badge.title}${badge.earned ? ' (earned)' : ' (locked)'}`}
       className="flex h-8 w-8 items-center justify-center rounded-full"
       style={
         badge.earned
@@ -368,17 +368,30 @@ function MiniMedal({ badge }: { badge: ProfileBadge }) {
   );
 }
 
-/** The closest unearned badge, shown in the journey page rail. */
+// -----------------------------------------------------------------------------
+// Next badge card (journey sidebar)
+// -----------------------------------------------------------------------------
+
 export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
   const earnedCount = badges.filter((badge) => badge.earned).length;
 
+  // Show the closest unearned milestone first.
   const next = [...badges]
     .filter((badge) => !badge.earned)
-    .sort((a, b) => b.value / b.target - a.value / a.target)[0];
+    .sort((a, b) => {
+      const aProgress = a.value / Math.max(a.target, 1);
+      const bProgress = b.value / Math.max(b.target, 1);
+      return bProgress - aProgress;
+    })[0];
 
-  const ratio = next && next.target > 0 ? next.value / next.target : 0;
+  const ratio = next
+    ? Math.min(1, Math.max(0, next.value / Math.max(next.target, 1)))
+    : 1;
 
-  // Progress ring drawn around the next badge.
+  // Show a limited preview in the sidebar; the full collection stays on Profile.
+  const visibleBadges = badges.slice(0, 8);
+  const remainingBadges = Math.max(0, badges.length - visibleBadges.length);
+
   const ringSize = 72;
   const ringStroke = 4;
   const ringRadius = (ringSize - ringStroke) / 2;
@@ -429,7 +442,10 @@ export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold text-[#78909A]">Next badge</p>
             <p className="text-sm font-extrabold text-white">{next.title}</p>
-            <p className="mt-0.5 text-xs text-[#91A4AC]">{next.description}</p>
+            <p className="mt-0.5 text-xs text-[#91A4AC]">
+              {next.description}
+            </p>
+
             <p
               className="mt-1 text-xs font-extrabold"
               style={{ color: TONES[next.tone].main }}
@@ -440,19 +456,42 @@ export function NextBadgeCard({ badges }: { badges: ProfileBadge[] }) {
         </div>
       ) : (
         <p className="mt-4 text-sm text-[#C8D3DA]">
-          You’ve earned every badge. Legend!
+          {badges.length > 0
+            ? 'You’ve earned every badge. Legend!'
+            : 'Your badge journey starts with your first lesson.'}
         </p>
       )}
 
-      <ul className="mt-5 flex flex-wrap gap-2" aria-label="All badges">
-        {badges.map((badge) => (
+      <ul
+        className="mt-5 flex flex-wrap items-center gap-2"
+        aria-label={`Badge collection: ${badges.length} badges`}
+      >
+        {visibleBadges.map((badge) => (
           <MiniMedal key={badge.id} badge={badge} />
         ))}
+
+        {remainingBadges > 0 && (
+          <li
+            className="flex h-8 min-w-8 items-center justify-center rounded-full border border-[#37464F] bg-[#202F35] px-2 text-[10px] font-extrabold text-[#C8D3DA]"
+            title={`${remainingBadges} more badges`}
+            aria-label={`${remainingBadges} more badges`}
+          >
+            +{remainingBadges}
+          </li>
+        )}
       </ul>
+
+      {badges.length > 0 && (
+        <p className="mt-2 text-[11px] text-[#78909A]">
+          {remainingBadges > 0
+            ? `${visibleBadges.length} shown · ${remainingBadges} more to discover`
+            : `${badges.length} badges to collect`}
+        </p>
+      )}
 
       <Link
         to="/profile"
-        className="mt-4 inline-flex items-center gap-1 text-xs font-bold text-orange transition hover:text-white"
+        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-orange transition hover:text-white"
       >
         View all badges
         <ChevronRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -493,7 +532,11 @@ export function StreakCalendar({ stats }: { stats: GamificationStats }) {
       cells: [
         ...Array.from({ length: leading }, () => null),
         ...Array.from({ length: daysInMonth }, (_, index) => {
-          const date = new Date(start.getFullYear(), start.getMonth(), index + 1);
+          const date = new Date(
+            start.getFullYear(),
+            start.getMonth(),
+            index + 1,
+          );
           return { day: index + 1, key: dayKey(date) };
         }),
       ] as ({ day: number; key: string } | null)[],
