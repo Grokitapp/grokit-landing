@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import {
   ArrowLeft,
@@ -21,9 +21,11 @@ import grokitMascot from '../../assets/grokit-hero-mascot.png';
 import {
   generateLessonContent,
   getCourse,
+  getLessonPreview,
   getPhase,
   listLessonsForPhase,
   listProgressForCourse,
+  type LessonPreview,
 } from '../../lib/courseGeneration';
 
 // -----------------------------------------------------------------------------
@@ -110,8 +112,11 @@ export default function PhaseDetail() {
   const [phaseLocked, setPhaseLocked] = useState(false);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
-  const [generatingLessonId, setGeneratingLessonId] = useState<string | null>(
-    null,
+
+  // Lessons being generated right now. Re-opening a lesson that is still being
+  // written joins the same request instead of starting (and paying for) another.
+  const generationsInFlight = useRef(
+    new Map<string, Promise<LessonPreview | null>>(),
   );
 
   const loadPhase = useCallback(async () => {
@@ -361,37 +366,54 @@ export default function PhaseDetail() {
     (lesson) => lesson.id === activeLessonId,
   );
 
+  const activeLessonIndex = lessons.findIndex(
+    (lesson) => lesson.id === activeLessonId,
+  );
+
   const activeLessonMeta: LessonMeta | null = activeLesson
     ? {
         id: activeLesson.id,
         title: activeLesson.title,
         hook: lessonHooks[activeLesson.id] ?? '',
         hasContent: lessonHasContent[activeLesson.id] ?? false,
+        completed: activeLesson.status === 'completed',
+        zoneTitle: phaseTitle,
+        lessonNumber: activeLessonIndex + 1,
+        lessonCount: lessons.length,
       }
     : null;
 
-  const handleGenerate = async (lessonId: string) => {
-    if (generatingLessonId) return;
+  /**
+   * Makes sure the lesson exists (generating it if needed) and resolves with
+   * a summary for the popup. The popup shows its own error and retry, so this
+   * only rethrows. Resolves as soon as the cards are ready; the practice
+   * questions are written in the background while the learner reads.
+   */
+  const handleGenerate = (lessonId: string): Promise<LessonPreview | null> => {
+    const running = generationsInFlight.current.get(lessonId);
 
-    setGeneratingLessonId(lessonId);
-    setActionError('');
+    if (running) return running;
 
-    try {
-      await generateLessonContent(lessonId);
+    const request = generateLessonContent(lessonId)
+      .then((lesson) => {
+        setLessonHasContent((previous) => ({
+          ...previous,
+          [lessonId]: true,
+        }));
 
-      setLessonHasContent((previous) => ({
-        ...previous,
-        [lessonId]: true,
-      }));
-    } catch (err) {
-      console.error('Failed to generate lesson content', err);
-      setActionError(
-        'We couldn’t prepare this lesson. Please try again in a moment.',
-      );
-      throw err;
-    } finally {
-      setGeneratingLessonId(null);
-    }
+        return getLessonPreview(lesson);
+      })
+      .catch((err) => {
+        console.error('Failed to generate lesson content', err);
+        throw err;
+      })
+      .finally(() => {
+        generationsInFlight.current.delete(lessonId);
+      });
+
+    generationsInFlight.current.set(lessonId, request);
+
+    return request;
   };
 
   const handleStart = (lessonId: string) => {
@@ -586,14 +608,6 @@ export default function PhaseDetail() {
           onClose={() => setActiveLessonId(null)}
           onStart={handleStart}
           onGenerate={handleGenerate}
-          onPodcast={(id) => {
-            console.info('Podcast feature is not implemented yet.', { id });
-          }}
-          onLiveChallenge={(id) => {
-            console.info('Live challenge feature is not implemented yet.', {
-              id,
-            });
-          }}
         />
       )}
     </>

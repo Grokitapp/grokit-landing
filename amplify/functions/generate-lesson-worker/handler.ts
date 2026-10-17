@@ -345,13 +345,7 @@ function buildLessonBlock(input: {
     "- Mark a key term in **bold** the first time it appears. When a term is one of your knowledgeCards, wrap its first mention in [[double brackets]] instead (for example [[compound interest]]), matching the knowledgeCard term.",
     "",
     "CARD SEQUENCE",
-    '1. The first card has kind "hook": why this matters, concretely and surprisingly, in one or two short paragraphs.',
-    "2. Then concept cards that build the idea step by step: intuition first, then precision. Define terms where first used.",
-    '3. Exactly one card of kind "analogy". It is the ONLY place the learner\'s personal interests may be used, and only if one fits naturally; otherwise use an everyday analogy. Never force an interest into other cards.',
-    '4. At least one card of kind "example": a concrete worked example with real numbers or a specific scenario.',
-    '5. One card of kind "misconception": a common wrong belief and why it is wrong.',
-    '6. If there are 7 or more cards, add one "reflection" card second to last: a question for the learner to think about. Pose the question in the body; do not answer it.',
-    '7. The last card has kind "apply": how to use this idea, with a "steps" visual of 3 to 4 steps.',
+    ...cardSequenceRules(input.shape),
     "",
     "VISUALS (every card has a visual field)",
     '- About half the cards carry a visual; the others use type "none" with empty title, caption, unit, items and columns. Never decorate: use a visual only when it shows the idea better than words.',
@@ -372,6 +366,47 @@ function buildLessonBlock(input: {
   );
 
   return lines.join("\n");
+}
+
+/**
+ * The card order depends on the lesson length, so short lessons still keep a
+ * real teaching card instead of being all scaffolding.
+ */
+function cardSequenceRules(shape: LessonShape): string[] {
+  const cards = shape.cards.min;
+  const rules = [
+    '1. The first card has kind "hook": why this matters, concretely and surprisingly, in one or two short paragraphs.',
+    "2. Then concept cards that build the idea step by step: intuition first, then precision. Define terms where first used. There is always at least one concept card.",
+    '3. At least one card of kind "example": a concrete worked example with real numbers or a specific scenario.',
+  ];
+
+  if (cards >= 6) {
+    rules.push(
+      '4. Exactly one card of kind "analogy". It is the ONLY place the learner\'s personal interests may be used, and only if one fits naturally; otherwise use an everyday analogy. Never force an interest into other cards.',
+    );
+  } else {
+    rules.push(
+      "4. No separate analogy card in this short lesson. Use everyday analogies inside the concept cards, and do not use the learner's personal interests.",
+    );
+  }
+
+  if (cards >= 7) {
+    rules.push(
+      '5. One card of kind "misconception": a common wrong belief and why it is wrong.',
+    );
+  }
+
+  if (cards >= 8) {
+    rules.push(
+      '6. One "reflection" card second to last: a question for the learner to think about. Pose the question in the body; do not answer it.',
+    );
+  }
+
+  rules.push(
+    'The last card has kind "apply": how to use this idea, with a "steps" visual of 3 to 4 steps.',
+  );
+
+  return rules;
 }
 
 /** The cards as plain text, so practice questions are written from what was actually taught. */

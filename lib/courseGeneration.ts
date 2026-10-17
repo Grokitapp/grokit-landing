@@ -2,6 +2,10 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import { getProfile } from './profile';
 import { cacheKeys, invalidate, refreshIfCached } from './cache';
+import {
+  readLessonContent,
+  readPractice,
+} from '../amplify/functions/shared/lesson-content';
 
 const client = generateClient<Schema>();
 
@@ -297,6 +301,68 @@ export async function generateLessonContent(lessonId: string) {
 
     throw new Error('LESSON_GENERATION_FAILED');
   }
+}
+
+/** What the lesson popup shows once a lesson is ready. */
+export interface LessonPreview {
+  /** "cards" for the card lessons, "article" for older lessons. */
+  format: 'cards' | 'article';
+  cards: number;
+  /** 0 while the practice questions are still being written. */
+  questions: number;
+  minutes: number;
+}
+
+function parseStoredJson(value: unknown): unknown {
+  let current = value;
+
+  for (let i = 0; i < 2 && typeof current === 'string'; i += 1) {
+    try {
+      current = JSON.parse(current);
+    } catch {
+      return null;
+    }
+  }
+
+  return current;
+}
+
+/** Counts cards, questions and minutes for a lesson record (either format). */
+export function getLessonPreview(lesson: {
+  content?: unknown;
+  practice?: unknown;
+  practiceStatus?: string | null;
+  coreContent?: string | null;
+  quiz?: unknown;
+}): LessonPreview | null {
+  const content = readLessonContent(lesson.content);
+
+  if (content) {
+    const practice =
+      lesson.practiceStatus === 'READY' ? readPractice(lesson.practice) : null;
+
+    return {
+      format: 'cards',
+      cards: content.cards.length,
+      questions: practice?.length ?? 0,
+      minutes: Math.max(1, Math.round(content.estimatedMinutes || 0) || 4),
+    };
+  }
+
+  if (typeof lesson.coreContent === 'string' && lesson.coreContent.trim()) {
+    const words = lesson.coreContent.trim().split(/\s+/).length;
+    const quiz = parseStoredJson(lesson.quiz);
+    const questions = Array.isArray(quiz) ? quiz.length : 0;
+
+    return {
+      format: 'article',
+      cards: 0,
+      questions,
+      minutes: Math.max(2, Math.round(words / 180 + questions * 0.4)),
+    };
+  }
+
+  return null;
 }
 
 // ─── Course reads ───────────────────────────────────────────────────────────
