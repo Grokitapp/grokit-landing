@@ -12,6 +12,7 @@ import { generateOutline } from "./functions/generate-outline/resource";
 import { generateOutlineWorker } from "./functions/generate-outline-worker/resource";
 import { generateLesson } from "./functions/generate-lesson/resource";
 import { generateLessonWorker } from "./functions/generate-lesson-worker/resource";
+import { completeLesson } from "./functions/complete-lesson/resource";
 import { linkGoogleUser } from "./functions/link-google-user/resource";
 import { changeUsername } from "./functions/change-username/resource";
 import { leaderboardSync } from "./functions/leaderboard-sync/resource";
@@ -24,6 +25,7 @@ const backend = defineBackend({
   generateOutlineWorker,
   generateLesson,
   generateLessonWorker,
+  completeLesson,
   linkGoogleUser,
   changeUsername,
   leaderboardSync,

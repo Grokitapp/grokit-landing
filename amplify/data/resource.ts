@@ -3,6 +3,7 @@ import { generateOutline } from '../functions/generate-outline/resource';
 import { generateOutlineWorker } from '../functions/generate-outline-worker/resource';
 import { generateLesson } from '../functions/generate-lesson/resource';
 import { generateLessonWorker } from '../functions/generate-lesson-worker/resource';
+import { completeLesson } from '../functions/complete-lesson/resource';
 import { changeUsername } from '../functions/change-username/resource';
 import { leaderboardSync } from '../functions/leaderboard-sync/resource';
 
@@ -68,11 +69,30 @@ const schema = a.schema({
         'FAILED',
       ]),
       generationError: a.string(),
+
+      // Card-style lessons. `content` holds the prediction, cards and knowledge
+      // cards; `practice` holds the questions (with their answers), written
+      // by a second step while the learner reads. Older lessons only have
+      // coreContent / keyTerms / quiz above.
+      content: a.json(),
+      contentVersion: a.integer(),
+      practice: a.json(),
+      practiceStatus: a.enum([
+        'PENDING',
+        'GENERATING',
+        'READY',
+        'FAILED',
+      ]),
     })
     .authorization((allow) => [
+      // Lessons are written by the generation functions only. If a learner
+      // could create or edit a lesson, they could write their own "practice"
+      // and farm XP, so the browser may only read and delete (delete is used
+      // when a journey is removed).
       allow
         .ownerDefinedIn('owner')
-        .identityClaim('sub'),
+        .identityClaim('sub')
+        .to(['read', 'delete']),
     ]),
 
   UserProfile: a
@@ -125,15 +145,26 @@ const schema = a.schema({
         .to(['read']),
     ]),
 
+  // One row per completed lesson, written ONLY by the completeLesson
+  // function (its id is the lesson id, so a lesson can only be completed
+  // once). The owner is stored as "<sub>::<username>", the same format
+  // allow.owner() used before, so existing rows keep working. The browser can
+  // read its own rows and delete them (used when a journey is removed), but
+  // never create or edit them, so XP can't be made up.
   UserProgress: a
     .model({
+      owner: a.string(),
       courseId: a.id().required(),
       lessonId: a.id().required(),
       completedAt: a.datetime(),
       xp: a.integer().default(0),
+      correct: a.integer(),
+      total: a.integer(),
     })
     .authorization((allow) => [
-      allow.owner(),
+      allow
+        .ownerDefinedIn('owner')
+        .to(['read', 'delete']),
     ]),
 
   // ---------------------------------------------------------------------------
@@ -302,6 +333,29 @@ const schema = a.schema({
     ])
     .handler(a.handler.function(generateOutline)),
 
+  // Result of finishing a lesson. xp is 0 when the lesson was already completed.
+  LessonCompletion: a.customType({
+    xp: a.integer().required(),
+    correct: a.integer().required(),
+    total: a.integer().required(),
+    alreadyCompleted: a.boolean().required(),
+  }),
+
+  // Grades the learner's first-try practice answers (an array of option
+  // indexes, one per question, -1 if unanswered), decides the XP and records
+  // the lesson as complete.
+  completeLesson: a
+    .mutation()
+    .arguments({
+      lessonId: a.id().required(),
+      answers: a.json(),
+    })
+    .returns(a.ref('LessonCompletion'))
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(completeLesson)),
+
   generateLesson: a
     .mutation()
     .arguments({
@@ -317,6 +371,7 @@ const schema = a.schema({
   allow.resource(generateOutlineWorker),
   allow.resource(generateLesson),
   allow.resource(generateLessonWorker),
+  allow.resource(completeLesson),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

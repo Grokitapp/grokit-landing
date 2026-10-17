@@ -49,14 +49,60 @@ export const handler: Handler = async (event, context) => {
   // checked here. The same error is used for "missing" and "not yours".
   if (!lesson || lesson.owner !== sub) throw new Error("LESSON_NOT_FOUND");
 
-  /** Already generated: never pay for the same lesson twice. */
-  if (lesson.status === "READY" && lesson.coreContent) return lesson;
-
-  /** Already running and fresh: do not start a second (billed) generation. */
-  if (lesson.status === "GENERATING") {
+  const isFresh = () => {
     const updatedAt = lesson.updatedAt ? Date.parse(lesson.updatedAt) : 0;
-    if (updatedAt && Date.now() - updatedAt < STALE_AFTER_MS) return lesson;
+    return Boolean(updatedAt) && Date.now() - updatedAt < STALE_AFTER_MS;
+  };
+
+  /** Starts the worker. On failure `onFailure` records it and we tell the client. */
+  const startWorker = async (stage: "content" | "practice", onFailure: (message: string) => Promise<unknown>) => {
+    try {
+      await lambda.send(
+        new InvokeCommand({
+          FunctionName: workerName,
+          InvocationType: "Event",
+          Payload: new TextEncoder().encode(JSON.stringify({ lessonId, stage })),
+        }),
+      );
+    } catch (error) {
+      const message = getErrorMessage(error);
+      console.error("Failed to start lesson worker", { requestId, lessonId, stage, error: message });
+      await onFailure(message);
+      throw new Error("LESSON_GENERATION_START_FAILED");
+    }
+  };
+
+  const hasCards = Boolean(lesson.content);
+
+  /** Older article-style lesson that is already generated: never pay for it twice. */
+  if (lesson.status === "READY" && lesson.coreContent && !hasCards) return lesson;
+
+  if (lesson.status === "READY" && hasCards) {
+    /** Cards and practice both done. */
+    if (lesson.practiceStatus === "READY") return lesson;
+
+    /** Practice is being written right now: do not start a second (billed) run. */
+    if (lesson.practiceStatus === "GENERATING" && isFresh()) return lesson;
+
+    /**
+     * The cards are fine but the practice is missing, failed or stuck:
+     * retry only that stage, so the learner never loses the cards.
+     */
+    const retrying = await client.models.Lesson.update({
+      id: lessonId,
+      practiceStatus: "GENERATING",
+    });
+    assertNoErrors(retrying.errors, "LESSON_PRACTICE_UPDATE_FAILED");
+
+    await startWorker("practice", async () => {
+      await client.models.Lesson.update({ id: lessonId, practiceStatus: "FAILED" });
+    });
+
+    return retrying.data ?? lesson;
   }
+
+  /** Cards are already running and fresh: do not start a second (billed) generation. */
+  if (lesson.status === "GENERATING" && isFresh()) return lesson;
 
   const generating = await client.models.Lesson.update({
     id: lessonId,
@@ -65,26 +111,13 @@ export const handler: Handler = async (event, context) => {
   });
   assertNoErrors(generating.errors, "LESSON_GENERATING_UPDATE_FAILED");
 
-  try {
-    await lambda.send(
-      new InvokeCommand({
-        FunctionName: workerName,
-        InvocationType: "Event",
-        Payload: new TextEncoder().encode(JSON.stringify({ lessonId })),
-      }),
-    );
-  } catch (error) {
-    const message = getErrorMessage(error);
-    console.error("Failed to start lesson worker", { requestId, lessonId, error: message });
-
+  await startWorker("content", async (message) => {
     await client.models.Lesson.update({
       id: lessonId,
       status: "FAILED",
       generationError: `WORKER_START_FAILED: ${message}`.slice(0, 5000),
     });
-
-    throw new Error("LESSON_GENERATION_START_FAILED");
-  }
+  });
 
   return generating.data ?? lesson;
 };

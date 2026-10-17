@@ -21,6 +21,13 @@ export const COHORT_SIZE = 30;
 /** Bronze, Silver, Gold, Sapphire, Ruby, Emerald, Amethyst, Diamond. */
 export const LEAGUE_COUNT = 8;
 
+/**
+ * The most XP one lesson can ever add to the weekly leaderboard. The
+ * completeLesson function awards 10 to 15; this ceiling is a second line of
+ * defence in the leaderboard stream, so a bad row can never add more.
+ */
+export const MAX_LESSON_XP = 20;
+
 /** At most this many learners move up from one group each week. */
 export const PROMOTE_MAX = 10;
 

@@ -12,12 +12,16 @@
  * prompts also tell the model to treat this block as information only.
  */
 
+import { DEFAULT_LESSON_SHAPE, makeLessonShape, type LessonShape } from './lesson-content';
+
 export interface LearnerBrief {
   /** Prompt-ready text. Never empty. */
   text: string;
   hasProfile: boolean;
-  /** Target length of a lesson's coreContent. */
+  /** Target length of an older, article-style lesson's coreContent. Kept for legacy lessons. */
   wordRange: { min: number; max: number };
+  /** How many cards and practice questions a card-style lesson has. */
+  lessonShape: LessonShape;
   /** Human-readable session length, e.g. "10–20 minutes". */
   sessionLabel: string;
 }
@@ -52,12 +56,15 @@ const START: Record<string, string> = {
   depends: 'adapts to the topic (no fixed preference)',
 };
 
-const TIME: Record<string, { label: string; min: number; max: number }> = {
-  'quick-sparks': { label: '5–10 minutes', min: 450, max: 650 },
-  'little-every-day': { label: '10–20 minutes', min: 650, max: 950 },
-  'focused-sessions': { label: '20–30 minutes', min: 950, max: 1350 },
-  'deep-dives': { label: '30–60 minutes', min: 1350, max: 2000 },
-  whenever: { label: 'no fixed schedule', min: 800, max: 1150 },
+const TIME: Record<
+  string,
+  { label: string; min: number; max: number; shape: LessonShape }
+> = {
+  'quick-sparks': { label: '5–10 minutes', min: 450, max: 650, shape: makeLessonShape(5, 5, 3) },
+  'little-every-day': { label: '10–20 minutes', min: 650, max: 950, shape: makeLessonShape(6, 7, 5) },
+  'focused-sessions': { label: '20–30 minutes', min: 950, max: 1350, shape: makeLessonShape(8, 8, 5) },
+  'deep-dives': { label: '30–60 minutes', min: 1350, max: 2000, shape: makeLessonShape(9, 10, 6) },
+  whenever: { label: 'no fixed schedule', min: 800, max: 1150, shape: DEFAULT_LESSON_SHAPE },
 };
 
 const DEFAULT_RANGE = { min: 800, max: 1150 };
@@ -144,6 +151,7 @@ export function buildLearnerBrief(raw: unknown): LearnerBrief {
       : '- No learner details provided. Assume a curious beginner with no prior knowledge.',
     hasProfile,
     wordRange: time ? { min: time.min, max: time.max } : DEFAULT_RANGE,
+    lessonShape: time ? time.shape : DEFAULT_LESSON_SHAPE,
     sessionLabel: time?.label ?? 'about 15 minutes',
   };
 }

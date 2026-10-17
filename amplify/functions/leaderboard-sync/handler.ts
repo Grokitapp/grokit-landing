@@ -6,7 +6,7 @@ import {
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 
-import { COHORT_SIZE, weekIdOf } from '../shared/leaderboard-rules';
+import { COHORT_SIZE, MAX_LESSON_XP, weekIdOf } from '../shared/leaderboard-rules';
 
 const db = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
@@ -240,7 +240,8 @@ async function handleStream(event: StreamEvent): Promise<void> {
     const owner = image?.owner?.S;
     const lessonId = image?.lessonId?.S;
     const completedAt = image?.completedAt?.S;
-    const xp = Number(image?.xp?.N ?? 0);
+    // Clamped so one row can never add more than a lesson can be worth.
+    const xp = Math.min(Number(image?.xp?.N ?? 0), MAX_LESSON_XP);
 
     if (!owner || !lessonId || !completedAt || !(xp > 0)) continue;
 
