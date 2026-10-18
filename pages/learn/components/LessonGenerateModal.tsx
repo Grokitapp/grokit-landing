@@ -239,7 +239,11 @@ export default function LessonGenerateModal({
           </p>
         )}
 
-        <AnimatePresence mode="wait" initial={false}>
+        {/*
+          No `initial={false}` here: it makes everything inside start at the END of
+          its animation, which would freeze the mascot and the progress bar.
+        */}
+        <AnimatePresence mode="wait">
           {phase === 'working' && (
             <WorkingPanel
               key="working"

@@ -104,17 +104,6 @@ export async function listProgressForCourse(courseId: string) {
   return data ?? [];
 }
 
-export async function markLessonComplete(courseId: string, lessonId: string, xp = 10) {
-  const { data, errors } = await client.models.UserProgress.create(
-    { courseId, lessonId, completedAt: new Date().toISOString(), xp },
-    USER_POOL,
-  );
-
-  assertNoErrors(errors);
-
-  return data;
-}
-
 export async function unlockPhase(phaseId: string) {
   const { data, errors } = await client.models.Phase.update(
     { id: phaseId, locked: false },

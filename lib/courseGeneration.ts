@@ -502,27 +502,31 @@ function refreshJourneyCache(courseId: string): void {
   );
 }
 
+/** What the server decided when a lesson was completed. */
+export interface LessonCompletionResult {
+  xp: number;
+  correct: number;
+  total: number;
+  /** True when the lesson had been completed before; no XP is added again. */
+  alreadyCompleted: boolean;
+}
+
 /**
- * Mark a lesson complete.
+ * Finish a lesson.
  *
- * Existing completion records are reused. Progression is checked again
- * when an existing record is found, allowing a failed phase unlock to
- * recover on a later attempt.
- *
- * Client-side checks cannot prevent duplicate records from concurrent
- * requests. Enforce uniqueness or idempotency on the backend if required.
+ * `answers` holds the option the learner picked first for each practice
+ * question, in order (an empty list when there was no practice). The server
+ * grades them, decides the XP and saves the progress, so the browser can no
+ * longer award XP itself. After that, the next zone is unlocked if this was
+ * the last lesson of the current one.
  */
 export async function markLessonComplete(
   courseId: string,
   lessonId: string,
-  xp = 10,
-) {
+  answers: number[] = [],
+): Promise<LessonCompletionResult> {
   requireId(courseId, 'COURSE_ID_REQUIRED');
   requireId(lessonId, 'LESSON_ID_REQUIRED');
-
-  if (!Number.isSafeInteger(xp) || xp < 0) {
-    throw new Error('XP_INVALID');
-  }
 
   const lesson = await getLesson(lessonId);
 
@@ -534,34 +538,9 @@ export async function markLessonComplete(
     throw new Error('LESSON_COURSE_MISMATCH');
   }
 
-  const phase = await getPhase(lesson.phaseId);
-
-  if (!phase) {
-    throw new Error('LESSON_PHASE_NOT_FOUND');
-  }
-
-  if (phase.courseId !== courseId) {
-    throw new Error('LESSON_PHASE_COURSE_MISMATCH');
-  }
-
-  const progress = await listProgressForCourse(courseId);
-  const existing = progress.find(
-    (item) => item.lessonId === lessonId,
-  );
-
-  if (existing) {
-    await advancePhaseIfComplete(courseId, lessonId);
-    refreshJourneyCache(courseId);
-    return existing;
-  }
-
-  const { data, errors } = await client.models.UserProgress.create(
-    {
-      courseId,
-      lessonId,
-      completedAt: new Date().toISOString(),
-      xp,
-    },
+  const { data, errors } = await client.mutations.completeLesson(
+    { lessonId, answers: JSON.stringify(answers) },
+    USER_POOL,
   );
 
   throwIfErrors(errors, 'LESSON_COMPLETION_FAILED');
@@ -570,12 +549,17 @@ export async function markLessonComplete(
     throw new Error('LESSON_COMPLETION_FAILED');
   }
 
-  // Completion is saved before progression. If unlocking fails, a retry
-  // can reuse the existing completion record and retry progression.
+  // Completion is saved before progression. If unlocking fails, finishing
+  // the lesson again reuses the saved completion and retries the unlock.
   await advancePhaseIfComplete(courseId, lessonId);
   refreshJourneyCache(courseId);
 
-  return data;
+  return {
+    xp: data.xp,
+    correct: data.correct,
+    total: data.total,
+    alreadyCompleted: data.alreadyCompleted,
+  };
 }
 
 // ─── Phase progression ──────────────────────────────────────────────────────
@@ -617,9 +601,11 @@ async function advancePhaseIfComplete(
     return;
   }
 
+  // The list can lag a moment behind a lesson that was just completed.
   const completedLessonIds = new Set(
     progress.map((item) => item.lessonId),
   );
+  completedLessonIds.add(lessonId);
 
   const phaseComplete = phaseLessons.every((item) =>
     completedLessonIds.has(item.id),
