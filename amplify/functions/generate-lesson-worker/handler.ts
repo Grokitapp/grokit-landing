@@ -163,6 +163,7 @@ export const handler = async (event: WorkerEvent, context: { awsRequestId: strin
         id: lessonId,
         content: JSON.stringify(content),
         contentVersion: CONTENT_VERSION,
+        generatedAt: new Date().toISOString(),
         status: "READY",
         practiceStatus: "GENERATING",
         generationError: null,

@@ -41,8 +41,8 @@ export default function LeagueCard({ data }: { data: LeaderboardData | null | un
         backgroundImage: `radial-gradient(ellipse at 0% 50%, ${league.color}2E, transparent 60%)`,
       }}
     >
-      <span className="flex w-[84px] shrink-0 justify-center sm:w-[96px]">
-        <LeagueEmblem league={league} size={44} glow />
+      <span className="flex w-[64px] shrink-0 justify-center sm:w-[76px]">
+        <LeagueEmblem league={league} size={60} glow />
       </span>
 
       <div className="min-w-0 flex-1">

@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Check, X } from 'lucide-react';
 
 import type { PracticeQuestion } from '../../../amplify/functions/shared/lesson-content';
+import { playSound } from '../../../lib/sounds';
 import { COLORS } from './lessonTheme';
 
 interface PracticeViewProps {
@@ -40,6 +41,7 @@ export default function PracticeView({ questions, cardTitles, onFinish, onExit }
 
     setAnswers((current) => [...current, selected]);
     setChecked(true);
+    playSound(selected === question.correctIndex ? 'correct' : 'wrong');
   };
 
   const next = () => {

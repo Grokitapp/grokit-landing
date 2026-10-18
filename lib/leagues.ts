@@ -1,4 +1,4 @@
-import { getZoneSizes } from '../amplify/functions/shared/leaderboard-rules';
+import { LEAGUE_COUNT, getZoneSizes } from '../amplify/functions/shared/leaderboard-rules';
 
 /**
  * Leagues are the XP "ranks" a learner climbs through. They are derived from
@@ -19,15 +19,21 @@ export interface League {
 }
 
 export const LEAGUES: League[] = [
-  { id: 'bronze', name: 'Bronze', minXp: 0, color: '#D48A4A', light: '#F2B67C', rim: '#8A4F1D' },
-  { id: 'silver', name: 'Silver', minXp: 300, color: '#B8C2CF', light: '#E3E9F0', rim: '#6F7B8B' },
-  { id: 'gold', name: 'Gold', minXp: 800, color: '#FFC83D', light: '#FFE48A', rim: '#B8801A' },
-  { id: 'sapphire', name: 'Sapphire', minXp: 1600, color: '#3B82F6', light: '#8DB8FF', rim: '#1D4DA8' },
-  { id: 'ruby', name: 'Ruby', minXp: 3000, color: '#EF4455', light: '#FF8D98', rim: '#9E1E2C' },
-  { id: 'emerald', name: 'Emerald', minXp: 5000, color: '#10B981', light: '#6EE7B7', rim: '#0A7455' },
-  { id: 'amethyst', name: 'Amethyst', minXp: 8000, color: '#A855F7', light: '#D2A5FF', rim: '#6B2AA8' },
-  { id: 'diamond', name: 'Diamond', minXp: 12000, color: '#38D6EE', light: '#B4F3FF', rim: '#0E8BA6' },
+  { id: 'tidepool', name: 'Tidepool', minXp: 0, color: '#D9A35F', light: '#F5D49E', rim: '#8C5E26' },
+  { id: 'shallows', name: 'Shallows', minXp: 300, color: '#45C4DB', light: '#9BEAF6', rim: '#1B7B93' },
+  { id: 'reef', name: 'Reef', minXp: 800, color: '#FF6B8A', light: '#FFB1C2', rim: '#B8324F' },
+  { id: 'lagoon', name: 'Lagoon', minXp: 1600, color: '#22C7A0', light: '#80EBD0', rim: '#0C7A62' },
+  { id: 'current', name: 'Current', minXp: 3000, color: '#3B82F6', light: '#8DB8FF', rim: '#1D4DA8' },
+  { id: 'deep', name: 'Deep', minXp: 5000, color: '#7C6CF2', light: '#B5ABFF', rim: '#4237B0' },
+  { id: 'abyss', name: 'Abyss', minXp: 8000, color: '#C84BC2', light: '#F08EEA', rim: '#7C1D78' },
+  { id: 'kraken', name: 'Kraken', minXp: 12000, color: '#FF8A1F', light: '#FFC46B', rim: '#C2500A' },
 ];
+
+// The backend moves learners between exactly LEAGUE_COUNT leagues. If you add
+// or remove one here, change LEAGUE_COUNT in leaderboard-rules.ts too.
+if (import.meta.env.DEV && LEAGUES.length !== LEAGUE_COUNT) {
+  console.warn(`[leagues] LEAGUES has ${LEAGUES.length} entries but LEAGUE_COUNT is ${LEAGUE_COUNT}.`);
+}
 
 export interface LeagueProgress {
   league: League;
@@ -85,7 +91,7 @@ export function getLeagueProgress(totalXp: number): LeagueProgress {
   };
 }
 
-/** League by position (0 = Bronze ... 7 = Diamond), safe for any number. */
+/** League by position (0 = Tidepool ... 7 = Kraken), safe for any number. */
 export function leagueAt(index: number): League {
   return LEAGUES[Math.min(Math.max(Math.trunc(index) || 0, 0), LEAGUES.length - 1)];
 }

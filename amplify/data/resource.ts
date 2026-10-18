@@ -76,6 +76,8 @@ const schema = a.schema({
       // coreContent / keyTerms / quiz above.
       content: a.json(),
       contentVersion: a.integer(),
+      // When the cards were written. The Usage page counts today's lessons from it.
+      generatedAt: a.datetime(),
       practice: a.json(),
       practiceStatus: a.enum([
         'PENDING',

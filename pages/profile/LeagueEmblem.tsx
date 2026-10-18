@@ -1,294 +1,289 @@
-import { useId } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Lock } from 'lucide-react';
 
 import { LEAGUES, type League } from '../../lib/leagues';
 
 /**
- * One shield for every league. The silhouette never changes; each tier adds
- * something, so progress reads at a glance:
+ * League badges: a chunky, raised plate with a symbol from the ocean.
  *
- *   Bronze    one chevron
- *   Silver    two chevrons
- *   Gold      three chevrons + wings
- *   Sapphire  gem + fuller wings
- *   Ruby      + small crown
- *   Emerald   + full wings
- *   Amethyst  + royal crown and a halo
- *   Diamond   + jewelled crown and sparkles
+ * The plate shape steps up every two leagues, and each league has its own
+ * symbol, so a badge is recognisable by shape, colour and symbol:
+ *
+ *   Tidepool  pebble    drop
+ *   Shallows  pebble    waves
+ *   Reef      shield    coral
+ *   Lagoon    shield    shell
+ *   Current   hexagon   swirl
+ *   Deep      hexagon   anchor
+ *   Abyss     octagon   jellyfish
+ *   Kraken    octagon   octopus, with a crown (top league)
  */
 
-interface TierArt {
-  chevrons: number;
-  wings: 0 | 1 | 2 | 3;
-  crown: 0 | 3 | 5;
-  halo: boolean;
-  sparkle: boolean;
+type Plate = 'pebble' | 'shield' | 'hex' | 'octagon';
+
+const PLATE_BY_TIER: Plate[] = [
+  'pebble',
+  'pebble',
+  'shield',
+  'shield',
+  'hex',
+  'hex',
+  'octagon',
+  'octagon',
+];
+
+const CX = 50;
+const CY = 46;
+
+/** Points of a regular polygon around the badge centre. */
+function ngon(sides: number, radius: number, startDeg: number): string {
+  return Array.from({ length: sides }, (_, index) => {
+    const angle = ((startDeg + (360 / sides) * index) * Math.PI) / 180;
+
+    return `${(CX + radius * Math.cos(angle)).toFixed(1)},${(CY + radius * Math.sin(angle)).toFixed(1)}`;
+  }).join(' ');
 }
 
-const TIER_ART: TierArt[] = [
-  { chevrons: 1, wings: 0, crown: 0, halo: false, sparkle: false },
-  { chevrons: 2, wings: 0, crown: 0, halo: false, sparkle: false },
-  { chevrons: 3, wings: 1, crown: 0, halo: false, sparkle: false },
-  { chevrons: 0, wings: 2, crown: 0, halo: false, sparkle: false },
-  { chevrons: 0, wings: 2, crown: 3, halo: false, sparkle: false },
-  { chevrons: 0, wings: 3, crown: 3, halo: false, sparkle: false },
-  { chevrons: 0, wings: 3, crown: 5, halo: true, sparkle: false },
-  { chevrons: 0, wings: 3, crown: 5, halo: true, sparkle: true },
-];
-
-// The canvas is 120 x 124. The shield (80 x 96) sits inside it at (20, 22),
-// leaving room for wings at the sides, a crown on top and a halo around it.
-const CANVAS_H = 124;
-const SHIELD_W = 64; // visible width of the shield, used to size the emblem
-
-const SHIELD = 'M40 4 L72 15 V44 C72 66 58 80 40 88 C22 80 8 66 8 44 V15 Z';
-const FACE_TRANSFORM = 'translate(40 47) scale(0.8) translate(-40 -47)';
-
-const GEM = 'M27 38 L34 29 H46 L53 38 L40 59 Z';
-const GEM_FACETS = ['M27 38 H53', 'M34 29 L40 38 L46 29', 'M34 38 L40 59', 'M46 38 L40 59'];
-
-// Right-hand wing feathers (canvas coordinates). The left wing is a mirror.
-const FEATHER_TOP = 'M90 58 C98 44 108 38 117 36 C114 48 104 58 90 66 Z';
-const FEATHER_MID = 'M90 66 C98 56 107 52 115 52 C112 62 103 70 90 76 Z';
-const FEATHER_LOW = 'M90 76 C97 69 104 66 111 67 C108 75 100 81 90 85 Z';
-const WING_SETS: string[][] = [
-  [],
-  [FEATHER_MID],
-  [FEATHER_MID, FEATHER_LOW],
-  [FEATHER_TOP, FEATHER_MID, FEATHER_LOW],
-];
-
-const CROWN_3 = 'M46 31 L44 18 L52 24 L60 12 L68 24 L76 18 L74 31 Z';
-const CROWN_5 = 'M38 31 L36 20 L44 26 L49 15 L55 24 L60 9 L65 24 L71 15 L76 26 L84 20 L82 31 Z';
-const CROWN_5_JEWELS: [number, number][] = [
-  [36, 20],
-  [49, 15],
-  [60, 9],
-  [71, 15],
-  [84, 20],
-];
-
-function Chevrons({ count, color, shadow }: { count: number; color: string; shadow: string }) {
-  const lines = Array.from({ length: count }, (_, index) => {
-    const y = 47 - (count - 1) * 6 - 6 + index * 12;
-
-    return `28,${y} 40,${y + 11} 52,${y}`;
-  });
-
-  return (
-    <g fill="none" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-      <g stroke={shadow} opacity="0.55" transform="translate(0 2.5)">
-        {lines.map((points) => (
-          <polyline key={points} points={points} />
-        ))}
-      </g>
-      <g stroke={color}>
-        {lines.map((points) => (
-          <polyline key={points} points={points} />
-        ))}
-      </g>
-    </g>
-  );
+function polygonPath(points: string): string {
+  return `M${points.split(' ').join(' L')} Z`;
 }
 
-function Gem({ fill, shadow, facet }: { fill: string; shadow: string; facet: string }) {
-  return (
-    <g>
-      <path d={GEM} fill={shadow} opacity="0.5" transform="translate(0 2.5)" />
-      <path d={GEM} fill={fill} />
-      {GEM_FACETS.map((d) => (
+// Each plate is a path with a thick, round-joined stroke in the same colour,
+// which is what rounds its corners. `width` is that stroke width.
+const PLATES: Record<Plate, { d: string; width: number }> = {
+  pebble: { d: 'M24 20 H76 V72 H24 Z', width: 32 },
+  shield: { d: 'M18 21 L34 19 L50 11 L66 19 L82 21 L82 49 L70 67 L50 81 L30 67 L18 49 Z', width: 12 },
+  hex: { d: polygonPath(ngon(6, 34, -90)), width: 14 },
+  octagon: { d: polygonPath(ngon(8, 37, -67.5)), width: 12 },
+};
+
+const LIP = 8; // thickness of the raised edge
+
+function PlateShape({ plate, fill }: { plate: Plate; fill: string }) {
+  const { d, width } = PLATES[plate];
+
+  return <path d={d} fill={fill} stroke={fill} strokeWidth={width} strokeLinejoin="round" />;
+}
+
+// -----------------------------------------------------------------------------
+// Symbols (all drawn around the badge centre, about 44 units wide)
+// -----------------------------------------------------------------------------
+
+const RIDGES: [number, number][] = [
+  [50, 35],
+  [41.2, 36.8],
+  [58.8, 36.8],
+  [33.7, 41.7],
+  [66.3, 41.7],
+];
+
+function Symbol({ tier, ink, accent }: { tier: number; ink: string; accent: string }) {
+  const line = { fill: 'none', stroke: ink, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+
+  switch (tier) {
+    case 0: // drop
+      return (
+        <g>
+          <path d="M50 26 C57 35 66 42 66 51 A16 16 0 0 1 34 51 C34 42 43 35 50 26 Z" fill={ink} />
+          <path d="M42 52 A8 8 0 0 0 49 59" fill="none" stroke={accent} strokeWidth="3" strokeLinecap="round" />
+        </g>
+      );
+    case 1: // waves
+      return (
+        <g {...line} strokeWidth="6.5">
+          <path d="M28 39 Q34 31 40 39 T52 39 T64 39 T72 39" />
+          <path d="M28 53 Q34 45 40 53 T52 53 T64 53 T72 53" />
+        </g>
+      );
+    case 2: // coral
+      return (
+        <g>
+          <g {...line} strokeWidth="7">
+            <path d="M50 68 V32 M50 58 L34 42 M50 50 L66 34 M38 68 H62" />
+          </g>
+          <circle cx="50" cy="30" r="4.5" fill={ink} />
+          <circle cx="34" cy="40" r="4.5" fill={ink} />
+          <circle cx="66" cy="32" r="4.5" fill={ink} />
+        </g>
+      );
+    case 3: // shell
+      return (
+        <g transform="translate(0 -4)">
+          <path d="M27 58 A23 23 0 0 1 73 58 Z" fill={ink} />
+          <rect x="41" y="60" width="18" height="6" rx="3" fill={ink} />
+          <g stroke={accent} strokeWidth="2.6" strokeLinecap="round">
+            {RIDGES.map(([x, y]) => (
+              <line key={`${x}-${y}`} x1="50" y1="58" x2={x} y2={y} />
+            ))}
+          </g>
+        </g>
+      );
+    case 4: // swirl
+      return (
         <path
-          key={d}
-          d={d}
-          fill="none"
-          stroke={facet}
-          strokeWidth="1.6"
-          strokeLinejoin="round"
-          opacity="0.55"
+          {...line}
+          strokeWidth="6"
+          d="M47 46 A4 4 0 0 1 55 46 A8 8 0 0 1 39 46 A12 12 0 0 1 63 46 A16 16 0 0 1 31 46 A20 20 0 0 1 71 46"
         />
-      ))}
-    </g>
-  );
+      );
+    case 5: // anchor
+      return (
+        <g {...line} strokeWidth="6.5">
+          <circle cx="50" cy="30" r="5" />
+          <path d="M50 35 V66 M39 44 H61 M30 54 C33 70 67 70 70 54" />
+        </g>
+      );
+    case 6: // jellyfish
+      return (
+        <g>
+          <path d="M31 44 A19 19 0 0 1 69 44 Q60 48 50 45 Q40 48 31 44 Z" fill={ink} />
+          <g {...line} strokeWidth="4.5">
+            {[38, 46, 54, 62].map((x) => (
+              <path key={x} d={`M${x} 50 q -4 5 0 10 t 0 10`} />
+            ))}
+          </g>
+          <circle cx="50" cy="32" r="2.4" fill={accent} />
+          <circle cx="42" cy="38" r="2.4" fill={accent} />
+          <circle cx="58" cy="38" r="2.4" fill={accent} />
+        </g>
+      );
+    default: // octopus
+      return (
+        <g>
+          <path
+            d="M30 44 C30 28 40 24 50 24 C60 24 70 28 70 44 C70 49 66 52 62 52 H38 C34 52 30 49 30 44 Z"
+            fill={ink}
+          />
+          <g {...line} strokeWidth="6">
+            <path d="M35 51 C33 61 27 63 25 59" />
+            <path d="M44 52 C44 62 38 68 34 66" />
+            <path d="M56 52 C56 62 62 68 66 66" />
+            <path d="M65 51 C67 61 73 63 75 59" />
+          </g>
+          <circle cx="42" cy="40" r="4" fill={accent} />
+          <circle cx="58" cy="40" r="4" fill={accent} />
+          <circle cx="42.8" cy="40.6" r="1.8" fill={ink} />
+          <circle cx="58.8" cy="40.6" r="1.8" fill={ink} />
+        </g>
+      );
+  }
 }
 
-function Sparkle({ x, y, size, fill }: { x: number; y: number; size: number; fill: string }) {
-  const s = size;
+function Sparkle({ x, y, size }: { x: number; y: number; size: number }) {
   const k = size * 0.28;
-  const d = `M${x} ${y - s} L${x + k} ${y - k} L${x + s} ${y} L${x + k} ${y + k} L${x} ${y + s} L${x - k} ${y + k} L${x - s} ${y} L${x - k} ${y - k} Z`;
 
-  return <path d={d} fill={fill} />;
-}
-
-function Wing({ count, fill, stroke }: { count: 0 | 1 | 2 | 3; fill: string; stroke: string }) {
   return (
-    <g fill={fill} stroke={stroke} strokeWidth="1.2" strokeLinejoin="round">
-      {WING_SETS[count].map((d) => (
-        <path key={d} d={d} />
-      ))}
-    </g>
+    <path
+      d={`M${x} ${y - size} L${x + k} ${y - k} L${x + size} ${y} L${x + k} ${y + k} L${x} ${y + size} L${x - k} ${y + k} L${x - size} ${y} L${x - k} ${y - k} Z`}
+      fill="#fff"
+    />
   );
 }
+
+const CROWN = 'M33 17 L30 1 L41 9 L50 -5 L59 9 L70 1 L67 17 Z';
+
+// -----------------------------------------------------------------------------
+// Badge
+// -----------------------------------------------------------------------------
 
 export default function LeagueEmblem({
   league,
-  size = 48,
+  size = 56,
   locked = false,
   glow = false,
 }: {
   league: League;
-  /** Width of the shield in pixels. Wings and crown are drawn around it. */
+  /** Width of the badge in pixels. The height follows. */
   size?: number;
   /** A league the learner hasn't reached yet. */
   locked?: boolean;
-  /** Soft coloured glow behind the emblem (current league). */
+  /** Soft coloured glow behind the badge (the current league). */
   glow?: boolean;
-}) {
+}): ReactNode {
   const id = useId().replace(/:/g, '');
   const tier = Math.max(0, LEAGUES.findIndex((item) => item.id === league.id));
-  const art = TIER_ART[tier];
+  const plate = PLATE_BY_TIER[tier];
+  const top = tier === LEAGUES.length - 1;
 
-  const light = locked ? '#41555E' : league.light;
-  const color = locked ? '#2E4048' : league.color;
-  const rim = locked ? '#1C2A30' : league.rim;
-  const glyph = locked ? '#6F858E' : '#FFFFFF';
+  const light = locked ? '#4C616B' : league.light;
+  const color = locked ? '#3A4D56' : league.color;
+  const rim = locked ? '#24343B' : league.rim;
+  const ink = locked ? '#1D2B31' : league.rim;
+  const accent = locked ? '#3A4D56' : league.light;
 
-  // Crop the canvas to what this tier actually draws so small emblems stay tight.
-  const wide = art.wings > 0;
-  const vbX = wide ? 0 : 22;
-  const vbW = wide ? 120 : 76;
-  const vbY = art.crown > 0 ? 4 : 20;
-  const vbH = CANVAS_H - vbY;
-
-  const scale = size / SHIELD_W;
-  const width = vbW * scale;
-  const height = vbH * scale;
-
-  const ref = (name: string) => `url(#${id}-${name})`;
+  const height = (size * 108) / 100;
+  const { d, width } = PLATES[plate];
 
   return (
     <span
       className="relative inline-flex shrink-0 items-center justify-center"
-      style={{ width, height }}
+      style={{ width: size, height }}
     >
       {glow && !locked && (
         <span
           aria-hidden="true"
           className="absolute rounded-full blur-2xl"
-          style={{ inset: '8% 12%', backgroundColor: league.color, opacity: 0.4 }}
+          style={{ inset: '12%', backgroundColor: league.color, opacity: 0.42 }}
         />
       )}
 
       <svg
-        width={width}
+        width={size}
         height={height}
-        viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
+        viewBox="0 -6 100 108"
         role="img"
         aria-label={`${league.name} league${locked ? ' (locked)' : ''}`}
         className="relative"
       >
         <defs>
-          <linearGradient id={`${id}-rim`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={light} />
-            <stop offset="1" stopColor={rim} />
-          </linearGradient>
           <linearGradient id={`${id}-face`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={light} />
-            <stop offset="0.55" stopColor={color} />
-            <stop offset="1" stopColor={rim} />
-          </linearGradient>
-          <linearGradient id={`${id}-wing`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0" stopColor={color} />
-            <stop offset="1" stopColor={rim} />
+            <stop offset="0.65" stopColor={color} />
           </linearGradient>
           <linearGradient id={`${id}-crown`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={locked ? light : '#FFF1B8'} />
-            <stop offset="0.5" stopColor={locked ? color : '#FFC83D'} />
-            <stop offset="1" stopColor={locked ? rim : '#B8801A'} />
+            <stop offset="0" stopColor="#FFF1B8" />
+            <stop offset="1" stopColor="#F5B62E" />
           </linearGradient>
-          <linearGradient id={`${id}-gem`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={locked ? glyph : '#FFFFFF'} />
-            <stop offset="1" stopColor={locked ? glyph : light} />
-          </linearGradient>
-          <clipPath id={`${id}-clip`}>
-            <path d={SHIELD} transform={FACE_TRANSFORM} />
-          </clipPath>
+          <mask id={`${id}-mask`} maskUnits="userSpaceOnUse" x="0" y="-6" width="100" height="108">
+            <path d={d} fill="#fff" stroke="#fff" strokeWidth={width} strokeLinejoin="round" />
+          </mask>
         </defs>
 
-        {/* Halo (top tiers) */}
-        {art.halo && (
-          <g fill="none" stroke={light} strokeLinecap="round" opacity={locked ? 0.15 : 0.6}>
-            <circle cx="60" cy="68" r="55" strokeWidth="1" opacity="0.4" />
-            <circle cx="60" cy="68" r="55" strokeWidth="2" strokeDasharray="0.5 7" />
-          </g>
-        )}
-
-        {/* Wings sit behind the shield */}
-        {art.wings > 0 && (
-          <g opacity={locked ? 0.45 : 1}>
-            <Wing count={art.wings} fill={ref('wing')} stroke={rim} />
-            <g transform="translate(120 0) scale(-1 1)">
-              <Wing count={art.wings} fill={ref('wing')} stroke={rim} />
-            </g>
-          </g>
-        )}
-
-        <g transform="translate(20 22)">
-          {/* Soft shadow under the shield */}
-          <path d={SHIELD} fill="#000" opacity="0.3" transform="translate(0 4)" />
-
-          {/* Bevelled rim */}
-          <path d={SHIELD} fill={ref('rim')} />
-          <path d={SHIELD} fill="none" stroke="#fff" strokeOpacity={locked ? 0.05 : 0.35} strokeWidth="1.2" />
-
-          {/* Face */}
-          <path d={SHIELD} fill={ref('face')} transform={FACE_TRANSFORM} />
-          <path
-            d={SHIELD}
-            fill="none"
-            stroke="#fff"
-            strokeOpacity={locked ? 0.04 : 0.22}
-            strokeWidth="0.8"
-            transform="translate(40 47) scale(0.7) translate(-40 -47)"
-          />
-
-          {/* Shine across the top of the face */}
-          <g clipPath={`url(#${id}-clip)`}>
-            <path d="M0 0 H80 V38 C58 30 22 30 0 46 Z" fill="#fff" opacity={locked ? 0.04 : 0.2} />
-          </g>
-
-          {/* Symbol */}
-          <g opacity={locked ? 0.5 : 1}>
-            {art.chevrons > 0 ? (
-              <Chevrons count={art.chevrons} color={glyph} shadow={rim} />
-            ) : (
-              <Gem fill={ref('gem')} shadow={rim} facet={rim} />
-            )}
-          </g>
+        {/* Raised edge */}
+        <g transform={`translate(0 ${LIP})`}>
+          <PlateShape plate={plate} fill={rim} />
         </g>
 
-        {/* Crown sits over the top edge of the shield */}
-        {art.crown > 0 && (
-          <g opacity={locked ? 0.5 : 1}>
-            <path
-              d={art.crown === 5 ? CROWN_5 : CROWN_3}
-              fill={ref('crown')}
-              stroke={locked ? rim : '#8A5A0F'}
-              strokeWidth="1.4"
-              strokeLinejoin="round"
-            />
-            {art.crown === 5 &&
-              CROWN_5_JEWELS.map(([x, y]) => (
-                <circle key={`${x}-${y}`} cx={x} cy={y} r="2.2" fill={locked ? glyph : league.light} stroke="#fff" strokeWidth="0.8" />
-              ))}
-          </g>
-        )}
+        {/* Face */}
+        <PlateShape plate={plate} fill={`url(#${id}-face)`} />
 
-        {/* Sparkles (Diamond) */}
-        {art.sparkle && !locked && (
+        {/* Soft diagonal shine */}
+        <g mask={`url(#${id}-mask)`} opacity={locked ? 0.4 : 1}>
+          <path d="M-10 40 L44 -14 L64 -14 L-10 60 Z" fill="#fff" opacity="0.18" />
+          <path d="M-10 74 L78 -14 L88 -14 L-10 84 Z" fill="#fff" opacity="0.1" />
+        </g>
+
+        {/* Recessed centre */}
+        <g transform={`translate(${CX} ${CY}) scale(0.72) translate(${-CX} ${-CY})`}>
+          <path d={d} fill={rim} fillOpacity="0.24" stroke={rim} strokeOpacity="0.24" strokeWidth={width} strokeLinejoin="round" />
+        </g>
+
+        {/* Symbol, with a light edge underneath so it looks pressed in */}
+        <g opacity={locked ? 0.7 : 1}>
+          <g transform="translate(0 2.5)" opacity="0.5">
+            <Symbol tier={tier} ink={locked ? '#6A808A' : '#fff'} accent={locked ? '#6A808A' : '#fff'} />
+          </g>
+          <Symbol tier={tier} ink={ink} accent={accent} />
+        </g>
+
+        {/* Top league: crown and sparkles */}
+        {top && !locked && (
           <g>
-            <Sparkle x={101} y={30} size={6} fill="#fff" />
-            <Sparkle x={15} y={44} size={4.5} fill="#fff" />
-            <Sparkle x={96} y={96} size={3.5} fill="#fff" />
+            <path d={CROWN} fill={`url(#${id}-crown)`} stroke="#A8680A" strokeWidth="1.6" strokeLinejoin="round" />
+            <circle cx="50" cy="12" r="2.6" fill="#FF8A1F" stroke="#fff" strokeWidth="0.8" />
+            <Sparkle x={10} y={20} size={6} />
+            <Sparkle x={91} y={30} size={4.5} />
+            <Sparkle x={90} y={80} size={3.5} />
           </g>
         )}
       </svg>
@@ -296,10 +291,10 @@ export default function LeagueEmblem({
       {locked && (
         <span
           aria-hidden="true"
-          className="absolute bottom-[8%] right-[10%] flex items-center justify-center rounded-full border border-[#37464F] bg-[#131F24]"
-          style={{ width: size * 0.44, height: size * 0.44 }}
+          className="absolute bottom-[6%] right-[4%] flex items-center justify-center rounded-full border border-[#37464F] bg-[#131F24]"
+          style={{ width: size * 0.32, height: size * 0.32 }}
         >
-          <Lock className="text-[#91A4AC]" style={{ width: size * 0.24, height: size * 0.24 }} />
+          <Lock className="text-[#91A4AC]" style={{ width: size * 0.17, height: size * 0.17 }} />
         </span>
       )}
     </span>

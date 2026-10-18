@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect } from 'react';
 import { Link } from 'react-router';
 import {
   ChevronDown,
@@ -47,9 +47,9 @@ function LeaderboardSkeleton() {
     <div
       aria-busy="true"
       aria-label="Loading the leaderboard"
-      className="mt-8 grid animate-pulse gap-8 lg:grid-cols-[minmax(0,1fr)_340px]"
+      className="mt-8 grid animate-pulse grid-cols-[minmax(0,1fr)] gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_340px]"
     >
-      <div className="space-y-6">
+      <div className="min-w-0 space-y-6">
         <div className="h-80 rounded-2xl bg-[#19282E]" />
         <div className="h-96 rounded-2xl bg-[#19282E]" />
       </div>
@@ -111,7 +111,7 @@ function StandingRow({ row, zone }: { row: LeaderboardRow; zone: 'up' | 'down' |
   return (
     <li
       aria-current={row.isMe ? 'true' : undefined}
-      className={`flex items-center gap-4 px-5 py-3.5 ${row.isMe ? 'bg-[#202F35]' : ''}`}
+      className={`flex items-center gap-3 px-3 py-3 sm:gap-4 sm:px-5 sm:py-3.5 ${row.isMe ? 'bg-[#202F35]' : ''}`}
     >
       <RankBadge rank={row.rank} zone={zone} />
 
@@ -155,53 +155,44 @@ function LastWeekBanner({ data }: { data: LeaderboardData }) {
   );
 }
 
-function StatChip({ label, value, hint }: { label: string; value: string; hint?: string }) {
+function StatChip({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 flex-1 rounded-xl border border-[#2D4149] bg-[#131F24]/70 px-3 py-2.5 text-center">
-      <p className="truncate font-display text-xl font-extrabold leading-none text-white">
+    <div className="min-w-0 rounded-xl border border-[#2D4149] bg-[#131F24]/70 px-2 py-2.5 text-center sm:px-3">
+      <p className="truncate font-display text-lg font-extrabold leading-none text-white sm:text-xl">
         {value}
-        {hint && <span className="ml-1 text-xs font-bold text-[#91A4AC]">{hint}</span>}
       </p>
-      <p className="mt-1.5 text-xs font-semibold text-[#91A4AC]">{label}</p>
+      <p className="mt-1.5 truncate text-[11px] font-semibold text-[#91A4AC] sm:text-xs">{label}</p>
     </div>
   );
 }
 
-function LeagueRoad({ index }: { index: number }) {
-  const listRef = useRef<HTMLOListElement>(null);
-
-  // On small screens the road scrolls: start with the current league in view.
-  useEffect(() => {
-    const list = listRef.current;
-    const current = list?.querySelector<HTMLElement>('[aria-current="true"]');
-
-    if (list && current) {
-      list.scrollLeft = current.offsetLeft - list.clientWidth / 2 + current.offsetWidth / 2;
-    }
-  }, [index]);
-
+/** Every league, with names. 4 per row on phones, all 8 in one row on wider screens. */
+function LeagueGrid({ index }: { index: number }) {
   return (
-    <ol
-      ref={listRef}
-      aria-label="All leagues"
-      className="relative mx-auto flex max-w-full items-end gap-3 overflow-x-auto px-3 pb-1 pt-2 [scrollbar-width:none] sm:justify-center sm:gap-5 [&::-webkit-scrollbar]:hidden"
-    >
+    <ol aria-label="All leagues" className="grid grid-cols-4 gap-x-1.5 gap-y-3 sm:grid-cols-8">
       {LEAGUES.map((item, position) => {
         const current = position === index;
+        const locked = position > index;
 
         return (
           <li
             key={item.id}
-            title={`${item.name} League`}
             aria-current={current ? 'true' : undefined}
-            className="flex shrink-0 flex-col items-center gap-1.5"
+            className="flex min-w-0 flex-col items-center gap-1 rounded-xl px-0.5 py-2"
+            style={
+              current
+                ? { backgroundColor: `${item.color}1F`, boxShadow: `inset 0 0 0 1.5px ${item.color}66` }
+                : undefined
+            }
           >
-            <LeagueEmblem league={item} size={current ? 34 : 28} locked={position > index} />
+            <LeagueEmblem league={item} size={current ? 50 : 44} locked={locked} />
             <span
-              aria-hidden="true"
-              className="h-1 w-6 rounded-full"
-              style={{ backgroundColor: current ? item.color : 'transparent' }}
-            />
+              className={`max-w-full truncate text-[11px] font-extrabold sm:text-xs ${
+                current ? 'text-white' : locked ? 'text-[#60757E]' : 'text-[#C8D3DA]'
+              }`}
+            >
+              {item.name}
+            </span>
           </li>
         );
       })}
@@ -245,20 +236,20 @@ function LeagueHero({ data }: { data: LeaderboardData }) {
   return (
     <section
       aria-label="Your league"
-      className={`${cardClasses} overflow-hidden px-4 pb-6 pt-8 text-center sm:px-8`}
+      className={`${cardClasses} min-w-0 overflow-hidden px-3 pb-5 pt-7 text-center sm:px-8 sm:pb-6 sm:pt-8`}
       style={{
         backgroundImage: `radial-gradient(ellipse at 50% 0%, ${league.color}40, transparent 65%)`,
       }}
     >
       <div className="flex justify-center">
-        <LeagueEmblem league={league} size={92} glow />
+        <LeagueEmblem league={league} size={112} glow />
       </div>
 
-      <h2 className="mt-4 font-display text-3xl font-extrabold text-white sm:text-4xl">
+      <h2 className="mt-4 break-words font-display text-3xl font-extrabold text-white sm:text-4xl">
         {league.name} League
       </h2>
 
-      <p className="mt-1.5 text-sm font-semibold text-[#C8D3DA] sm:text-base">
+      <p className="mx-auto mt-1.5 max-w-xs text-sm font-semibold text-[#C8D3DA] sm:max-w-none sm:text-base">
         {next
           ? promote > 0
             ? `Top ${promote} move up to ${next.name}`
@@ -266,24 +257,24 @@ function LeagueHero({ data }: { data: LeaderboardData }) {
           : 'You’re in the top league'}
       </p>
 
-      <div className="mx-auto mt-6 flex max-w-md gap-2.5">
-        <StatChip label="Rank" value={rank ? `#${rank}` : '–'} hint={rank ? `of ${data.rows.length}` : undefined} />
+      <div className="mx-auto mt-5 grid max-w-md grid-cols-3 gap-2">
+        <StatChip label={rank ? `Rank of ${data.rows.length}` : 'Rank'} value={rank ? `#${rank}` : '–'} />
         <StatChip label="XP this week" value={String(data.myXp)} />
         <StatChip label="Time left" value={formatTimeLeft(data.endsAt).replace(' left', '')} />
       </div>
 
       <p
-        className="mt-4 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-extrabold"
+        className="mx-auto mt-4 inline-flex max-w-full items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-extrabold leading-5 sm:text-sm"
         style={{ color: statusColor, backgroundColor: `${statusColor}1A` }}
       >
-        <StatusIcon className="h-4 w-4" aria-hidden="true" />
-        {status}
+        <StatusIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        <span className="min-w-0">{status}</span>
       </p>
 
       <LastWeekBanner data={data} />
 
-      <div className="mt-7 border-t border-[#2D4149] pt-5">
-        <LeagueRoad index={data.leagueIndex} />
+      <div className="mt-6 border-t border-[#2D4149] pt-4">
+        <LeagueGrid index={data.leagueIndex} />
       </div>
     </section>
   );
@@ -315,7 +306,7 @@ function Standings({ data }: { data: LeaderboardData }) {
 
           <p className="mt-2 max-w-md text-sm leading-6 text-[#A9BAC0]">
             Earn XP this week and you’ll be placed in a group of learners in
-            your league. Everyone starts in Bronze.
+            your league. Everyone starts in {LEAGUES[0].name}.
           </p>
 
           <Link
@@ -548,13 +539,13 @@ export default function Leaderboard() {
             </button>
           </section>
         ) : (
-          <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-            <div className="space-y-8">
+          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="min-w-0 space-y-6 sm:space-y-8">
               <LeagueHero data={data} />
               <Standings data={data} />
             </div>
 
-            <aside className="space-y-8">
+            <aside className="min-w-0 space-y-6 sm:space-y-8">
               {stats && <WeekChart stats={stats} color={leagueAt(data.leagueIndex).color} />}
               <HowLeaguesWork />
             </aside>

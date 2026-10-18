@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { generateClient } from 'aws-amplify/data';
+
+import type { Schema } from '../amplify/data/resource';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -137,27 +140,23 @@ export function useSettings(): AppSettings {
 }
 
 // -----------------------------------------------------------------------------
-// Types
+// Usage
+//
+// Everything here is counted from the learner's own saved data, so the numbers
+// on the Settings and Usage pages are real. Nothing is made up.
 // -----------------------------------------------------------------------------
 
-export type UsageKey =
-  | 'lessonsTaken'
-  | 'aiChats'
-  | 'liveVoice'
-  | 'coursesCreated'
-  | 'lessonsGenerated'
-  | 'podcastEpisodes'
-  | 'lessonVideos'
-  | 'learningImages'
-  | 'planningMessages'
-  | 'sourceFiles';
+export type UsageKey = 'lessonsTaken' | 'lessonsGenerated' | 'coursesCreated';
 
 export interface UsageItem {
   used: number;
-  limit: number;
+  /** null while no limit is enforced: the page then shows the count only. */
+  limit: number | null;
+  /** "day" counters reset at midnight IST, "month" counters on the 1st. */
+  period: 'day' | 'month';
   /** ISO timestamp of the next reset. */
   resetsAt: string;
-  /** IANA zone used to display the reset time. Defaults to the learner's zone. */
+  /** IANA zone used to display the reset time. */
   timeZone?: string;
 }
 
@@ -167,40 +166,42 @@ export interface UsageSnapshot {
 }
 
 export const USAGE_LABELS: Record<UsageKey, string> = {
-  lessonsTaken: 'Lessons taken',
-  aiChats: 'AI chats',
-  liveVoice: 'Live voice sessions',
-  coursesCreated: 'Courses created',
+  lessonsTaken: 'Lessons completed',
   lessonsGenerated: 'Lessons generated',
-  podcastEpisodes: 'Podcast episodes',
-  lessonVideos: 'Lesson videos',
-  learningImages: 'Learning images',
-  planningMessages: 'Course planning messages',
-  sourceFiles: 'Source files processed',
+  coursesCreated: 'Courses created',
 };
 
 export const USAGE_GROUPS: ReadonlyArray<{ title: string; keys: UsageKey[] }> = [
-  { title: 'Learning', keys: ['lessonsTaken', 'aiChats', 'liveVoice'] },
-  {
-    title: 'Creation',
-    keys: [
-      'coursesCreated',
-      'lessonsGenerated',
-      'podcastEpisodes',
-      'lessonVideos',
-      'learningImages',
-      'planningMessages',
-      'sourceFiles',
-    ],
-  },
+  { title: 'Learning', keys: ['lessonsTaken'] },
+  { title: 'Creation', keys: ['coursesCreated', 'lessonsGenerated'] },
 ];
+
+/**
+ * Free-plan limits. Leave a value as null until that limit is really enforced
+ * on the server: showing "0 of 5 used" for a limit nothing checks would be
+ * misleading. When a limit is set here AND enforced by the backend, the page
+ * shows a progress bar for it automatically.
+ */
+export const USAGE_LIMITS: Record<UsageKey, number | null> = {
+  lessonsTaken: null,
+  lessonsGenerated: null,
+  coursesCreated: null,
+};
+
+/** Flip to true once a /pricing page exists. Until then the upgrade card is hidden. */
+export const PRICING_ENABLED = false;
+
+export const hasUsageLimits = (): boolean =>
+  Object.values(USAGE_LIMITS).some((limit) => limit !== null);
 
 // -----------------------------------------------------------------------------
 // Formatting
 // -----------------------------------------------------------------------------
 
+const USAGE_TIME_ZONE = 'Asia/Kolkata';
+
 /** Formats a reset instant in India Standard Time. */
-export function formatReset(resetsAt: string, timeZone = 'Asia/Kolkata'): string {
+export function formatReset(resetsAt: string, timeZone = USAGE_TIME_ZONE): string {
   const date = new Date(resetsAt);
 
   if (Number.isNaN(date.getTime())) return '';
@@ -221,68 +222,148 @@ export function formatReset(resetsAt: string, timeZone = 'Asia/Kolkata'): string
 }
 
 // -----------------------------------------------------------------------------
-// Data
+// Period boundaries (India Standard Time, which has no daylight saving)
 // -----------------------------------------------------------------------------
 
-/**
- * TODO: replace the body with your real usage endpoint. Everything else (the
- * Settings card, the Usage page, the hook) only depends on `UsageSnapshot`.
- *
- * The placeholder below returns numbers matching the design reference so the
- * UI can be reviewed before the backend is wired up.
- */
-export async function fetchUsage(): Promise<UsageSnapshot> {
-  const now = new Date();
-  const istParts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
+const DAY_MS = 86_400_000;
+
+function istParts(date: Date): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: USAGE_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(now);
-  const part = (type: string) => istParts.find((item) => item.type === type)?.value;
-  const year = Number(part('year'));
-  const month = Number(part('month'));
-  const day = Number(part('day'));
-  const pad = (value: number) => String(value).padStart(2, '0');
+  }).formatToParts(date);
+  const part = (type: string) => Number(parts.find((item) => item.type === type)?.value);
 
-  // Use IST calendar dates to build the next reset instants explicitly.
-  const nextDayCalendar = new Date(year, month - 1, day + 1);
-  const nextMonthYear = month === 12 ? year + 1 : year;
-  const nextMonthNumber = month === 12 ? 1 : month + 1;
+  return { year: part('year'), month: part('month'), day: part('day') };
+}
 
-  const nextMidnight = new Date(
-    `${nextDayCalendar.getFullYear()}-${pad(nextDayCalendar.getMonth() + 1)}-${pad(nextDayCalendar.getDate())}T00:00:00+05:30`,
-  );
-  const nextMonth = new Date(
-    `${nextMonthYear}-${pad(nextMonthNumber)}-01T00:00:00+05:30`,
-  );
+const pad = (value: number) => String(value).padStart(2, '0');
 
-  const daily = (used: number, limit: number): UsageItem => ({
+/** Midnight IST at the start of the IST calendar day containing `date`. */
+export function istDayStart(date: Date): Date {
+  const { year, month, day } = istParts(date);
+
+  return new Date(`${year}-${pad(month)}-${pad(day)}T00:00:00+05:30`);
+}
+
+/** Midnight IST at the start of the IST calendar month containing `date`. */
+export function istMonthStart(date: Date): Date {
+  const { year, month } = istParts(date);
+
+  return new Date(`${year}-${pad(month)}-01T00:00:00+05:30`);
+}
+
+export function istNextMonthStart(date: Date): Date {
+  const { year, month } = istParts(date);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+
+  return new Date(`${nextYear}-${pad(nextMonth)}-01T00:00:00+05:30`);
+}
+
+// -----------------------------------------------------------------------------
+// Data
+// -----------------------------------------------------------------------------
+
+// Created on first use, not at import time: this file loads very early (it applies
+// the saved theme), possibly before Amplify has been configured.
+let dataClient: ReturnType<typeof generateClient<Schema>> | null = null;
+
+function getClient() {
+  dataClient ??= generateClient<Schema>();
+
+  return dataClient;
+}
+
+interface CountPage {
+  data: readonly unknown[] | null;
+  errors?: readonly { message: string }[];
+  nextToken?: string | null;
+}
+
+/** Counts every row a filtered list returns, following pagination to the end. */
+async function countRows(fetchPage: (nextToken?: string | null) => Promise<CountPage>): Promise<number> {
+  let total = 0;
+  let nextToken: string | null | undefined;
+
+  do {
+    const page = await fetchPage(nextToken);
+
+    if (page.errors?.length) {
+      throw new Error(page.errors.map((error) => error.message).join('; '));
+    }
+
+    total += page.data?.length ?? 0;
+    nextToken = page.nextToken;
+  } while (nextToken);
+
+  return total;
+}
+
+const USER_POOL = { authMode: 'userPool' } as const;
+
+export async function fetchUsage(): Promise<UsageSnapshot> {
+  const now = new Date();
+  const dayStart = istDayStart(now).toISOString();
+  const monthStart = istMonthStart(now).toISOString();
+
+  const [lessonsTaken, lessonsGenerated, coursesCreated] = await Promise.all([
+    // Lessons finished today. One progress row is saved per finished lesson.
+    countRows((nextToken) =>
+      getClient().models.UserProgress.list({
+        filter: { completedAt: { ge: dayStart } },
+        selectionSet: ['id'],
+        limit: 1000,
+        nextToken,
+        ...USER_POOL,
+      }),
+    ),
+    // Lessons written for this learner today (stamped when the cards are saved).
+    countRows((nextToken) =>
+      getClient().models.Lesson.list({
+        filter: { generatedAt: { ge: dayStart } },
+        selectionSet: ['id'],
+        limit: 1000,
+        nextToken,
+        ...USER_POOL,
+      }),
+    ),
+    // Journeys created this month. Deleting a journey removes it from the count.
+    countRows((nextToken) =>
+      getClient().models.Course.list({
+        filter: { createdAt: { ge: monthStart } },
+        selectionSet: ['id'],
+        limit: 1000,
+        nextToken,
+        ...USER_POOL,
+      }),
+    ),
+  ]);
+
+  const nextMidnight = new Date(istDayStart(now).getTime() + DAY_MS).toISOString();
+  const nextMonth = istNextMonthStart(now).toISOString();
+
+  const item = (
+    key: UsageKey,
+    used: number,
+    period: UsageItem['period'],
+    resetsAt: string,
+  ): UsageItem => ({
     used,
-    limit,
-    resetsAt: nextMidnight.toISOString(),
-    timeZone: 'Asia/Kolkata',
-  });
-  const monthly = (used: number, limit: number): UsageItem => ({
-    used,
-    limit,
-    resetsAt: nextMonth.toISOString(),
-    timeZone: 'Asia/Kolkata',
+    limit: USAGE_LIMITS[key],
+    period,
+    resetsAt,
+    timeZone: USAGE_TIME_ZONE,
   });
 
   return {
     plan: 'free',
     items: {
-      lessonsTaken: daily(0, 5),
-      aiChats: daily(0, 10),
-      liveVoice: { used: 0, limit: 1, resetsAt: nextMonth.toISOString(), timeZone: 'Asia/Kolkata' },
-      coursesCreated: monthly(2, 3),
-      lessonsGenerated: daily(0, 5),
-      podcastEpisodes: monthly(1, 3),
-      lessonVideos: monthly(0, 2),
-      learningImages: daily(0, 5),
-      planningMessages: daily(0, 30),
-      sourceFiles: daily(0, 5),
+      lessonsTaken: item('lessonsTaken', lessonsTaken, 'day', nextMidnight),
+      lessonsGenerated: item('lessonsGenerated', lessonsGenerated, 'day', nextMidnight),
+      coursesCreated: item('coursesCreated', coursesCreated, 'month', nextMonth),
     },
   };
 }
@@ -315,7 +396,16 @@ export function useUsage() {
   useEffect(() => {
     void refresh();
 
+    // Counts change while the tab is in the background (for example after a
+    // lesson), so refresh when the learner comes back to it.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void refresh();
+    };
+
+    document.addEventListener('visibilitychange', onVisible);
+
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
       // Ignore any in-flight response after unmount.
       request.current += 1;
     };

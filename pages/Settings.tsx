@@ -25,14 +25,17 @@ import { resetGamification } from '../lib/gamification';
 import {
   APP_LANGUAGES,
   CONTENT_LANGUAGES,
+  PRICING_ENABLED,
+  USAGE_GROUPS,
   USAGE_LABELS,
   formatReset,
+  hasUsageLimits,
   useUsage,
   type UsageItem,
-  type UsageKey,
   updateSettings,
   useSettings,
 } from '../lib/settings';
+import { playSound } from '../lib/sounds';
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -92,11 +95,31 @@ function UsageMeter({
   label: string;
   item: UsageItem;
 }) {
-  const { used, limit } = item;
+  const { used, limit, period } = item;
+  const reset = formatReset(item.resetsAt, item.timeZone);
+
+  // No limit is enforced for this item yet: show the real count, no bar.
+  if (limit === null) {
+    return (
+      <div className="flex items-start justify-between gap-4 px-5 py-4">
+        <div className="min-w-0">
+          <p className="text-[15px] font-extrabold text-white">{label}</p>
+          {reset && <p className="mt-0.5 text-xs text-[#91A4AC]">{reset}</p>}
+        </div>
+
+        <p className="shrink-0 text-sm font-semibold text-[#C8D3DA]">
+          <span className="font-display text-xl font-extrabold text-white">
+            {used}
+          </span>{' '}
+          {period === 'day' ? 'today' : 'this month'}
+        </p>
+      </div>
+    );
+  }
+
   const percent =
     limit > 0 ? Math.min(100, Math.round((used / limit) * 100)) : 0;
   const full = limit > 0 && used >= limit;
-  const reset = formatReset(item.resetsAt, item.timeZone);
 
   return (
     <div className="px-5 py-4">
@@ -203,18 +226,21 @@ function SelectControl({
   value,
   onChange,
   options,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: ReadonlyArray<{ value: string; label: string }>;
+  disabled?: boolean;
 }) {
   return (
     <select
       aria-label={label}
       value={value}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
-      className={`h-11 max-w-[170px] rounded-xl border-2 border-[#37464F] bg-[#131F24] px-3 text-sm font-bold text-white ${focusRing}`}
+      className={`h-11 max-w-[170px] rounded-xl border-2 border-[#37464F] bg-[#131F24] px-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -594,14 +620,13 @@ function SignOutDialog({ onClose }: { onClose: () => void }) {
 // -----------------------------------------------------------------------------
 
 export default function Settings() {
-  const navigate = useNavigate();
   const settings = useSettings();
 
   const [email, setEmail] = useState('');
   const [usesGoogle, setUsesGoogle] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
-  const { data: usage } = useUsage();
+  const { data: usage, error: usageError, refresh: refreshUsage } = useUsage();
 
   useEffect(() => {
     let active = true;
@@ -659,13 +684,14 @@ export default function Settings() {
           <Row
             icon={Languages}
             title="App language"
-            description="The language used for buttons, navigation, settings and other app controls."
+            description="The language used for buttons, navigation and settings. More languages are coming soon."
             control={
               <SelectControl
                 label="App language"
                 value={settings.appLanguage}
                 onChange={(appLanguage) => updateSettings({ appLanguage })}
                 options={toOptions(APP_LANGUAGES)}
+                disabled={APP_LANGUAGES.length < 2}
               />
             }
           />
@@ -673,13 +699,14 @@ export default function Settings() {
           <Row
             icon={Globe}
             title="Content language"
-            description="The language used for generated learning content and AI responses."
+            description="The language used for generated lessons. More languages are coming soon."
             control={
               <SelectControl
                 label="Content language"
                 value={settings.contentLanguage}
                 onChange={(contentLanguage) => updateSettings({ contentLanguage })}
                 options={toOptions(CONTENT_LANGUAGES)}
+                disabled={CONTENT_LANGUAGES.length < 2}
               />
             }
           />
@@ -688,7 +715,11 @@ export default function Settings() {
         <Section
           id="usage"
           title="Usage"
-          hint="Keep track of your daily and monthly limits."
+          hint={
+            hasUsageLimits()
+              ? 'Keep track of your daily and monthly limits.'
+              : 'What you’ve done today and this month.'
+          }
         >
           {usage ? (
             <>
@@ -701,6 +732,19 @@ export default function Settings() {
                 item={usage.items.coursesCreated}
               />
             </>
+          ) : usageError ? (
+            <div className="flex items-center justify-between gap-3 px-5 py-4">
+              <p role="alert" className="text-sm font-semibold text-[#FB7185]">
+                We couldn’t load your usage.
+              </p>
+              <button
+                type="button"
+                onClick={() => void refreshUsage()}
+                className={secondaryButtonClasses}
+              >
+                Try again
+              </button>
+            </div>
           ) : (
             <p className="px-5 py-4 text-sm text-[#91A4AC]">Loading usage…</p>
           )}
@@ -724,7 +768,12 @@ export default function Settings() {
               <Switch
                 label="Sound effects"
                 checked={settings.soundEffects}
-                onChange={(soundEffects) => updateSettings({ soundEffects })}
+                onChange={(soundEffects) => {
+                  updateSettings({ soundEffects });
+
+                  // A short preview, so the learner hears what they just turned on.
+                  if (soundEffects) playSound('correct');
+                }}
               />
             }
           />
@@ -805,22 +854,6 @@ export default function Settings() {
 
 const UPGRADE_PATH = '/pricing';
 
-const PRIMARY_USAGE_GROUPS: ReadonlyArray<{
-  title: string;
-  keys: UsageKey[];
-}> = [
-  { title: 'Learning', keys: ['lessonsTaken', 'aiChats'] },
-  { title: 'Creation', keys: ['coursesCreated', 'lessonsGenerated'] },
-];
-
-const MORE_USAGE_KEYS: UsageKey[] = [
-  'liveVoice',
-  'lessonVideos',
-  'learningImages',
-  'planningMessages',
-  'sourceFiles',
-];
-
 export function Usage() {
   const navigate = useNavigate();
   const { data, loading, error, refresh } = useUsage();
@@ -841,7 +874,9 @@ export function Usage() {
             Usage
           </h1>
           <p className="mt-1 text-sm text-[#91A4AC]">
-            Keep track of your daily and monthly limits.
+            {hasUsageLimits()
+              ? 'Keep track of your daily and monthly limits.'
+              : 'What you’ve done today and this month.'}
           </p>
         </div>
 
@@ -884,7 +919,7 @@ export function Usage() {
 
       {data && (
         <div className="space-y-8">
-          {PRIMARY_USAGE_GROUPS.map((group) => (
+          {USAGE_GROUPS.map((group) => (
             <Section
               key={group.title}
               id={`usage-${group.title.toLowerCase()}`}
@@ -900,7 +935,7 @@ export function Usage() {
             </Section>
           ))}
 
-          {data.plan === 'free' && (
+          {PRICING_ENABLED && data.plan === 'free' && (
             <section
               aria-labelledby="upgrade-title"
               className="flex flex-col gap-4 rounded-2xl border-2 border-orange/40 bg-orange/5 p-5 sm:flex-row sm:items-center sm:justify-between"
@@ -929,7 +964,8 @@ export function Usage() {
           )}
 
           <p className="text-xs leading-5 text-[#78909A]">
-            Usage refreshes when you open this page. All reset times are shown in India Standard Time (IST).
+            Counts update whenever you open this page. Daily counts reset at
+            midnight and monthly counts on the 1st, in India Standard Time (IST).
           </p>
         </div>
       )}

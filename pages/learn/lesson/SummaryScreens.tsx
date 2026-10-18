@@ -4,6 +4,7 @@ import { Check, Flame, Target, Zap } from 'lucide-react';
 
 import { GrokitMascot } from '../../../components/Grokitmascot';
 import { useGamification } from '../../../lib/gamification';
+import { playSound } from '../../../lib/sounds';
 import { primaryButton, secondaryButton } from './lessonTheme';
 
 // ─── Count-up number ──────────────────────────────────────────────────────────
@@ -67,6 +68,11 @@ export function CompleteScreen({
 }: CompleteScreenProps) {
   const reduceMotion = useReducedMotion();
   const percent = total > 0 ? Math.round((correct / total) * 100) : null;
+
+  // A little fanfare, only when XP was actually earned.
+  useEffect(() => {
+    if (!alreadyCompleted) playSound('complete');
+  }, [alreadyCompleted]);
 
   return (
     <div className="mx-auto flex min-h-[88dvh] w-full max-w-[560px] flex-col items-center justify-center px-5 py-10 text-center">
