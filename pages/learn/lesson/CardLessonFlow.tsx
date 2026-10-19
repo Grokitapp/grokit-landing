@@ -16,9 +16,12 @@ import {
   type LessonCompletionResult,
 } from '../../../lib/courseGeneration';
 import { refreshGamification, useGamification } from '../../../lib/gamification';
+import { cardToSpeech, predictionToSpeech, reviewToSpeech, useReadAloud } from '../../../lib/readAloud';
+import { useSettings } from '../../../lib/settings';
 
 import { KIND_LABELS, primaryButton, secondaryButton } from './lessonTheme';
 import PracticeView from './PracticeView';
+import ReadAloudButton from './ReadAloudButton';
 import RichText from './RichText';
 import { CompleteScreen, StreakScreen } from './SummaryScreens';
 import LessonVisual from './Visuals';
@@ -58,6 +61,8 @@ const PRACTICE_POLL_MS = 2500;
 
 export default function CardLessonFlow({ lesson: initialLesson, completedBefore, onLeave }: CardLessonFlowProps) {
   const reduceMotion = useReducedMotion();
+  const { supported: speechSupported, status: speechStatus, speak, stop } = useReadAloud();
+  const { autoReadAloud } = useSettings();
 
   const [lesson, setLesson] = useState<LessonRecord>(initialLesson);
   const [reviewOnly, setReviewOnly] = useState(completedBefore);
@@ -216,6 +221,8 @@ export default function CardLessonFlow({ lesson: initialLesson, completedBefore,
   }, [step, exitOpen, goNext, goBack, cardIndex]);
 
   const requestExit = () => {
+    stop();
+
     if (reviewOnly || step === 'complete' || step === 'streak') {
       onLeave();
       return;
@@ -267,9 +274,26 @@ export default function CardLessonFlow({ lesson: initialLesson, completedBefore,
     setStep('cards');
   };
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Read aloud ──────────────────────────────────────────────────────────────
 
   const card = content.cards[cardIndex];
+
+  const speechText = useMemo(() => {
+    if (step === 'prediction' && content.prediction) return predictionToSpeech(content.prediction);
+    if (step === 'cards' && card) return cardToSpeech(card);
+    if (step === 'review') return reviewToSpeech(content);
+
+    return '';
+  }, [step, card, content]);
+
+  // New screen: always stop the old voice; start the new one only if auto-read is on.
+  useEffect(() => {
+    stop();
+
+    if (autoReadAloud && speechText) speak(speechText);
+  }, [speechText, autoReadAloud, speak, stop]);
+
+  // ── Render ──────────────────────────────────────────────────────────────────
   const showHeader = step === 'prediction' || step === 'cards' || step === 'review';
 
   return (
@@ -307,7 +331,14 @@ export default function CardLessonFlow({ lesson: initialLesson, completedBefore,
             })}
           </div>
 
-          <span className="w-8" aria-hidden="true" />
+          {speechSupported && speechText ? (
+            <ReadAloudButton
+              speaking={speechStatus === 'speaking'}
+              onToggle={() => (speechStatus === 'speaking' ? stop() : speak(speechText))}
+            />
+          ) : (
+            <span className="w-9" aria-hidden="true" />
+          )}
         </header>
       )}
 

@@ -6,7 +6,9 @@ import {
   ArrowRight,
   Check,
   ChevronRight,
+  Gauge,
   Globe,
+  Headphones,
   KeyRound,
   Languages,
   Loader2,
@@ -774,6 +776,35 @@ export default function Settings() {
                   // A short preview, so the learner hears what they just turned on.
                   if (soundEffects) playSound('correct');
                 }}
+              />
+            }
+          />
+          <Row
+            icon={Headphones}
+            title="Auto read aloud"
+            description="Read each lesson card out loud as you move through a lesson."
+            control={
+              <Switch
+                label="Auto read aloud"
+                checked={settings.autoReadAloud}
+                onChange={(autoReadAloud) => updateSettings({ autoReadAloud })}
+              />
+            }
+          />
+          <Row
+            icon={Gauge}
+            title="Reading speed"
+            description="How fast read aloud speaks."
+            control={
+              <SelectControl
+                label="Reading speed"
+                value={String(settings.readAloudSpeed)}
+                onChange={(value) => updateSettings({ readAloudSpeed: Number(value) })}
+                options={[
+                  { value: '0.85', label: 'Slow' },
+                  { value: '1', label: 'Normal' },
+                  { value: '1.2', label: 'Fast' },
+                ]}
               />
             }
           />

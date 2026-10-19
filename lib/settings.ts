@@ -23,6 +23,10 @@ export interface AppSettings {
   /** Light / dark / follow the device. */
   theme: ThemePreference;
   soundEffects: boolean;
+  /** Speech rate for read aloud: 0.85 slow, 1 normal, 1.2 fast. */
+  readAloudSpeed: number;
+  /** Start reading each lesson card out loud automatically. */
+  autoReadAloud: boolean;
 }
 
 export const CONTENT_LANGUAGES = [
@@ -41,6 +45,8 @@ const DEFAULTS: AppSettings = {
   // The app is dark today, so keep that as the default rather than "system".
   theme: 'dark',
   soundEffects: true,
+  readAloudSpeed: 1,
+  autoReadAloud: false,
 };
 
 const isTheme = (value: unknown): value is ThemePreference =>
@@ -71,6 +77,16 @@ function load(): AppSettings {
         typeof parsed.soundEffects === 'boolean'
           ? parsed.soundEffects
           : DEFAULTS.soundEffects,
+      readAloudSpeed:
+        typeof parsed.readAloudSpeed === 'number' &&
+        parsed.readAloudSpeed >= 0.5 &&
+        parsed.readAloudSpeed <= 2
+          ? parsed.readAloudSpeed
+          : DEFAULTS.readAloudSpeed,
+      autoReadAloud:
+        typeof parsed.autoReadAloud === 'boolean'
+          ? parsed.autoReadAloud
+          : DEFAULTS.autoReadAloud,
     };
   } catch {
     return DEFAULTS;
