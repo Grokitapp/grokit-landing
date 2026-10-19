@@ -259,10 +259,72 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
+const LONGEST_ASIDE = 100;
+
+function replaceDashesInSentence(sentence: string): string {
+  const parts = sentence.split(/\s*—\s*/);
+  const dashes = parts.length - 1;
+
+  if (dashes === 0) return sentence;
+
+  // Asides come in pairs. Pair them up when each one is short enough to sit in brackets.
+  const asides = parts.filter((_, index) => index % 2 === 1);
+  const pairable =
+    dashes % 2 === 0 &&
+    parts[0].trim() !== '' &&
+    asides.every((aside) => aside.trim() !== '' && aside.length <= LONGEST_ASIDE);
+
+  if (!pairable) return parts.join(', ');
+
+  let result = parts[0];
+
+  for (let index = 1; index < parts.length; index += 1) {
+    const part = parts[index];
+
+    if (index % 2 === 1) {
+      result += ` (${part.trim()}`;
+    } else {
+      result += /^[.,;:!?]/.test(part) ? `)${part}` : `) ${part}`;
+    }
+  }
+
+  return result;
+}
+
+export function removeDashes(value: string): string {
+  const normalised = value.replace(/\s+[–−]\s+/g, '—').replace(/\s*-{2,}\s*/g, '—');
+
+  if (!normalised.includes('—')) return normalised;
+
+  // Work one sentence at a time so a pair never reaches across two sentences.
+  return normalised
+    .split(/([.!?]+\s+)/)
+    .map((chunk, index) => (index % 2 === 0 ? replaceDashesInSentence(chunk) : chunk))
+    .join('')
+    .replace(/,(\s*,)+/g, ',')
+    .replace(/,\s*([.!?;:])/g, '$1')
+    .replace(/^,\s*/, '');
+}
+
 function text(value: unknown, maxLength: number): string {
   if (typeof value !== 'string') return '';
 
-  return value.replace(/\s+/g, ' ').trim().slice(0, maxLength);
+  return removeDashes(value.replace(/\s+/g, ' ').trim()).slice(0, maxLength);
+}
+
+/** Applies removeDashes to every string inside stored lesson data. */
+function cleanStrings<T>(value: T): T {
+  if (typeof value === 'string') return removeDashes(value) as unknown as T;
+
+  if (Array.isArray(value)) return value.map(cleanStrings) as unknown as T;
+
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, cleanStrings(item)]),
+    ) as T;
+  }
+
+  return value;
 }
 
 /** Paragraph text keeps its content but is flattened to one line. */
@@ -559,7 +621,8 @@ export function readLessonContent(value: unknown): LessonContent | null {
 
   if (!isRecord(parsed) || !Array.isArray(parsed.cards) || parsed.cards.length === 0) return null;
 
-  return parsed as unknown as LessonContent;
+  // Also cleans lessons that were saved before dashes were removed at write time.
+  return cleanStrings(parsed) as unknown as LessonContent;
 }
 
 export function readPractice(value: unknown): PracticeQuestion[] | null {
@@ -575,7 +638,7 @@ export function readPractice(value: unknown): PracticeQuestion[] | null {
       typeof item.prompt === 'string',
   );
 
-  return valid ? (parsed as PracticeQuestion[]) : null;
+  return valid ? cleanStrings(parsed as PracticeQuestion[]) : null;
 }
 
 /* ---------------------------------------------------------------------------
