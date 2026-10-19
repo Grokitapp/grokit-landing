@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { ArrowLeft, AtSign, Check, Loader2, RefreshCw, User } from 'lucide-react';
 
 import {
@@ -833,13 +833,20 @@ export default function EditProfile() {
   // refreshes it quietly in the background.
   const { data: profile, loading, refresh } = useProfileRecord();
 
+  // Pages that send people here (e.g. "make journey public" asking for a
+  // username) pass `state={{ from: '/their/path' }}` so Back returns to them.
+  const location = useLocation();
+  const from = (location.state as { from?: unknown } | null)?.from;
+  const backTo = typeof from === 'string' && from.startsWith('/') ? from : '/profile';
+  const backLabel = backTo === '/profile' ? 'Back to profile' : 'Back';
+
   return (
     <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
       <header className="mb-6 flex items-center gap-3">
         <Link
-          to="/profile"
-          aria-label="Back to profile"
-          title="Back to profile"
+          to={backTo}
+          aria-label={backLabel}
+          title={backLabel}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
         >
           <ArrowLeft className="h-5 w-5" aria-hidden="true" />

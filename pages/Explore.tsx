@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Bookmark, ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import {
+  Bookmark,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  Layers,
+  Play,
+  User,
+  X,
+} from 'lucide-react';
 
 import { cacheKeys, useCachedQuery } from '../lib/cache';
 import { listPublicJourneys, type PublicJourney } from '../lib/explore';
@@ -89,7 +98,10 @@ const hideScrollbar =
 // -----------------------------------------------------------------------------
 
 interface TileHandlers {
+  /** Opens the details for a journey. */
   onOpen: (journey: PublicJourney) => void;
+  /** Starts a new journey on the same topic straight away. */
+  onStart: (journey: PublicJourney) => void;
   isSaved: (journey: PublicJourney) => boolean;
   isSavePending: (journey: PublicJourney) => boolean;
   onToggleSave: (journey: PublicJourney) => void;
@@ -127,9 +139,9 @@ function renderTile(
               onClick: () => handlers.onToggleSave(journey),
             },
             {
-              label: 'Create from this',
+              label: 'Start this journey',
               icon: <Play className="h-4 w-4" aria-hidden="true" />,
-              onClick: () => handlers.onOpen(journey),
+              onClick: () => handlers.onStart(journey),
             },
           ]}
         />
@@ -252,6 +264,160 @@ function JourneyRow({
 }
 
 // -----------------------------------------------------------------------------
+// Details dialog (bottom sheet on phones, centred card on larger screens)
+// -----------------------------------------------------------------------------
+
+function JourneyDialog({
+  journey,
+  saved,
+  savePending,
+  onClose,
+  onStart,
+  onToggleSave,
+}: {
+  journey: PublicJourney;
+  saved: boolean;
+  savePending: boolean;
+  onClose: () => void;
+  onStart: () => void;
+  onToggleSave: () => void;
+}) {
+  const startRef = useRef<HTMLButtonElement>(null);
+
+  // Escape closes it, the page behind stops scrolling, and focus returns to
+  // the card that opened it.
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    startRef.current?.focus();
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    document.addEventListener('keydown', onKey);
+
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = overflow;
+      previous?.focus?.();
+    };
+  }, [onClose]);
+
+  const lessons = journey.lessonCount ?? 0;
+  const zones = journey.zoneCount ?? 0;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 sm:items-center sm:p-4"
+      onClick={onClose}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="journey-dialog-title"
+        onClick={(event) => event.stopPropagation()}
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-[#37464F] bg-[#19282E] shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:max-w-md sm:rounded-3xl"
+      >
+        <div className="relative h-40 overflow-hidden bg-gradient-to-br from-[#5B3A7A] to-[#1F1230] sm:h-44">
+          {journey.heroImageUrl && (
+            <img
+              src={journey.heroImageUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              draggable={false}
+            />
+          )}
+
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-gradient-to-t from-[#19282E] via-transparent to-black/20"
+          />
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white transition hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className="px-5 pb-6 pt-1 sm:px-6">
+          {journey.category && (
+            <span className="inline-block rounded-full bg-[#26373E] px-3 py-1 text-xs font-bold text-[#C8D3DA]">
+              {journey.category}
+            </span>
+          )}
+
+          <h2
+            id="journey-dialog-title"
+            className="mt-2 break-words font-display text-2xl font-extrabold leading-tight text-white"
+          >
+            {journey.title}
+          </h2>
+
+          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm font-semibold text-[#A9BAC0]">
+            {lessons > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <BookOpen className="h-4 w-4" aria-hidden="true" />
+                {lessons} {lessons === 1 ? 'lesson' : 'lessons'}
+              </span>
+            )}
+            {zones > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Layers className="h-4 w-4" aria-hidden="true" />
+                {zones} {zones === 1 ? 'zone' : 'zones'}
+              </span>
+            )}
+            {journey.authorUsername && (
+              <span className="inline-flex items-center gap-1.5">
+                <User className="h-4 w-4" aria-hidden="true" />@{journey.authorUsername}
+              </span>
+            )}
+          </p>
+
+          <p className="mt-4 text-sm leading-6 text-[#91A4AC]">
+            You’ll start your own journey on this topic, shaped to you. The
+            author’s lessons and progress stay private.
+          </p>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <button
+              ref={startRef}
+              type="button"
+              onClick={onStart}
+              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-orange px-5 text-sm font-extrabold text-white shadow-[0_4px_0_#C94713] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:translate-y-0.5 active:shadow-none"
+            >
+              <Play className="h-4 w-4" aria-hidden="true" />
+              Start this journey
+            </button>
+
+            <button
+              type="button"
+              onClick={onToggleSave}
+              disabled={savePending}
+              aria-pressed={saved}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-[#37464F] px-5 text-sm font-extrabold text-white transition hover:border-[#536871] hover:bg-[#26373E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:opacity-60"
+            >
+              <Bookmark
+                className="h-4 w-4"
+                fill={saved ? 'currentColor' : 'none'}
+                aria-hidden="true"
+              />
+              {saved ? 'Saved' : 'Save'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
 // States
 // -----------------------------------------------------------------------------
 
@@ -300,6 +466,8 @@ export default function Explore() {
   const error = journeysQuery.error;
 
   const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<PublicJourney | null>(null);
+  const closeDetails = useCallback(() => setSelected(null), []);
 
   // public journey id -> saved record id. (If the saved list can't load, the
   // bookmarks just look empty; browsing still works.)
@@ -351,17 +519,28 @@ export default function Explore() {
     [journeys, trimmedQuery],
   );
 
-  // Clicking a journey starts the create flow with that topic pre-filled.
-  // Create.tsx reads `location.state.prefillTopic`.
-  const openJourney = useCallback(
+  // Clicking a card opens its details. "Start this journey" begins the same
+  // flow as Create (personalise, then generate) with the topic already filled
+  // in, so nobody has to retype it.
+  const openJourney = useCallback((journey: PublicJourney) => {
+    setSelected(journey);
+  }, []);
+
+  const startJourney = useCallback(
     (journey: PublicJourney) => {
-      navigate('/create', { state: { prefillTopic: journey.topic } });
+      navigate('/learn/personalize', {
+        state: {
+          prompt: journey.topic?.trim() || journey.title,
+          attachmentName: null,
+        },
+      });
     },
     [navigate],
   );
 
   const handlers: TileHandlers = {
     onOpen: openJourney,
+    onStart: startJourney,
     isSaved: (journey) => savedIds.has(journey.id),
     isSavePending: (journey) => pendingSaves.has(journey.id),
     onToggleSave: (journey) => void toggleSave(journey),
@@ -441,6 +620,17 @@ export default function Explore() {
           ))
         )}
       </div>
+
+      {selected && (
+        <JourneyDialog
+          journey={selected}
+          saved={savedIds.has(selected.id)}
+          savePending={pendingSaves.has(selected.id)}
+          onClose={closeDetails}
+          onStart={() => startJourney(selected)}
+          onToggleSave={() => void toggleSave(selected)}
+        />
+      )}
     </div>
   );
 }

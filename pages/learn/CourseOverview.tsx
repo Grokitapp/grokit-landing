@@ -10,6 +10,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
   ArrowLeft,
   ArrowRight,
+  AtSign,
   BookOpen,
   CheckCircle2,
   Compass,
@@ -33,7 +34,9 @@ import JourneyPath, {
 import { cacheKeys, useCachedQuery } from '../../lib/cache';
 import { loadJourneyRaw, type JourneyRaw } from '../../lib/courseGeneration';
 import { useGamification } from '../../lib/gamification';
+import { useProfileRecord } from '../../lib/profile';
 import {
+  PUBLIC_CATEGORIES,
   getPublicJourneyForCourse,
   publishJourney,
   unpublishJourney,
@@ -62,17 +65,8 @@ const EMPTY_JOURNEY: JourneyData = {
 
 type JourneyView = 'path' | 'publish';
 
-const PUBLIC_CATEGORIES = [
-  'AI & Tech',
-  'Business',
-  'Science',
-  'Mind & Life',
-  'Creativity',
-  'Health & Fitness',
-  'History',
-  'Languages',
-  'Other',
-];
+// Where "Add username" sends people. Change this if your edit-profile route differs.
+const EDIT_PROFILE_PATH = '/profile/edit';
 
 interface JourneyStats {
   completed: number;
@@ -295,6 +289,34 @@ function PublishPanel({
   const [error, setError] = useState<string | null>(null);
   const [justPublished, setJustPublished] = useState(false);
 
+  // Public journeys are credited to their author, so a username is required.
+  const location = useLocation();
+  const {
+    data: profile,
+    loading: profileLoading,
+    refresh: refreshProfile,
+  } = useProfileRecord();
+  const username = profile?.username?.trim() ?? '';
+  const needsUsername = !profileLoading && Boolean(profile) && !username;
+  const profileFailed = !profileLoading && !profile;
+
+  // After adding a username, "Back" on the edit page returns here, reopening this panel.
+  const returnTo = (() => {
+    const params = new URLSearchParams(location.search);
+
+    params.set('publish', '1');
+
+    return `${location.pathname}?${params.toString()}`;
+  })();
+
+  const canPublish =
+    busy === null &&
+    !checking &&
+    !checkFailed &&
+    !profileLoading &&
+    Boolean(username) &&
+    Boolean(category);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -321,7 +343,7 @@ function PublishPanel({
   }, [courseId, checkKey]);
 
   const handlePublish = async () => {
-    if (busy || checking || checkFailed || existing) return;
+    if (!canPublish || existing) return;
 
     setBusy('publish');
     setError(null);
@@ -486,8 +508,8 @@ function PublishPanel({
         ) : (
           <>
             <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
-              Pick a category so people can find it (optional). It will appear
-              in Explore as{' '}
+              Pick a category so people can find it. It will appear in Explore
+              as{' '}
               <span className="font-bold text-white">{title}</span>
               {sizeText ? ` · ${sizeText}` : ''}.
             </p>
@@ -495,7 +517,7 @@ function PublishPanel({
             <div
               role="group"
               aria-label="Category"
-              className="mt-4 flex flex-wrap gap-2"
+              className="mt-4 flex max-h-[220px] flex-wrap gap-2 overflow-y-auto pr-1"
             >
               {PUBLIC_CATEGORIES.map((item) => {
                 const selected = category === item;
@@ -518,6 +540,53 @@ function PublishPanel({
               })}
             </div>
 
+            {needsUsername && (
+              <div
+                role="alert"
+                className="mt-4 flex flex-col gap-3 rounded-xl border border-orange/30 bg-orange/[0.06] p-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="flex gap-3">
+                  <AtSign
+                    className="mt-0.5 h-5 w-5 shrink-0 text-orange"
+                    aria-hidden="true"
+                  />
+                  <div className="min-w-0">
+                    <p className="text-sm font-extrabold text-white">
+                      Add a username to publish
+                    </p>
+                    <p className="mt-0.5 text-sm leading-6 text-[#A9BAC0]">
+                      Your username is shown as the author of public journeys.
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  to={EDIT_PROFILE_PATH}
+                  state={{ from: returnTo }}
+                  className={`${secondaryButtonClasses} shrink-0`}
+                >
+                  Add username
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
+              </div>
+            )}
+
+            {profileFailed && (
+              <div
+                role="alert"
+                className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-red-400/20 bg-red-400/[0.06] px-3 py-2.5 text-xs font-medium text-red-200"
+              >
+                We couldn’t check your username.
+                <button
+                  type="button"
+                  onClick={() => void refreshProfile()}
+                  className="font-bold text-white underline"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
             {checkFailed && (
               <div
                 role="alert"
@@ -538,7 +607,7 @@ function PublishPanel({
               <button
                 type="button"
                 onClick={handlePublish}
-                disabled={busy !== null || checking || checkFailed}
+                disabled={!canPublish}
                 className={`${primaryButtonClasses} disabled:pointer-events-none disabled:opacity-50`}
               >
                 {busy === 'publish' ? (
@@ -563,6 +632,12 @@ function PublishPanel({
                 Not now
               </button>
             </div>
+
+            {!category && username && !checking && (
+              <p className="mt-3 text-xs font-semibold text-[#91A4AC]">
+                Choose a category to continue.
+              </p>
+            )}
           </>
         )}
 
@@ -793,16 +868,21 @@ export default function CourseOverview() {
     const routeState = location.state as
       | { openPublish?: boolean; [key: string]: unknown }
       | null;
+    const params = new URLSearchParams(location.search);
 
-    if (!routeState?.openPublish) return;
+    // Also opened by "?publish=1", used when returning from adding a username.
+    if (!routeState?.openPublish && params.get('publish') !== '1') return;
 
     setView('publish');
 
-    const nextState = { ...routeState };
+    const nextState = { ...(routeState ?? {}) };
     delete nextState.openPublish;
+    params.delete('publish');
+
+    const search = params.toString();
 
     navigate(
-      { pathname: location.pathname, search: location.search },
+      { pathname: location.pathname, search: search ? `?${search}` : '' },
       { replace: true, state: nextState },
     );
   }, [location.pathname, location.search, location.state, navigate]);

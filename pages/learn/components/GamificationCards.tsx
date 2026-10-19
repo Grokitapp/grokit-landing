@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import {
   Check,
@@ -332,30 +332,45 @@ export function BadgeGrid({ badges }: { badges: ProfileBadge[] }) {
   );
 }
 
-function MiniMedal({ badge }: { badge: ProfileBadge }) {
+function MiniMedal({
+  badge,
+  selected,
+  onSelect,
+}: {
+  badge: ProfileBadge;
+  selected: boolean;
+  onSelect: () => void;
+}) {
   const tone = TONES[badge.tone];
   const Icon = BADGE_ICONS[badge.icon];
 
   return (
-    <li
-      title={`${badge.title}${badge.earned ? ' (earned)' : ' (locked)'}`}
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
-      style={
-        badge.earned
-          ? {
-              backgroundImage: `linear-gradient(to bottom, ${tone.from}, ${tone.to})`,
-              boxShadow: `0 2px 0 ${tone.edge}`,
-            }
-          : { backgroundColor: '#202F35', boxShadow: '0 2px 0 #0D161A' }
-      }
-    >
-      <Icon
-        aria-hidden="true"
-        className={`h-4 w-4 ${badge.earned ? 'text-white' : 'text-[#60757E]'}`}
-      />
-      <span className="sr-only">
-        {badge.title}: {badge.earned ? 'earned' : 'locked'}
-      </span>
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={selected}
+        title={`${badge.title}${badge.earned ? ' (earned)' : ' (locked)'}`}
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange ${
+          selected ? 'scale-110 ring-2 ring-white/70' : ''
+        }`}
+        style={
+          badge.earned
+            ? {
+                backgroundImage: `linear-gradient(to bottom, ${tone.from}, ${tone.to})`,
+                boxShadow: `0 2px 0 ${tone.edge}`,
+              }
+            : { backgroundColor: '#202F35', boxShadow: '0 2px 0 #0D161A' }
+        }
+      >
+        <Icon
+          aria-hidden="true"
+          className={`h-4 w-4 ${badge.earned ? 'text-white' : 'text-[#60757E]'}`}
+        />
+        <span className="sr-only">
+          {badge.title}: {badge.earned ? 'earned' : 'locked'}
+        </span>
+      </button>
     </li>
   );
 }
@@ -384,6 +399,31 @@ export function NextBadgeCard({ stats }: { stats: GamificationStats }) {
 
   const visibleBadges = badges.slice(0, 8);
   const remainingBadges = Math.max(0, totalCount - visibleBadges.length);
+
+  // Tap (or click) a mini badge to read about it; works on touch, where the
+  // old hover-only `title` never showed. Tapping elsewhere or Escape closes it.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const selected = visibleBadges.find((badge) => badge.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!previewRef.current?.contains(event.target as Node)) setSelectedId(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSelectedId(null);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [selectedId]);
 
   const ringSize = 76;
   const ringStroke = 4;
@@ -472,13 +512,20 @@ export function NextBadgeCard({ stats }: { stats: GamificationStats }) {
       )}
 
       {totalCount > 0 && (
-        <>
+        <div ref={previewRef}>
           <ul
             className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-3"
             aria-label={`Preview of ${totalCount} badges`}
           >
             {visibleBadges.map((badge) => (
-              <MiniMedal key={badge.id} badge={badge} />
+              <MiniMedal
+                key={badge.id}
+                badge={badge}
+                selected={badge.id === selectedId}
+                onSelect={() =>
+                  setSelectedId((current) => (current === badge.id ? null : badge.id))
+                }
+              />
             ))}
 
             {remainingBadges > 0 && (
@@ -494,7 +541,22 @@ export function NextBadgeCard({ stats }: { stats: GamificationStats }) {
               </li>
             )}
           </ul>
-        </>
+
+          {selected && (
+            <p
+              role="status"
+              className="mt-3 rounded-xl border border-[#37464F] bg-[#0D181C] px-3 py-2 text-xs font-semibold leading-5 text-white"
+            >
+              <span className="font-extrabold">{selected.title}</span>
+              {' · '}
+              {selected.description}
+              {' · '}
+              <span className={selected.earned ? 'text-[#58CC02]' : 'text-[#91A4AC]'}>
+                {selected.earned ? 'Earned' : `${selected.value}/${selected.target}`}
+              </span>
+            </p>
+          )}
+        </div>
       )}
 
       <Link

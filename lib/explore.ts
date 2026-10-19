@@ -13,6 +13,41 @@ const MAX_JOURNEYS = 200;
 export type PublicJourney = Schema['PublicJourney']['type'];
 
 /**
+ * Categories a learner can pick when publishing. `category` is a free string in
+ * the backend, so this list can grow without a schema change. Keep the first
+ * nine as they are (journeys already published use them) and "Other" last.
+ */
+export const PUBLIC_CATEGORIES = [
+  'AI & Tech',
+  'Programming & Data',
+  'Business',
+  'Finance & Money',
+  'Marketing & Sales',
+  'Career & Productivity',
+  'Science',
+  'Math',
+  'Engineering',
+  'Nature & Environment',
+  'Health & Fitness',
+  'Mind & Life',
+  'Parenting & Relationships',
+  'Creativity',
+  'Art & Design',
+  'Music',
+  'Writing & Literature',
+  'History',
+  'Philosophy',
+  'Politics & Society',
+  'Law',
+  'Languages',
+  'Travel & Culture',
+  'Cooking & Food',
+  'Sports & Games',
+  'Test Prep & Study Skills',
+  'Other',
+] as const;
+
+/**
  * Journeys that have been published for everyone to browse.
  *
  * Featured journeys come first, then the most recently updated.
@@ -89,7 +124,7 @@ export interface PublishJourneyInput {
   heroImageUrl?: string | null;
   zoneCount: number;
   lessonCount: number;
-  /** Defaults to the signed-in learner's username. */
+  /** Defaults to the signed-in learner's username (required to publish). */
   authorUsername?: string | null;
 }
 
@@ -100,12 +135,11 @@ export async function publishJourney(
   let authorUsername = input.authorUsername?.trim() || '';
 
   if (!authorUsername) {
-    try {
-      authorUsername = (await getProfile())?.username?.trim() || '';
-    } catch {
-      // The byline is optional; publish without it.
-    }
+    authorUsername = (await getProfile())?.username?.trim() || '';
   }
+
+  // Public journeys are credited to their author, so a username is required.
+  if (!authorUsername) throw new Error('USERNAME_REQUIRED');
 
   const { data, errors } = await client.models.PublicJourney.create(
     {
@@ -116,7 +150,7 @@ export async function publishJourney(
       heroImageUrl: input.heroImageUrl || undefined,
       zoneCount: input.zoneCount,
       lessonCount: input.lessonCount,
-      authorUsername: authorUsername || undefined,
+      authorUsername,
       featured: false,
     },
     USER_POOL,

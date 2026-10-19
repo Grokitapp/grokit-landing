@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 
 import type { ProfileBadge } from '../../lib/badges';
@@ -8,7 +9,34 @@ const STROKE = 7;
 const RADIUS = (SIZE - STROKE) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-function BadgeRing({ badge }: { badge: ProfileBadge }) {
+/**
+ * Keeps the tooltip inside the screen. The grid is 2 columns on phones and 4
+ * from `sm` up, so edge columns anchor to their own edge instead of centering.
+ */
+function tooltipPosition(index: number): string {
+  switch (index % 4) {
+    case 0:
+      return 'left-0';
+    case 1:
+      return 'right-0 sm:left-1/2 sm:right-auto sm:-translate-x-1/2';
+    case 2:
+      return 'left-0 sm:left-1/2 sm:-translate-x-1/2';
+    default:
+      return 'right-0';
+  }
+}
+
+function BadgeRing({
+  badge,
+  index,
+  open,
+  onToggle,
+}: {
+  badge: ProfileBadge;
+  index: number;
+  open: boolean;
+  onToggle: () => void;
+}) {
   const Icon = BADGE_ICONS[badge.icon];
   const color = BADGE_COLORS[badge.tone];
   const fraction = badge.target > 0 ? Math.min(badge.value / badge.target, 1) : 0;
@@ -18,6 +46,8 @@ function BadgeRing({ badge }: { badge: ProfileBadge }) {
     <li className="min-w-0">
       <button
         type="button"
+        onClick={onToggle}
+        aria-expanded={open}
         aria-label={`${badge.title}. ${badge.description}. ${
           badge.earned ? 'Earned' : `Progress ${progressLabel}`
         }`}
@@ -93,7 +123,9 @@ function BadgeRing({ badge }: { badge: ProfileBadge }) {
 
         <span
           role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[210px] -translate-x-1/2 rounded-xl border border-[#37464F] bg-[#0D181C] px-3 py-2 text-xs font-semibold leading-5 text-white opacity-0 shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100"
+          className={`pointer-events-none absolute bottom-full z-20 mb-2 w-max max-w-[210px] rounded-xl border border-[#37464F] bg-[#0D181C] px-3 py-2 text-xs font-semibold leading-5 text-white shadow-[0_8px_24px_rgba(0,0,0,0.45)] transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 ${
+            open ? 'opacity-100' : 'opacity-0'
+          } ${tooltipPosition(index)}`}
         >
           {badge.description} · {progressLabel}
         </span>
@@ -103,10 +135,40 @@ function BadgeRing({ badge }: { badge: ProfileBadge }) {
 }
 
 export default function BadgeRings({ badges }: { badges: ProfileBadge[] }) {
+  // Touch screens have no hover, so tapping a badge opens its info and tapping
+  // anywhere else (or pressing Escape) closes it. Hover still works on desktop.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  useEffect(() => {
+    if (!openId) return;
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (!listRef.current?.contains(event.target as Node)) setOpenId(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpenId(null);
+    };
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [openId]);
+
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {badges.map((badge) => (
-        <BadgeRing key={badge.id} badge={badge} />
+    <ul ref={listRef} className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {badges.map((badge, index) => (
+        <BadgeRing
+          key={badge.id}
+          badge={badge}
+          index={index}
+          open={openId === badge.id}
+          onToggle={() => setOpenId((current) => (current === badge.id ? null : badge.id))}
+        />
       ))}
     </ul>
   );
