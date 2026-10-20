@@ -5,11 +5,12 @@ declare const process: {
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { getErrorMessage } from "./common";
-import { FREE_DAILY_LIMITS, counterBucket, formatLimitError, type LimitedKind } from "./usage-limits";
-import { istDayKey, nextIstMidnight } from "./voices";
+import { counterBucket, formatLimitError, limitFor, nextReset, periodFor, type LimitedKind } from "./usage-limits";
+import { istDayKey } from "./voices";
 
 /**
- * Per-learner daily counters for the actions that cost money.
+ * Per-learner counters (daily for lessons, monthly for journeys) for the
+ * actions that cost money.
  *
  * Rows are written straight to DynamoDB (like ReadAloudUsage), so the browser
  * can read its own counts but never change them. The check and the count are
@@ -21,7 +22,10 @@ import { istDayKey, nextIstMidnight } from "./voices";
  */
 
 const TABLE = process.env.USAGE_COUNTER_TABLE_NAME;
-const ROW_TTL_SECONDS = 14 * 24 * 3600;
+// A row must outlive its period, or the count would silently reset early.
+// (TTL is refreshed on every write.) Daily rows: 14 days. Monthly rows: 45.
+const rowTtlSeconds = (kind: LimitedKind): number =>
+  (periodFor(kind) === "month" ? 45 : 14) * 24 * 3600;
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -29,13 +33,13 @@ const isConditionFailure = (error: unknown): boolean =>
   (error as { name?: string }).name === "ConditionalCheckFailedException";
 
 /**
- * Takes one slot for today, or throws the "limit reached" error the browser
+ * Takes one slot for the current period (today / this month), or throws the "limit reached" error the browser
  * understands. Call it BEFORE the paid work starts.
  */
 export async function consumeUsage(sub: string, kind: LimitedKind): Promise<{ used: number; limit: number }> {
   if (!TABLE) throw new Error("USAGE_NOT_CONFIGURED");
 
-  const limit = FREE_DAILY_LIMITS[kind];
+  const limit = limitFor(kind);
   const now = new Date();
 
   try {
@@ -58,7 +62,7 @@ export async function consumeUsage(sub: string, kind: LimitedKind): Promise<{ us
           ":one": 1,
           ":limit": limit,
           ":sub": sub,
-          ":exp": Math.floor(now.getTime() / 1000) + ROW_TTL_SECONDS,
+          ":exp": Math.floor(now.getTime() / 1000) + rowTtlSeconds(kind),
           ":now": now.toISOString(),
           ":type": "UsageCounter",
         },
@@ -70,7 +74,7 @@ export async function consumeUsage(sub: string, kind: LimitedKind): Promise<{ us
   } catch (error) {
     if (isConditionFailure(error)) {
       console.log(JSON.stringify({ event: "usage_limit_reached", kind, limit }));
-      throw new Error(formatLimitError(kind, limit, nextIstMidnight()));
+      throw new Error(formatLimitError(kind, limit, nextReset(kind)));
     }
 
     console.error("Usage counter write failed", { kind, error: getErrorMessage(error) });

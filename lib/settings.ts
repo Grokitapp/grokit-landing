@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from 'react';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 
 import type { Schema } from '../amplify/data/resource';
 import { DEFAULT_VOICE_ID, DEVICE_VOICE_ID, findVoice, istDayKey } from '../amplify/functions/shared/voices';
 import {
-  FREE_DAILY_LIMITS,
+  FREE_LIMITS,
   counterBucket,
+  nextReset,
   type LimitedKind,
 } from '../amplify/functions/shared/usage-limits';
+import { cacheKeys, invalidate, useCachedQuery } from './cache';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -215,8 +217,8 @@ export const USAGE_GROUPS: ReadonlyArray<{ title: string; keys: UsageKey[] }> = 
  */
 export const USAGE_LIMITS: Record<UsageKey, number | null> = {
   lessonsTaken: null,
-  lessonsGenerated: FREE_DAILY_LIMITS.lessonsGenerated,
-  coursesCreated: FREE_DAILY_LIMITS.coursesCreated,
+  lessonsGenerated: FREE_LIMITS.lessonsGenerated.limit,
+  coursesCreated: FREE_LIMITS.coursesCreated.limit,
 };
 
 /** Flip to true once a /pricing page exists. Until then the upgrade card is hidden. */
@@ -336,7 +338,7 @@ async function countRows(fetchPage: (nextToken?: string | null) => Promise<Count
 const USER_POOL = { authMode: 'userPool' } as const;
 
 /**
- * How much of a limited action the learner has used today. The backend keeps
+ * How much of a limited action the learner has used this period (today or this month). The backend keeps
  * these counts as it enforces the limits (see UsageCounter), so this is
  * exactly what it checks.
  */
@@ -395,54 +397,46 @@ export async function fetchUsage(): Promise<UsageSnapshot> {
     plan: 'free',
     items: {
       lessonsTaken: item('lessonsTaken', lessonsTaken, 'day', nextMidnight),
-      lessonsGenerated: item('lessonsGenerated', lessonsGenerated, 'day', nextMidnight),
-      coursesCreated: item('coursesCreated', coursesCreated, 'day', nextMidnight),
+      lessonsGenerated: item(
+        'lessonsGenerated',
+        lessonsGenerated,
+        FREE_LIMITS.lessonsGenerated.period,
+        nextReset('lessonsGenerated', now),
+      ),
+      coursesCreated: item(
+        'coursesCreated',
+        coursesCreated,
+        FREE_LIMITS.coursesCreated.period,
+        nextReset('coursesCreated', now),
+      ),
     },
   };
 }
 
+/** How long a loaded usage snapshot counts as fresh before it is re-checked. */
+const USAGE_STALE_MS = 20_000;
+
+/** Call after something that changes the counts (a lesson or journey was created). */
+export function invalidateUsage(): void {
+  invalidate(cacheKeys.usage);
+}
+
+/**
+ * Usage numbers, served from the shared cache: opening Settings or Usage again
+ * shows the last numbers instantly and re-checks only when they are older than
+ * USAGE_STALE_MS (or when the tab regains focus), instead of refetching
+ * everything on every visit.
+ */
 export function useUsage() {
-  const [data, setData] = useState<UsageSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const request = useRef(0);
+  const query = useCachedQuery<UsageSnapshot>(cacheKeys.usage, fetchUsage, {
+    staleMs: USAGE_STALE_MS,
+  });
 
-  const refresh = useCallback(async () => {
-    const id = ++request.current;
-
-    setLoading(true);
-    setError(false);
-
-    try {
-      const next = await fetchUsage();
-
-      if (id === request.current) setData(next);
-    } catch (caught) {
-      console.error('[usage] failed to load:', caught);
-
-      if (id === request.current) setError(true);
-    } finally {
-      if (id === request.current) setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refresh();
-
-    // Counts change while the tab is in the background (for example after a
-    // lesson), so refresh when the learner comes back to it.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') void refresh();
-    };
-
-    document.addEventListener('visibilitychange', onVisible);
-
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible);
-      // Ignore any in-flight response after unmount.
-      request.current += 1;
-    };
-  }, [refresh]);
-
-  return { data, loading, error, refresh };
+  return {
+    data: query.data,
+    /** True on the first load and while a manual or background refresh runs. */
+    loading: query.loading || query.refreshing,
+    error: query.error,
+    refresh: query.refetch,
+  };
 }

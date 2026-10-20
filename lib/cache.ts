@@ -32,6 +32,7 @@ export const cacheKeys = {
   savedJourneys: 'saved-journeys',
   notes: 'library:notes',
   publicJourneys: 'explore:public',
+  usage: 'settings:usage',
 } as const;
 
 // useCachedResource's default freshness window (useCachedQuery defaults to 0:

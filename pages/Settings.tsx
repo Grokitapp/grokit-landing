@@ -139,7 +139,7 @@ function UsageMeter({
         </div>
 
         <p className="shrink-0 text-sm font-semibold text-[#C8D3DA]">
-          {used} of {limit} used
+          {used} of {limit} used {period === 'day' ? 'today' : 'this month'}
         </p>
       </div>
 
@@ -728,7 +728,7 @@ export default function Settings() {
           title="Usage"
           hint={
             hasUsageLimits()
-              ? 'Keep track of your daily limits.'
+              ? 'Keep track of your limits.'
               : 'What you’ve done today and this month.'
           }
         >
@@ -976,7 +976,7 @@ export function Usage() {
           </h1>
           <p className="mt-1 text-sm text-[#91A4AC]">
             {hasUsageLimits()
-              ? 'Keep track of your daily limits.'
+              ? 'Keep track of your limits.'
               : 'What you’ve done today and this month.'}
           </p>
         </div>

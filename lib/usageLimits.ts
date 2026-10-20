@@ -1,9 +1,10 @@
 import {
-  FREE_DAILY_LIMITS,
+  limitFor,
+  nextReset,
   parseLimitError,
+  periodFor,
   type LimitedKind,
 } from '../amplify/functions/shared/usage-limits';
-import { nextIstMidnight } from '../amplify/functions/shared/voices';
 import { formatReset, readUsageCount } from './settings';
 
 const WHAT: Record<LimitedKind, string> = {
@@ -11,13 +12,15 @@ const WHAT: Record<LimitedKind, string> = {
   lessonsGenerated: 'new lessons',
 };
 
-/** The sentence shown to the learner when a daily limit stops them. */
+/** The sentence shown to the learner when a daily or monthly limit stops them. */
 export function describeLimit(kind: LimitedKind, limit: number, resetsAt: string): string {
   const reset = formatReset(resetsAt);
   const extra =
     kind === 'lessonsGenerated' ? ' Lessons you’ve already opened are still yours to finish.' : '';
 
-  return `You’ve reached today’s limit of ${limit} ${WHAT[kind]}.${reset ? ` ${reset}.` : ''}${extra}`;
+  const when = periodFor(kind) === 'month' ? 'this month’s' : 'today’s';
+
+  return `You’ve reached ${when} limit of ${limit} ${WHAT[kind]}.${reset ? ` ${reset}.` : ''}${extra}`;
 }
 
 /**
@@ -69,7 +72,7 @@ export function limitErrorFrom(source: unknown): LimitReachedError | null {
 }
 
 /**
- * Asks, before the learner fills in anything, whether today's allowance is
+ * Asks, before the learner fills in anything, whether the current allowance is
  * already used up. Returns the message to show, or null to carry on. If the
  * count can't be read it returns null: the backend still enforces the limit,
  * this check only saves the learner from a late surprise.
@@ -77,9 +80,9 @@ export function limitErrorFrom(source: unknown): LimitReachedError | null {
 export async function getLimitNotice(kind: LimitedKind): Promise<string | null> {
   try {
     const used = await readUsageCount(kind);
-    const limit = FREE_DAILY_LIMITS[kind];
+    const limit = limitFor(kind);
 
-    return used >= limit ? describeLimit(kind, limit, nextIstMidnight()) : null;
+    return used >= limit ? describeLimit(kind, limit, nextReset(kind)) : null;
   } catch (error) {
     console.warn('[usage] could not check the limit:', error);
 
