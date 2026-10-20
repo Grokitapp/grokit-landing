@@ -47,7 +47,7 @@ const MENU_WIDTH = 224;
 const MENU_HEIGHT_ESTIMATE = 220;
 
 const triggerClasses =
-  'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-[#91A4AC] transition-colors hover:bg-[#2A3D45] hover:text-white aria-expanded:bg-[#2A3D45] aria-expanded:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';
+  'flex h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 shrink-0 items-center justify-center rounded-lg text-[#91A4AC] transition-colors hover:bg-[#2A3D45] hover:text-white aria-expanded:bg-[#2A3D45] aria-expanded:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';
 
 const menuItemClasses =
   'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange';

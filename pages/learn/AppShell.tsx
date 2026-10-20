@@ -6,10 +6,10 @@ import {
   ChevronRight,
   Compass,
   Flame,
+  Home,
   Library,
   Loader2,
   LogOut,
-  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
@@ -66,6 +66,18 @@ let cachedJourneys: Journey[] | null = null;
 let cachedUserName: string | null = null;
 
 const SIDEBAR_COLLAPSED_KEY = 'grokit:sidebar-collapsed';
+const LAST_JOURNEY_KEY = 'grokit:last-journey';
+
+/** Other screens (e.g. the journey card) dispatch this to open the journey sheet on phones. */
+export const OPEN_JOURNEY_SHEET_EVENT = 'grokit:open-journey-sheet';
+
+function readLastJourney() {
+  try {
+    return window.localStorage.getItem(LAST_JOURNEY_KEY);
+  } catch {
+    return null;
+  }
+}
 
 function readSidebarCollapsed() {
   try {
@@ -88,7 +100,10 @@ export default function AppShell({
   // finishing a lesson is reflected as soon as the learner navigates back.
   const { stats: game } = useGamification(location.pathname);
 
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [journeySheetOpen, setJourneySheetOpen] = useState(false);
+  const [lastJourneyId, setLastJourneyId] = useState<string | null>(
+    readLastJourney,
+  );
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(readSidebarCollapsed);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
@@ -123,6 +138,24 @@ export default function AppShell({
     pathname === '/create' ||
     pathname.startsWith('/learn/personalize') ||
     pathname.startsWith('/learn/generating');
+
+  // Lessons are full-screen on phones: no top strip, no tab bar.
+  const hideMobileChrome = /\/lesson\//.test(pathname);
+
+  // Remember the journey the learner last opened, for the "Learn" tab.
+  useEffect(() => {
+    const match = location.pathname.match(/\/learn\/course\/([^/?#]+)/i);
+
+    if (!match) return;
+
+    setLastJourneyId(match[1]);
+
+    try {
+      window.localStorage.setItem(LAST_JOURNEY_KEY, match[1]);
+    } catch {
+      // Falls back to the first journey.
+    }
+  }, [location.pathname]);
 
   const refreshJourneys = useCallback(() => {
     if (providedCourses !== undefined) return;
@@ -389,7 +422,7 @@ export default function AppShell({
       if (event.key === 'Escape') {
         setAccountMenuOpen(false);
         setLogoutConfirmOpen(false);
-        setMobileNavOpen(false);
+        setJourneySheetOpen(false);
       }
     };
 
@@ -403,9 +436,66 @@ export default function AppShell({
   }, []);
 
   useEffect(() => {
-    setMobileNavOpen(false);
+    setJourneySheetOpen(false);
     setAccountMenuOpen(false);
   }, [location.pathname]);
+
+  // The journey card on the course page opens the journey sheet.
+  useEffect(() => {
+    const open = () => setJourneySheetOpen(true);
+
+    window.addEventListener(OPEN_JOURNEY_SHEET_EVENT, open);
+
+    return () => window.removeEventListener(OPEN_JOURNEY_SHEET_EVENT, open);
+  }, []);
+
+  // Stop the page behind the sheet from scrolling.
+  useEffect(() => {
+    if (!journeySheetOpen) return;
+
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [journeySheetOpen]);
+
+  // "Learn" opens the journey viewed last, then the first journey, then Create.
+  const learnTarget = (() => {
+    const lastIsKnown =
+      lastJourneyId !== null &&
+      (courses.some((course) => course.id === lastJourneyId) ||
+        (courses.length === 0 && coursesLoading));
+
+    const id = lastIsKnown ? lastJourneyId : courses[0]?.id;
+
+    return id ? `/learn/course/${id}` : '/create';
+  })();
+
+  const tabs = [
+    {
+      label: 'Learn',
+      icon: Home,
+      to: learnTarget,
+      active: pathname.startsWith('/learn/course'),
+    },
+    { label: 'Explore', icon: Compass, to: '/explore', active: pathname === '/explore' },
+    { label: 'Create', icon: Sparkles, to: '/create', active: isCreateFlow },
+    { label: 'Library', icon: Library, to: '/library', active: pathname === '/library' },
+    {
+      label: 'Leaderboard',
+      icon: Trophy,
+      to: '/leaderboard',
+      active: pathname === '/leaderboard',
+    },
+    {
+      label: 'Profile',
+      icon: UserRound,
+      to: '/profile',
+      active: pathname.startsWith('/profile') || pathname.startsWith('/settings'),
+    },
+  ];
 
   const toggleSidebar = useCallback(() => {
     setAccountMenuOpen(false);
@@ -470,9 +560,17 @@ export default function AppShell({
     </nav>
   );
 
-  const renderJourneys = () => (
-    <section className="mt-9 flex min-h-0 flex-1 flex-col">
-      <div className="mb-2 flex shrink-0 items-center justify-between px-3">
+  const renderJourneys = (inSheet = false) => (
+    <section
+      className={
+        inSheet ? 'flex min-h-0 flex-1 flex-col' : 'mt-9 flex min-h-0 flex-1 flex-col'
+      }
+    >
+      <div
+        className={`mb-2 shrink-0 items-center justify-between px-3 ${
+          inSheet ? 'hidden' : 'flex'
+        }`}
+      >
         <h2 className="font-sans text-xs font-extrabold uppercase tracking-[0.08em] text-[#78909A]">
           My Journeys
         </h2>
@@ -706,64 +804,104 @@ export default function AppShell({
           {renderAccount(false, collapsed)}
         </aside>
 
-        {/* Mobile top bar */}
-        <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center justify-between border-b border-[#2D3C43] bg-[#131F24]/95 px-4 backdrop-blur-xl lg:hidden">
-          <button
-            type="button"
-            onClick={() => setMobileNavOpen(true)}
-            aria-label="Open navigation"
-            aria-expanded={mobileNavOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-[#D2DFE4] hover:bg-[#203138]"
+        {/* Mobile top strip: logo on the left, streak and XP on the right. */}
+        {!hideMobileChrome && (
+          <header className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-[#2D3C43] bg-[#131F24]/95 px-4 backdrop-blur-xl lg:hidden">
+            <Link
+              to={learnTarget}
+              aria-label="Grokit home"
+              className="flex h-11 items-center rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+            >
+              <GrokitLogo className="h-[34px] w-[90px] object-contain object-left" />
+            </Link>
+            {game && (
+              <Link
+                to="/profile"
+                aria-label={`Open your profile. ${game.currentStreak} day streak, ${game.totalXp} XP`}
+                className="flex items-center gap-2 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+              >
+                <StatChip kind="streak" value={game.currentStreak} active={game.currentStreak > 0} />
+                <StatChip kind="xp" value={game.totalXp} />
+              </Link>
+            )}
+          </header>
+        )}
+
+        {/* Mobile bottom tab bar (icons only, like Duolingo). */}
+        {!hideMobileChrome && (
+          <nav
+            aria-label="Main navigation"
+            className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t border-[#2D3C43] bg-[#131F24] lg:hidden"
           >
-            <Menu className="h-5 w-5" />
-          </button>
+            <ul className="mx-auto flex max-w-[560px] items-center justify-between px-2 py-2">
+              {tabs.map(({ label, icon: Icon, to, active }) => (
+                <li key={label}>
+                  <Link
+                    to={to}
+                    aria-label={label}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex h-12 w-14 items-center justify-center rounded-xl border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange ${
+                      active
+                        ? 'border-orange/60 bg-orange/10 text-orange'
+                        : 'border-transparent text-[#91A4AC] active:bg-[#1A292F]'
+                    }`}
+                  >
+                    <Icon aria-hidden="true" className="h-6 w-6" strokeWidth={active ? 2.5 : 2} />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        )}
 
-          <div className="absolute left-1/2 -translate-x-1/2">
-            <GrokitLogo className="h-[36px] w-[94px] object-contain" />
-          </div>
-
-          <div className="w-10" />
-        </header>
-
-        {/* Mobile navigation drawer */}
-        {mobileNavOpen && (
-          <div className="fixed inset-0 z-[80] lg:hidden">
+        {/* Journey switcher (bottom sheet on phones) */}
+        {journeySheetOpen && !hideMobileChrome && (
+          <div className="fixed inset-0 z-[60] lg:hidden">
             <button
               type="button"
-              aria-label="Close navigation"
-              onClick={() => setMobileNavOpen(false)}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              aria-label="Close journeys"
+              onClick={() => setJourneySheetOpen(false)}
+              className="absolute inset-0 bg-black/65"
             />
-
-            <aside
-              aria-label="Mobile navigation"
-              className="absolute inset-y-0 left-0 flex w-[min(320px,88vw)] flex-col overflow-hidden border-r border-[#2D3C43] bg-[#131F24] px-4 py-5 shadow-2xl"
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="journey-sheet-title"
+              className="pb-safe absolute inset-x-0 bottom-0 flex max-h-[80dvh] flex-col rounded-t-3xl border border-b-0 border-[#37464F] bg-[#19282E] px-4 pt-3 shadow-[0_-24px_80px_rgba(0,0,0,0.5)]"
             >
-              <div className="mb-7 flex shrink-0 items-center justify-between px-3">
-                <GrokitLogo className="h-[42px] w-[112px] object-contain object-left" />
-
+              <div aria-hidden="true" className="mx-auto mb-3 h-1.5 w-10 shrink-0 rounded-full bg-[#37464F]" />
+              <div className="mb-3 flex shrink-0 items-center justify-between px-1">
+                <h2 id="journey-sheet-title" className="font-display text-xl font-extrabold text-white">
+                  My journeys
+                </h2>
                 <button
                   type="button"
-                  aria-label="Close navigation"
-                  onClick={() => setMobileNavOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-[#91A4AC] hover:bg-[#203138] hover:text-white"
+                  onClick={() => setJourneySheetOpen(false)}
+                  aria-label="Close"
+                  className="flex h-11 w-11 items-center justify-center rounded-xl text-[#91A4AC] hover:bg-[#203138] hover:text-white"
                 >
-                  <X className="h-5 w-5" />
+                  <X className="h-5 w-5" aria-hidden="true" />
                 </button>
               </div>
-
-              <div className="shrink-0">{renderNavigation()}</div>
-              {renderJourneys()}
-              {renderAccount(true)}
-            </aside>
+              <div className="flex min-h-0 flex-1 flex-col">{renderJourneys(true)}</div>
+              <div className="shrink-0 py-4">
+                <Link
+                  to="/create"
+                  className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-orange px-5 text-sm font-extrabold text-white shadow-[0_4px_0_#C94713] transition active:translate-y-[2px] active:shadow-none"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  New journey
+                </Link>
+              </div>
+            </div>
           </div>
         )}
 
         {/* Main content scrolls independently of the desktop sidebar. */}
         <main
-          className={`min-h-[100dvh] min-w-0 overflow-x-clip pt-16 transition-[margin] duration-200 lg:pt-0 ${
-            collapsed ? 'lg:ml-[76px]' : 'lg:ml-[270px] xl:ml-[292px]'
-          }`}
+          className={`min-h-[100dvh] min-w-0 overflow-x-clip transition-[margin] duration-200 lg:pb-0 lg:pt-0 ${
+            hideMobileChrome ? '' : 'pb-tabbar pt-14'
+          } ${collapsed ? 'lg:ml-[76px]' : 'lg:ml-[270px] xl:ml-[292px]'}`}
         >
           {children}
         </main>

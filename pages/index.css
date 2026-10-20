@@ -5,6 +5,14 @@
 /* @theme must not be nested inside @layer, so this is a plain import */
 @import './theme.css';
 
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility pb-tabbar {
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+}
+
 @layer base {
 	html,
 	body {

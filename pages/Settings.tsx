@@ -14,6 +14,7 @@ import {
   Loader2,
   LogOut,
   Mail,
+  Mic,
   RefreshCw,
   ShieldCheck,
   Sparkles,
@@ -38,6 +39,12 @@ import {
   useSettings,
 } from '../lib/settings';
 import { playSound } from '../lib/sounds';
+import { useReadAloud, useReadAloudUsage } from '../lib/readAloud';
+import {
+  DEVICE_VOICE_ID,
+  READ_ALOUD_VOICES,
+  charactersToMinutes,
+} from '../amplify/functions/shared/voices';
 
 // -----------------------------------------------------------------------------
 // Styles
@@ -623,6 +630,8 @@ function SignOutDialog({ onClose }: { onClose: () => void }) {
 
 export default function Settings() {
   const settings = useSettings();
+  const voicePreview = useReadAloud();
+  const readAloudUsage = useReadAloudUsage();
 
   const [email, setEmail] = useState('');
   const [usesGoogle, setUsesGoogle] = useState(false);
@@ -791,6 +800,63 @@ export default function Settings() {
               />
             }
           />
+          <Row
+            icon={Mic}
+            title="Reading voice"
+            description="Natural voices need an internet connection. The device voice works offline but sounds robotic."
+            control={
+              <div className="flex items-center gap-2">
+                <SelectControl
+                  label="Reading voice"
+                  value={settings.readAloudVoice}
+                  onChange={(readAloudVoice) => {
+                    updateSettings({ readAloudVoice });
+
+                    // Play a short sample so the learner hears the voice they just picked.
+                    voicePreview.preview(readAloudVoice);
+                  }}
+                  options={[
+                    ...READ_ALOUD_VOICES.map((voice) => ({ value: voice.id, label: voice.label })),
+                    { value: DEVICE_VOICE_ID, label: 'Device voice (free)' },
+                  ]}
+                />
+                <button
+                  type="button"
+                  onClick={() =>
+                    voicePreview.status === 'idle'
+                      ? voicePreview.preview(settings.readAloudVoice)
+                      : voicePreview.stop()
+                  }
+                  aria-label={voicePreview.status === 'idle' ? 'Preview voice' : 'Stop preview'}
+                  className={`${secondaryButtonClasses} !min-h-11 !px-3`}
+                >
+                  {voicePreview.status === 'loading' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  ) : voicePreview.status === 'speaking' ? (
+                    'Stop'
+                  ) : (
+                    'Preview'
+                  )}
+                </button>
+              </div>
+            }
+          />
+          {settings.readAloudVoice !== DEVICE_VOICE_ID && readAloudUsage.usedCharacters !== null && (
+            <Row
+              icon={Headphones}
+              title="Natural voice today"
+              description="Replaying something you've already heard is free. When today's listening runs out, the device voice takes over until midnight."
+              control={
+                <span className="text-sm font-extrabold text-white">
+                  {Math.min(
+                    charactersToMinutes(readAloudUsage.usedCharacters),
+                    charactersToMinutes(readAloudUsage.limitCharacters),
+                  )}{' '}
+                  / {charactersToMinutes(readAloudUsage.limitCharacters)} min
+                </span>
+              }
+            />
+          )}
           <Row
             icon={Gauge}
             title="Reading speed"

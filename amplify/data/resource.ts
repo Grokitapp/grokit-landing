@@ -6,6 +6,7 @@ import { generateLessonWorker } from '../functions/generate-lesson-worker/resour
 import { completeLesson } from '../functions/complete-lesson/resource';
 import { changeUsername } from '../functions/change-username/resource';
 import { leaderboardSync } from '../functions/leaderboard-sync/resource';
+import { readAloud } from '../functions/read-aloud/resource';
 
 const schema = a.schema({
   Course: a
@@ -368,12 +369,64 @@ const schema = a.schema({
       allow.authenticated(),
     ])
     .handler(a.handler.function(generateLesson)),
+
+  // A playable link to natural-sounding speech for one screen of a lesson.
+  // `url` is short-lived; `cached` is false only the first time a screen is
+  // read in a given voice (that is the only time speech is billed).
+  // status is 'ok' (url is set) or 'limit' (today's natural-voice allowance is
+  // used up: no url, the app reads in the device voice instead). A limit is an
+  // expected outcome, so it comes back here rather than as an error.
+  ReadAloudResult: a.customType({
+    status: a.string().required(),
+    url: a.string(),
+    cached: a.boolean().required(),
+    characters: a.integer().required(),
+    usedCharacters: a.integer(),
+    limitCharacters: a.integer(),
+    resetsAt: a.string(),
+  }),
+
+  // How much new natural speech a learner has used today (one row per learner
+  // per day). Written ONLY by the read-aloud function straight to DynamoDB;
+  // the browser can read its own row (for the Settings page) but never edit it.
+  ReadAloudUsage: a
+    .model({
+      userId: a.string().required(),
+      day: a.string().required(),
+      characters: a.integer(),
+      owner: a.string(),
+    })
+    .identifier(['userId', 'day'])
+    .authorization((allow) => [
+      allow
+        .ownerDefinedIn('owner')
+        .identityClaim('sub')
+        .to(['read']),
+    ]),
+
+  // part: 'prediction' | 'card' | 'review' | 'sample'. The text is built on the
+  // server from the learner's own lesson, so it can't be used to read arbitrary
+  // text. lessonId is not needed for 'sample' (a fixed voice preview).
+  readAloud: a
+    .mutation()
+    .arguments({
+      lessonId: a.id(),
+      part: a.string().required(),
+      cardIndex: a.integer(),
+      voiceId: a.string().required(),
+    })
+    .returns(a.ref('ReadAloudResult'))
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(readAloud)),
 }).authorization((allow) => [
   allow.resource(generateOutline),
   allow.resource(generateOutlineWorker),
   allow.resource(generateLesson),
   allow.resource(generateLessonWorker),
   allow.resource(completeLesson),
+  allow.resource(readAloud),
 ]);
 
 export type Schema = ClientSchema<typeof schema>;

@@ -555,7 +555,7 @@ export default function Explore() {
 
       <div className="relative mx-auto w-full max-w-[1180px] px-4 pb-12 pt-6 sm:px-7 sm:pt-8 xl:px-9">
         <header>
-          <h1 className="font-display text-4xl font-extrabold tracking-[-0.02em] text-white sm:text-5xl">
+          <h1 className="font-display text-3xl font-extrabold tracking-[-0.02em] text-white sm:text-5xl">
             Explore
           </h1>
           <p className="mt-2 text-sm font-medium text-[#A9BAC0] sm:text-base">

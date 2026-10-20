@@ -8,6 +8,7 @@ import {
 } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import {
+  ChevronDown,
   ArrowLeft,
   ArrowRight,
   AtSign,
@@ -26,6 +27,7 @@ import {
 
 import { NextBadgeCard, StreakCard } from './components/GamificationCards';
 import JourneyMenu from './components/JourneyMenu';
+import { OPEN_JOURNEY_SHEET_EVENT } from './AppShell';
 import JourneyPath, {
   type PathLesson,
   type PathLessonStatus,
@@ -162,25 +164,34 @@ function JourneyCard({
   return (
     <section
       aria-label="Your learning journey"
-      className="relative rounded-2xl border border-[#2D4149] bg-[#1A2A31] px-5 pb-4 pt-4 sm:px-6"
+      className="relative rounded-2xl border border-[#2D4149] bg-[#1A2A31] px-4 pb-3 pt-3 sm:px-6 sm:pb-4 sm:pt-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-xs font-extrabold text-orange">
+          <p className="hidden items-center gap-1.5 text-xs font-extrabold text-orange sm:flex">
             <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
             Your learning journey
           </p>
 
-          <h1 className="mt-1.5 break-words font-display text-xl font-extrabold leading-tight text-white sm:text-[26px]">
-            {title}
+          <h1 className="font-display text-lg font-extrabold leading-tight text-white sm:mt-1.5 sm:break-words sm:text-[26px]">
+            {/* Phones: one truncated line; tapping opens the journey switcher. */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event(OPEN_JOURNEY_SHEET_EVENT))}
+              aria-haspopup="dialog"
+              className="flex min-h-9 w-full items-center gap-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange lg:pointer-events-none"
+            >
+              <span className="truncate sm:whitespace-normal">{title}</span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-[#91A4AC] lg:hidden" aria-hidden="true" />
+            </button>
           </h1>
         </div>
 
         <JourneyMenu journey={{ id: courseId, title }} onPublish={onPublish} />
       </div>
 
-      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div className="w-full sm:max-w-[480px]">
+      <div className="mt-1 flex items-center gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
+        <div className="min-w-0 flex-1 sm:max-w-[480px]">
           <div className="flex items-baseline justify-between gap-4 text-xs">
             <span className="font-bold text-white">
               {stats.completed} of {stats.total} lessons
@@ -196,7 +207,7 @@ function JourneyCard({
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={stats.percentage}
-            className="mt-2 h-2 overflow-hidden rounded-full bg-[#0F1A1F]"
+            className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#0F1A1F] sm:mt-2"
           >
             <div
               className="h-full rounded-full bg-orange transition-[width] duration-500"
@@ -209,7 +220,7 @@ function JourneyCard({
           type="button"
           onClick={onContinue}
           disabled={zoneCount === 0}
-          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-orange px-4 text-sm font-extrabold text-white shadow-[0_3px_0_#C94713] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A2A31] disabled:pointer-events-none disabled:opacity-50"
+          className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-orange px-3 text-sm sm:gap-2 sm:px-4 font-extrabold text-white shadow-[0_3px_0_#C94713] transition hover:brightness-110 active:translate-y-0.5 active:shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A2A31] disabled:pointer-events-none disabled:opacity-50"
         >
           {actionLabel}
           <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -983,7 +994,7 @@ export default function CourseOverview() {
             {courseId && (
               <div
                 ref={barRef}
-                className="sticky top-16 z-30 bg-[#131F24] pb-3 pt-5 lg:top-0"
+                className="sticky top-14 z-30 bg-[#131F24] pb-3 pt-3 sm:pt-5 lg:top-0"
               >
                 <JourneyCard
                   courseId={courseId}

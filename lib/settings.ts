@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { generateClient } from 'aws-amplify/data';
 
 import type { Schema } from '../amplify/data/resource';
+import { DEFAULT_VOICE_ID, DEVICE_VOICE_ID, findVoice } from '../amplify/functions/shared/voices';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -25,6 +26,8 @@ export interface AppSettings {
   soundEffects: boolean;
   /** Speech rate for read aloud: 0.85 slow, 1 normal, 1.2 fast. */
   readAloudSpeed: number;
+  /** A Polly voice id (see shared/voices.ts), or 'device' for the browser's own voice. */
+  readAloudVoice: string;
   /** Start reading each lesson card out loud automatically. */
   autoReadAloud: boolean;
 }
@@ -46,6 +49,7 @@ const DEFAULTS: AppSettings = {
   theme: 'dark',
   soundEffects: true,
   readAloudSpeed: 1,
+  readAloudVoice: DEFAULT_VOICE_ID,
   autoReadAloud: false,
 };
 
@@ -83,6 +87,11 @@ function load(): AppSettings {
         parsed.readAloudSpeed <= 2
           ? parsed.readAloudSpeed
           : DEFAULTS.readAloudSpeed,
+      readAloudVoice:
+        typeof parsed.readAloudVoice === 'string' &&
+        (parsed.readAloudVoice === DEVICE_VOICE_ID || findVoice(parsed.readAloudVoice))
+          ? parsed.readAloudVoice
+          : DEFAULTS.readAloudVoice,
       autoReadAloud:
         typeof parsed.autoReadAloud === 'boolean'
           ? parsed.autoReadAloud

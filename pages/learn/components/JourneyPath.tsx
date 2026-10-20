@@ -88,10 +88,10 @@ function ZoneBanner({
 
   return (
     // Sits just under the pinned journey card (its measured height is published
-    // as --journey-card-h by CourseOverview), which itself sits under the 64px
-    // mobile header. The wrapper paints the page colour so nodes
+    // as --journey-card-h by CourseOverview), which itself sits under the 56px
+    // mobile top strip. The wrapper paints the page colour so nodes
     // never show through the gap.
-    <div className="sticky top-[calc(4rem+var(--journey-card-h,56px))] z-20 bg-[#131F24] pb-3 pt-0 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-[#131F24] after:to-transparent lg:top-[var(--journey-card-h,56px)]">
+    <div className="sticky top-[calc(3.5rem+var(--journey-card-h,56px))] z-20 bg-[#131F24] pb-3 pt-0 after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-4 after:bg-gradient-to-b after:from-[#131F24] after:to-transparent lg:top-[var(--journey-card-h,56px)]">
       <div
         className={`flex w-full items-center justify-between gap-3 rounded-xl px-5 py-3 sm:px-6 ${bannerClasses[state]}`}
       >

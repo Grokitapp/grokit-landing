@@ -158,7 +158,19 @@ export default function Profile() {
   const badges = useMemo(() => (stats ? buildProfileBadges(stats) : []), [stats]);
 
   return (
-    <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 py-6 sm:px-7 sm:py-10">
+    <div className="mx-auto min-h-[100dvh] w-full max-w-[860px] px-4 pb-6 pt-4 sm:px-7 sm:py-10">
+      <div className="mb-5 flex items-center justify-between gap-3 lg:hidden">
+        <p className="font-display text-3xl font-extrabold text-white">Profile</p>
+              <Link
+                to="/settings"
+                aria-label="Settings"
+                title="Settings"
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+              >
+                <Settings className="h-5 w-5" aria-hidden="true" />
+              </Link>
+      </div>
+
       {loading || (!stats && !error) ? (
         <ProfileSkeleton />
       ) : error || !stats ? (
@@ -203,7 +215,7 @@ export default function Profile() {
                 to="/settings"
                 aria-label="Settings"
                 title="Settings"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
+                className="hidden h-10 w-10 items-center justify-center rounded-xl border border-[#37464F] text-[#C8D3DA] transition hover:border-[#536871] hover:bg-[#26373E] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange lg:flex"
               >
                 <Settings className="h-4 w-4" aria-hidden="true" />
               </Link>

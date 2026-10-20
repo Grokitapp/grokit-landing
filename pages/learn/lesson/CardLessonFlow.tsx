@@ -16,7 +16,7 @@ import {
   type LessonCompletionResult,
 } from '../../../lib/courseGeneration';
 import { refreshGamification, useGamification } from '../../../lib/gamification';
-import { cardToSpeech, predictionToSpeech, reviewToSpeech, useReadAloud } from '../../../lib/readAloud';
+import { sourceFor, useReadAloud, type SpeechSource } from '../../../lib/readAloud';
 import { useSettings } from '../../../lib/settings';
 
 import { KIND_LABELS, primaryButton, secondaryButton } from './lessonTheme';
@@ -61,7 +61,15 @@ const PRACTICE_POLL_MS = 2500;
 
 export default function CardLessonFlow({ lesson: initialLesson, completedBefore, onLeave }: CardLessonFlowProps) {
   const reduceMotion = useReducedMotion();
-  const { supported: speechSupported, status: speechStatus, speak, stop } = useReadAloud();
+  const {
+    supported: speechSupported,
+    status: speechStatus,
+    notice: speechNotice,
+    speak,
+    pause,
+    resume,
+    stop,
+  } = useReadAloud();
   const { autoReadAloud } = useSettings();
 
   const [lesson, setLesson] = useState<LessonRecord>(initialLesson);
@@ -278,20 +286,45 @@ export default function CardLessonFlow({ lesson: initialLesson, completedBefore,
 
   const card = content.cards[cardIndex];
 
-  const speechText = useMemo(() => {
-    if (step === 'prediction' && content.prediction) return predictionToSpeech(content.prediction);
-    if (step === 'cards' && card) return cardToSpeech(card);
-    if (step === 'review') return reviewToSpeech(content);
+  // What is on screen now, and what comes next (fetched quietly so it starts without a wait).
+  const { speechSource, upcomingSource } = useMemo(() => {
+    const none = { speechSource: null, upcomingSource: null } as {
+      speechSource: SpeechSource | null;
+      upcomingSource: SpeechSource | null;
+    };
 
-    return '';
-  }, [step, card, content]);
+    if (step === 'prediction' && content.prediction) {
+      return {
+        speechSource: sourceFor(content, lesson.id, 'prediction'),
+        upcomingSource: sourceFor(content, lesson.id, 'card', 0),
+      };
+    }
+
+    if (step === 'cards' && card) {
+      const isLast = cardIndex + 1 >= content.cards.length;
+
+      return {
+        speechSource: sourceFor(content, lesson.id, 'card', cardIndex),
+        upcomingSource: isLast
+          ? sourceFor(content, lesson.id, 'review')
+          : sourceFor(content, lesson.id, 'card', cardIndex + 1),
+      };
+    }
+
+    if (step === 'review') return { speechSource: sourceFor(content, lesson.id, 'review'), upcomingSource: null };
+
+    return none;
+  }, [step, card, cardIndex, content, lesson.id]);
 
   // New screen: always stop the old voice; start the new one only if auto-read is on.
   useEffect(() => {
     stop();
 
-    if (autoReadAloud && speechText) speak(speechText);
-  }, [speechText, autoReadAloud, speak, stop]);
+    // Only get the next screen ready in advance when auto-read is on; otherwise it may never be heard.
+    if (autoReadAloud && speechSource) speak(speechSource, upcomingSource);
+    // upcomingSource only changes together with speechSource.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [speechSource, autoReadAloud, speak, stop]);
 
   // ── Render ──────────────────────────────────────────────────────────────────
   const showHeader = step === 'prediction' || step === 'cards' || step === 'review';
@@ -331,15 +364,29 @@ export default function CardLessonFlow({ lesson: initialLesson, completedBefore,
             })}
           </div>
 
-          {speechSupported && speechText ? (
+          {speechSupported && speechSource ? (
             <ReadAloudButton
-              speaking={speechStatus === 'speaking'}
-              onToggle={() => (speechStatus === 'speaking' ? stop() : speak(speechText))}
+              status={speechStatus}
+              onToggle={() => {
+                if (speechStatus === 'idle') speak(speechSource, autoReadAloud ? upcomingSource : null);
+                else if (speechStatus === 'speaking') pause();
+                else if (speechStatus === 'paused') resume();
+                else stop();
+              }}
             />
           ) : (
             <span className="w-9" aria-hidden="true" />
           )}
         </header>
+      )}
+
+      {showHeader && speechNotice && (
+        <p
+          role="status"
+          className="mx-auto w-full max-w-[720px] px-5 pb-1 text-center text-[13px] font-semibold leading-5 text-[#FFB020]"
+        >
+          {speechNotice}
+        </p>
       )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto">

@@ -1,5 +1,6 @@
 import { defineBackend } from "@aws-amplify/backend";
-import { Stack } from "aws-cdk-lib";
+import { Duration, RemovalPolicy, Stack } from "aws-cdk-lib";
+import { BlockPublicAccess, Bucket, BucketEncryption } from "aws-cdk-lib/aws-s3";
 import { EventInvokeConfig } from "aws-cdk-lib/aws-lambda";
 import { PolicyStatement } from "aws-cdk-lib/aws-iam";
 import { StartingPosition } from "aws-cdk-lib/aws-lambda";
@@ -17,6 +18,7 @@ import { linkGoogleUser } from "./functions/link-google-user/resource";
 import { changeUsername } from "./functions/change-username/resource";
 import { leaderboardSync } from "./functions/leaderboard-sync/resource";
 import { leaderboardWeekly } from "./functions/leaderboard-weekly/resource";
+import { readAloud } from "./functions/read-aloud/resource";
 
 const backend = defineBackend({
   auth,
@@ -30,6 +32,7 @@ const backend = defineBackend({
   changeUsername,
   leaderboardSync,
   leaderboardWeekly,
+  readAloud,
 });
 
 /* ---------------------------------------------------------------------------
@@ -144,5 +147,55 @@ leaderboardSyncLambda.addEventSource(
     batchSize: 25,
     retryAttempts: 3,
     bisectBatchOnError: true,
+  }),
+);
+
+/* ---------------------------------------------------------------------------
+ * Read aloud (natural voices)
+ *
+ * The read-aloud function turns one lesson screen into MP3 speech with Amazon
+ * Polly and keeps the file in a private S3 bucket, keyed by voice + text, so
+ * every screen is synthesized (and billed) once, then reused by everyone.
+ * The browser never touches the bucket: it only gets a short-lived signed
+ * link. The bucket lives in the function's own stack to avoid circular
+ * dependencies. Files expire after 90 days; a screen read again later is just
+ * synthesized again.
+ * ------------------------------------------------------------------------- */
+
+const readAloudLambda = backend.readAloud.resources.lambda;
+
+const readAloudBucket = new Bucket(Stack.of(readAloudLambda), "ReadAloudAudioBucket", {
+  blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+  encryption: BucketEncryption.S3_MANAGED,
+  enforceSSL: true,
+  removalPolicy: RemovalPolicy.DESTROY,
+  autoDeleteObjects: true,
+  lifecycleRules: [{ expiration: Duration.days(90) }],
+});
+
+readAloudBucket.grantReadWrite(readAloudLambda);
+backend.readAloud.addEnvironment("READ_ALOUD_BUCKET", readAloudBucket.bucketName);
+
+// Per-learner daily allowance (see READ_ALOUD_DAILY_CHARACTERS in shared/voices.ts).
+// Rows are written by the function directly and expire on their own after 14 days.
+const readAloudUsageTable = backend.data.resources.tables["ReadAloudUsage"];
+
+backend.readAloud.addEnvironment("READ_ALOUD_USAGE_TABLE_NAME", readAloudUsageTable.tableName);
+readAloudUsageTable.grantReadWriteData(readAloudLambda);
+backend.data.resources.cfnResources.amplifyDynamoDbTables["ReadAloudUsage"].timeToLiveAttribute = {
+  attributeName: "expiresAt",
+  enabled: true,
+};
+
+// Voices use Polly's "neural" engine by default (about half the price of "generative",
+// and covered by a larger free tier). To switch to the most expressive engine add
+// backend.readAloud.addEnvironment("POLLY_ENGINE", "generative").
+// Generative voices are not in every region; Polly is called in us-east-1 by
+// default. Add backend.readAloud.addEnvironment("POLLY_REGION", "...") to change it.
+readAloudLambda.addToRolePolicy(
+  new PolicyStatement({
+    sid: "SynthesizeSpeech",
+    actions: ["polly:SynthesizeSpeech"],
+    resources: ["*"],
   }),
 );
