@@ -2,6 +2,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import { getProfile } from './profile';
 import { cacheKeys, invalidate } from './cache';
+import { limitErrorFrom } from './usageLimits';
 
 const client = generateClient<Schema>();
 
@@ -182,4 +183,43 @@ export async function unpublishJourney(publicJourneyId: string) {
 
   invalidate(cacheKeys.publicJourneys);
   invalidate(cacheKeys.myJourneys);
+}
+
+/**
+ * Copy a published journey (its zones and finished lessons) into the signed-in
+ * learner's own journeys. Progress starts fresh and stays private.
+ *
+ * Throws 'JOURNEY_UNAVAILABLE' when the author has unpublished it, otherwise
+ * 'IMPORT_FAILED'.
+ */
+export async function importJourney(publicJourneyId: string) {
+  const { data, errors } = await client.mutations.importJourney(
+    { publicJourneyId },
+    USER_POOL,
+  );
+
+  if (errors?.length || !data) {
+    console.error('[explore] Failed to import journey:', errors);
+
+    const limitError = limitErrorFrom(errors);
+
+    if (limitError) throw limitError;
+
+    const gone = (errors ?? []).some((error) =>
+      /PUBLIC_JOURNEY_NOT_FOUND|SOURCE_JOURNEY_UNAVAILABLE/.test(error.message),
+    );
+
+    if (gone) {
+      // The listing no longer exists; drop it from Explore.
+      invalidate(cacheKeys.publicJourneys);
+      throw new Error('JOURNEY_UNAVAILABLE');
+    }
+
+    throw new Error('IMPORT_FAILED');
+  }
+
+  // The new journey must show up in the sidebar and Library.
+  invalidate(cacheKeys.myJourneys);
+
+  return data;
 }

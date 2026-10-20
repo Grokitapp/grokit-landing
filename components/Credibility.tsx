@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import groundedIllustration from '../assets/grokit-grounded.png';
+import groundedIllustration from '../assets/grokit-grounded.webp';
+import { IMAGE_SIZES } from '../lib/imageMeta';
 
 const viewport = { once: true };
 
@@ -47,6 +48,10 @@ export function Credibility() {
             <motion.img
               src={groundedIllustration}
               alt="Grokit mascot reading on top of research, papers and sources"
+              width={IMAGE_SIZES.grounded.width}
+              height={IMAGE_SIZES.grounded.height}
+              loading="lazy"
+              decoding="async"
               className="w-[300px] sm:w-[360px] md:w-[420px] lg:w-[460px] h-auto object-contain"
               animate={{y: [0, -5, 0],}}
               transition={{duration: 4, repeat: Infinity, ease: 'easeInOut',}}

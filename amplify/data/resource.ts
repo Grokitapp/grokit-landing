@@ -7,6 +7,7 @@ import { completeLesson } from '../functions/complete-lesson/resource';
 import { changeUsername } from '../functions/change-username/resource';
 import { leaderboardSync } from '../functions/leaderboard-sync/resource';
 import { readAloud } from '../functions/read-aloud/resource';
+import { importJourney } from '../functions/import-journey/resource';
 
 const schema = a.schema({
   Course: a
@@ -25,6 +26,10 @@ const schema = a.schema({
         'FAILED',
       ]),
       generationError: a.string(),
+      // Set when the journey was imported from Explore: which listing it came
+      // from and who wrote it (shown as credit).
+      sourceJourneyId: a.id(),
+      authorUsername: a.string(),
       phases: a.hasMany('Phase', 'courseId'),
       lessons: a.hasMany('Lesson', 'courseId'),
     })
@@ -336,6 +341,20 @@ const schema = a.schema({
     ])
     .handler(a.handler.function(generateOutline)),
 
+  // Copies a published journey (zones and finished lessons) into the caller's
+  // account. Done by a function because other people's journeys are private
+  // and lessons can only be written server-side.
+  importJourney: a
+    .mutation()
+    .arguments({
+      publicJourneyId: a.id().required(),
+    })
+    .returns(a.ref('Course'))
+    .authorization((allow) => [
+      allow.authenticated(),
+    ])
+    .handler(a.handler.function(importJourney)),
+
   // Result of finishing a lesson. xp is 0 when the lesson was already completed.
   LessonCompletion: a.customType({
     xp: a.integer().required(),
@@ -404,6 +423,26 @@ const schema = a.schema({
         .to(['read']),
     ]),
 
+  // How much of a limited action (new journeys, AI-written lessons) a learner
+  // has used today. One row per learner per action per day. Written ONLY by the
+  // generation functions straight to DynamoDB, in one atomic "add one if under
+  // the limit" step; the browser can read its own counts (for the Usage page)
+  // but never change them. Rows expire on their own after 14 days.
+  UsageCounter: a
+    .model({
+      userId: a.string().required(),
+      bucket: a.string().required(),
+      count: a.integer(),
+      owner: a.string(),
+    })
+    .identifier(['userId', 'bucket'])
+    .authorization((allow) => [
+      allow
+        .ownerDefinedIn('owner')
+        .identityClaim('sub')
+        .to(['read']),
+    ]),
+
   // part: 'prediction' | 'card' | 'review' | 'sample'. The text is built on the
   // server from the learner's own lesson, so it can't be used to read arbitrary
   // text. lessonId is not needed for 'sample' (a fixed voice preview).
@@ -422,6 +461,7 @@ const schema = a.schema({
     .handler(a.handler.function(readAloud)),
 }).authorization((allow) => [
   allow.resource(generateOutline),
+  allow.resource(importJourney),
   allow.resource(generateOutlineWorker),
   allow.resource(generateLesson),
   allow.resource(generateLessonWorker),

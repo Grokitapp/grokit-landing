@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, type TargetAndTransition, type Transition, } from 'framer-motion';
-import octoPng from '../assets/grokit-octo.png';
+import octoPng from '../assets/grokit-octo.webp';
 import octopusSvg from '../assets/grokit-octopus.svg';
 
 export type MascotPose = 'idle' | 'wave' | 'thinking' | 'celebrate';
@@ -69,6 +69,7 @@ export function GrokitMascot({ size = 140, className = '', pose = 'idle' }: Grok
           alt="Grokit"
           width={size}
           height={size}
+          decoding="async"
           style={imgStyle}
           onError={() => (pngFailed ? setSvgFailed(true) : setPngFailed(true))}
         />

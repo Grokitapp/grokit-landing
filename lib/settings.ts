@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 
 import type { Schema } from '../amplify/data/resource';
-import { DEFAULT_VOICE_ID, DEVICE_VOICE_ID, findVoice } from '../amplify/functions/shared/voices';
+import { DEFAULT_VOICE_ID, DEVICE_VOICE_ID, findVoice, istDayKey } from '../amplify/functions/shared/voices';
+import {
+  FREE_DAILY_LIMITS,
+  counterBucket,
+  type LimitedKind,
+} from '../amplify/functions/shared/usage-limits';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -202,15 +208,15 @@ export const USAGE_GROUPS: ReadonlyArray<{ title: string; keys: UsageKey[] }> = 
 ];
 
 /**
- * Free-plan limits. Leave a value as null until that limit is really enforced
- * on the server: showing "0 of 5 used" for a limit nothing checks would be
- * misleading. When a limit is set here AND enforced by the backend, the page
- * shows a progress bar for it automatically.
+ * Free-plan limits. The numbers live in shared/usage-limits.ts, the same file
+ * the backend functions enforce them from, so this page can never promise a
+ * limit that nothing checks. A null means "no limit": the page then shows the
+ * count only.
  */
 export const USAGE_LIMITS: Record<UsageKey, number | null> = {
   lessonsTaken: null,
-  lessonsGenerated: null,
-  coursesCreated: null,
+  lessonsGenerated: FREE_DAILY_LIMITS.lessonsGenerated,
+  coursesCreated: FREE_DAILY_LIMITS.coursesCreated,
 };
 
 /** Flip to true once a /pricing page exists. Until then the upgrade card is hidden. */
@@ -329,10 +335,29 @@ async function countRows(fetchPage: (nextToken?: string | null) => Promise<Count
 
 const USER_POOL = { authMode: 'userPool' } as const;
 
+/**
+ * How much of a limited action the learner has used today. The backend keeps
+ * these counts as it enforces the limits (see UsageCounter), so this is
+ * exactly what it checks.
+ */
+export async function readUsageCount(kind: LimitedKind): Promise<number> {
+  const { userId } = await getCurrentUser();
+
+  const { data, errors } = await getClient().models.UsageCounter.get(
+    { userId, bucket: counterBucket(kind, istDayKey()) },
+    { selectionSet: ['count'], ...USER_POOL },
+  );
+
+  if (errors?.length) {
+    throw new Error(errors.map((error) => error.message).join('; '));
+  }
+
+  return data?.count ?? 0;
+}
+
 export async function fetchUsage(): Promise<UsageSnapshot> {
   const now = new Date();
   const dayStart = istDayStart(now).toISOString();
-  const monthStart = istMonthStart(now).toISOString();
 
   const [lessonsTaken, lessonsGenerated, coursesCreated] = await Promise.all([
     // Lessons finished today. One progress row is saved per finished lesson.
@@ -345,30 +370,13 @@ export async function fetchUsage(): Promise<UsageSnapshot> {
         ...USER_POOL,
       }),
     ),
-    // Lessons written for this learner today (stamped when the cards are saved).
-    countRows((nextToken) =>
-      getClient().models.Lesson.list({
-        filter: { generatedAt: { ge: dayStart } },
-        selectionSet: ['id'],
-        limit: 1000,
-        nextToken,
-        ...USER_POOL,
-      }),
-    ),
-    // Journeys created this month. Deleting a journey removes it from the count.
-    countRows((nextToken) =>
-      getClient().models.Course.list({
-        filter: { createdAt: { ge: monthStart } },
-        selectionSet: ['id'],
-        limit: 1000,
-        nextToken,
-        ...USER_POOL,
-      }),
-    ),
+    // The two creation counters are kept by the backend as it enforces the
+    // limits, so what is shown here is exactly what is checked.
+    readUsageCount('lessonsGenerated'),
+    readUsageCount('coursesCreated'),
   ]);
 
   const nextMidnight = new Date(istDayStart(now).getTime() + DAY_MS).toISOString();
-  const nextMonth = istNextMonthStart(now).toISOString();
 
   const item = (
     key: UsageKey,
@@ -388,7 +396,7 @@ export async function fetchUsage(): Promise<UsageSnapshot> {
     items: {
       lessonsTaken: item('lessonsTaken', lessonsTaken, 'day', nextMidnight),
       lessonsGenerated: item('lessonsGenerated', lessonsGenerated, 'day', nextMidnight),
-      coursesCreated: item('coursesCreated', coursesCreated, 'month', nextMonth),
+      coursesCreated: item('coursesCreated', coursesCreated, 'day', nextMidnight),
     },
   };
 }

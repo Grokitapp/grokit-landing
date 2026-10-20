@@ -3,6 +3,7 @@ import { ArrowRight, FileText, Mic, Paperclip, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router';
 import createJourneyMascot from '../assets/grokit-create-journey-mascot.png';
 import { getProfile } from '../lib/profile';
+import { getLimitNotice } from '../lib/usageLimits';
 
 type SpeechAlternative = {
   transcript: string;
@@ -52,6 +53,8 @@ export default function Create() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isListening, setIsListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
@@ -191,15 +194,32 @@ export default function Create() {
     }
   };
 
-  const handleSubmit = (event: SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: SubmitEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const trimmedPrompt = prompt.trim();
 
     if (!trimmedPrompt) return;
 
+    if (checking) return;
+
     if (isListening) {
       recognitionRef.current?.stop();
+    }
+
+    // Say so now if today's journeys are used up, instead of after the
+    // learner has answered the Personalize questions. (The backend enforces
+    // the limit either way.)
+    setChecking(true);
+    setLimitNotice(null);
+
+    const notice = await getLimitNotice('coursesCreated');
+
+    setChecking(false);
+
+    if (notice) {
+      setLimitNotice(notice);
+      return;
     }
 
     navigate('/learn/personalize', {
@@ -243,7 +263,7 @@ export default function Create() {
           </div>
 
           <form
-            onSubmit={handleSubmit}
+            onSubmit={(event) => void handleSubmit(event)}
             className="mt-7 w-full max-w-[780px] sm:mt-8"
           >
             <div className="relative min-h-[210px] rounded-[24px] border border-[#38515E] bg-[#102331] shadow-[0_20px_70px_rgba(0,0,0,0.24)] transition-all focus-within:border-[#547181] focus-within:shadow-[0_20px_80px_rgba(0,0,0,0.32)]">
@@ -318,7 +338,7 @@ export default function Create() {
 
                 <button
                   type="submit"
-                  disabled={!canCreate}
+                  disabled={!canCreate || checking}
                   className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-2xl bg-orange px-6 font-sans text-sm font-extrabold text-white shadow-[0_4px_0_#C94713] transition-all hover:brightness-105 active:translate-y-[2px] active:shadow-none disabled:pointer-events-none disabled:opacity-40 sm:min-w-[210px] sm:px-7"
                 >
                   Create journey
@@ -330,6 +350,12 @@ export default function Create() {
             {voiceError && (
               <p role="status" className="mt-3 text-sm leading-6 text-[#E8A58D]">
                 {voiceError}
+              </p>
+            )}
+
+            {limitNotice && (
+              <p role="alert" className="mt-3 text-sm leading-6 text-[#E8A58D]">
+                {limitNotice}
               </p>
             )}
           </form>

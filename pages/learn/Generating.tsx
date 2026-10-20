@@ -11,6 +11,7 @@ import {
 
 import grokitMascot from '../../assets/grokit-hero-mascot.png';
 import { createCourseFromPrompt } from '../../lib/courseGeneration';
+import { LimitReachedError } from '../../lib/usageLimits';
 import type { Schema } from '../../amplify/data/resource';
 
 type Course = Schema['Course']['type'];
@@ -143,6 +144,8 @@ export default function Generating() {
   const [typedTitle, setTypedTitle] = useState('');
   const [journey, setJourney] = useState<Course | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Set when today's journey allowance is used up (retrying would not help).
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
 
   const activeRequest = useRef(0);
   const fullTitle = useRef('');
@@ -162,6 +165,7 @@ export default function Generating() {
     }
 
     setStage('building');
+    setLimitMessage(null);
     setJourney(null);
     setTypedTitle('');
     setActivityIndex(0);
@@ -187,7 +191,13 @@ export default function Generating() {
       if (requestId !== activeRequest.current) return;
 
       // Diagnostics are kept out of the visible interface.
-      console.error('[Generating] Journey creation failed:', error);
+      if (error instanceof LimitReachedError) {
+        setLimitMessage(error.message);
+      } else {
+        // Diagnostics are kept out of the visible interface.
+        console.error('[Generating] Journey creation failed:', error);
+      }
+
       setJourney(null);
       setStage('error');
     }
@@ -281,19 +291,19 @@ export default function Generating() {
           </div>
 
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-orange">
-            A small detour
+            {limitMessage ? 'Daily limit reached' : 'A small detour'}
           </p>
 
           <h1 className="font-display text-3xl font-extrabold sm:text-4xl">
-            Your journey isn’t ready yet
+            {limitMessage ? 'No more journeys today' : 'Your journey isn’t ready yet'}
           </h1>
 
           <p className="mt-4 max-w-md text-sm leading-6 text-[#91A4AC] sm:text-base">
-            {getFriendlyError()}
+            {limitMessage ?? getFriendlyError()}
           </p>
 
           <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:justify-center">
-            {hasPrompt && (
+            {hasPrompt && !limitMessage && (
               <button
                 type="button"
                 onClick={retry}

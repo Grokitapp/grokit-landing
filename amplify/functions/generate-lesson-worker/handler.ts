@@ -9,6 +9,7 @@ import { getAmplifyDataClientConfig } from "@aws-amplify/backend/function/runtim
 import { callClaudeJson } from "../shared/claude";
 import { assertNoErrors, getErrorMessage, parseJsonish } from "../shared/common";
 import { buildLearnerBrief } from "../shared/learner";
+import { refundUsage } from "../shared/usage";
 import {
   CONTENT_VERSION,
   LESSON_CONTENT_SCHEMA,
@@ -83,6 +84,9 @@ export const handler = async (event: WorkerEvent, context: { awsRequestId: strin
   // never throws away cards the learner can already read.
   let stage: "content" | "practice" = practiceOnly ? "practice" : "content";
 
+  // Whose daily slot to give back if the cards cannot be written.
+  let refundOwner: string | undefined;
+
   try {
     if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY_NOT_CONFIGURED");
 
@@ -91,6 +95,7 @@ export const handler = async (event: WorkerEvent, context: { awsRequestId: strin
 
     const lesson = lessonResult.data;
     if (!lesson) throw new Error("LESSON_NOT_FOUND");
+    refundOwner = lesson.owner ?? undefined;
 
     // Idempotency: never regenerate (or re-bill) finished work.
     if (lesson.status === "READY" && lesson.coreContent && !lesson.content) return; // older article lesson
@@ -217,6 +222,9 @@ export const handler = async (event: WorkerEvent, context: { awsRequestId: strin
           status: "FAILED",
           generationError: message.slice(0, 5000),
         });
+
+        // A lesson that was never written must not use up the allowance.
+        if (refundOwner) await refundUsage(refundOwner, "lessonsGenerated");
       } else {
         // The cards are fine; only the practice failed. The learner can read
         // on, and generateLesson will retry just this stage when asked again.

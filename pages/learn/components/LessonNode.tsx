@@ -111,6 +111,8 @@ export default function LessonNode({
           <img
             src={lesson.mascotUrl}
             alt=""
+            loading="lazy"
+            decoding="async"
             className={mascotImgClasses}
           />
         ) : null}

@@ -7,6 +7,8 @@ import {
   Search,
 } from 'lucide-react';
 
+import { SmartImage } from '../../../components/SmartImage';
+
 // -----------------------------------------------------------------------------
 // Shared building blocks for the Explore and Library screens.
 // -----------------------------------------------------------------------------
@@ -68,22 +70,23 @@ export function JourneyTile({
         aria-label={`Open ${title}`}
         className="absolute inset-0 overflow-hidden rounded-2xl border border-[#2D4149] text-left transition duration-200 group-hover:border-orange/50 group-hover:shadow-[0_12px_32px_rgba(0,0,0,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange"
       >
-        {imageUrl ? (
-          <img
+        {/* Always rendered: it is the placeholder while the cover loads, and
+            the fallback if the cover is missing or fails to load. */}
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${gradientFor(title)}`}
+        >
+          <Compass
+            className="absolute left-1/2 top-5 h-20 w-20 -translate-x-1/2 text-white/15"
+            aria-hidden="true"
+          />
+        </div>
+
+        {imageUrl && (
+          <SmartImage
             src={imageUrl}
             alt=""
-            loading="lazy"
-            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-cover group-hover:scale-105"
           />
-        ) : (
-          <div
-            className={`absolute inset-0 bg-gradient-to-br ${gradientFor(title)}`}
-          >
-            <Compass
-              className="absolute left-1/2 top-5 h-20 w-20 -translate-x-1/2 text-white/15"
-              aria-hidden="true"
-            />
-          </div>
         )}
 
         {/* Keeps the title readable on any cover. */}

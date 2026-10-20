@@ -19,6 +19,7 @@ import { changeUsername } from "./functions/change-username/resource";
 import { leaderboardSync } from "./functions/leaderboard-sync/resource";
 import { leaderboardWeekly } from "./functions/leaderboard-weekly/resource";
 import { readAloud } from "./functions/read-aloud/resource";
+import { importJourney } from "./functions/import-journey/resource";
 
 const backend = defineBackend({
   auth,
@@ -33,6 +34,7 @@ const backend = defineBackend({
   leaderboardSync,
   leaderboardWeekly,
   readAloud,
+  importJourney,
 });
 
 /* ---------------------------------------------------------------------------
@@ -199,3 +201,31 @@ readAloudLambda.addToRolePolicy(
     resources: ["*"],
   }),
 );
+
+/* ---------------------------------------------------------------------------
+ * Daily usage limits
+ *
+ * New journeys and AI-written lessons are paid model calls, so each learner
+ * gets a daily allowance (numbers in shared/usage-limits.ts). The functions
+ * that start that work take a slot from the UsageCounter table in one atomic
+ * write before it begins, and the workers give the slot back if the work fails.
+ * Rows expire on their own after 14 days.
+ * ------------------------------------------------------------------------- */
+
+const usageCounterTable = backend.data.resources.tables["UsageCounter"];
+
+for (const fn of [
+  backend.generateOutline,
+  backend.generateOutlineWorker,
+  backend.generateLesson,
+  backend.generateLessonWorker,
+  backend.importJourney,
+]) {
+  fn.addEnvironment("USAGE_COUNTER_TABLE_NAME", usageCounterTable.tableName);
+  usageCounterTable.grantReadWriteData(fn.resources.lambda);
+}
+
+backend.data.resources.cfnResources.amplifyDynamoDbTables["UsageCounter"].timeToLiveAttribute = {
+  attributeName: "expiresAt",
+  enabled: true,
+};

@@ -5,19 +5,26 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  Download,
   Layers,
-  Play,
+  Sparkles,
   User,
   X,
 } from 'lucide-react';
 
 import { cacheKeys, useCachedQuery } from '../lib/cache';
-import { listPublicJourneys, type PublicJourney } from '../lib/explore';
+import {
+  importJourney,
+  listPublicJourneys,
+  type PublicJourney,
+} from '../lib/explore';
 import {
   listSavedJourneys,
   saveJourney,
   unsaveJourney,
 } from '../lib/library';
+import { LimitReachedError } from '../lib/usageLimits';
+import { SmartImage } from '../components/SmartImage';
 import {
   JourneyTile,
   MessageState,
@@ -93,6 +100,9 @@ function formatMeta(journey: PublicJourney) {
 const hideScrollbar =
   '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
+const choiceClasses =
+  'flex w-full items-start gap-3 rounded-2xl border-2 p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:cursor-not-allowed disabled:opacity-60';
+
 // -----------------------------------------------------------------------------
 // Row: title + arrows + horizontally scrolling cards
 // -----------------------------------------------------------------------------
@@ -100,7 +110,7 @@ const hideScrollbar =
 interface TileHandlers {
   /** Opens the details for a journey. */
   onOpen: (journey: PublicJourney) => void;
-  /** Starts a new journey on the same topic straight away. */
+  /** Starts a personalised journey on the same topic. */
   onStart: (journey: PublicJourney) => void;
   isSaved: (journey: PublicJourney) => boolean;
   isSavePending: (journey: PublicJourney) => boolean;
@@ -139,8 +149,8 @@ function renderTile(
               onClick: () => handlers.onToggleSave(journey),
             },
             {
-              label: 'Start this journey',
-              icon: <Play className="h-4 w-4" aria-hidden="true" />,
+              label: 'Make it mine',
+              icon: <Sparkles className="h-4 w-4" aria-hidden="true" />,
               onClick: () => handlers.onStart(journey),
             },
           ]}
@@ -271,15 +281,21 @@ function JourneyDialog({
   journey,
   saved,
   savePending,
+  importing,
+  importError,
   onClose,
   onStart,
+  onImport,
   onToggleSave,
 }: {
   journey: PublicJourney;
   saved: boolean;
   savePending: boolean;
+  importing: boolean;
+  importError: string | null;
   onClose: () => void;
   onStart: () => void;
+  onImport: () => void;
   onToggleSave: () => void;
 }) {
   const startRef = useRef<HTMLButtonElement>(null);
@@ -323,9 +339,10 @@ function JourneyDialog({
       >
         <div className="relative h-40 overflow-hidden bg-gradient-to-br from-[#5B3A7A] to-[#1F1230] sm:h-44">
           {journey.heroImageUrl && (
-            <img
+            <SmartImage
               src={journey.heroImageUrl}
               alt=""
+              priority
               className="h-full w-full object-cover"
               draggable={false}
             />
@@ -380,37 +397,77 @@ function JourneyDialog({
             )}
           </p>
 
-          <p className="mt-4 text-sm leading-6 text-[#91A4AC]">
-            You’ll start your own journey on this topic, shaped to you. The
-            author’s lessons and progress stay private.
+          <p className="mt-5 text-sm font-bold text-white">
+            How do you want to learn this?
           </p>
 
-          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-3 flex flex-col gap-3">
             <button
               ref={startRef}
               type="button"
               onClick={onStart}
-              className="inline-flex min-h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-orange px-5 text-sm font-extrabold text-white shadow-[0_4px_0_#C94713] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white active:translate-y-0.5 active:shadow-none"
+              disabled={importing}
+              className={`${choiceClasses} border-orange bg-[#253238] hover:brightness-110`}
             >
-              <Play className="h-4 w-4" aria-hidden="true" />
-              Start this journey
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange/15 text-orange">
+                <Sparkles className="h-5 w-5" aria-hidden="true" />
+              </span>
+
+              <span className="min-w-0">
+                <span className="block text-sm font-extrabold text-white">
+                  Make it mine
+                </span>
+                <span className="mt-0.5 block text-xs leading-5 text-[#91A4AC]">
+                  Grokit builds a new journey on this topic, matched to your
+                  level and goals.
+                </span>
+              </span>
             </button>
 
             <button
               type="button"
-              onClick={onToggleSave}
-              disabled={savePending}
-              aria-pressed={saved}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-[#37464F] px-5 text-sm font-extrabold text-white transition hover:border-[#536871] hover:bg-[#26373E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:opacity-60"
+              onClick={onImport}
+              disabled={importing}
+              className={`${choiceClasses} border-[#37464F] bg-[#19262B] hover:border-[#536871]`}
             >
-              <Bookmark
-                className="h-4 w-4"
-                fill={saved ? 'currentColor' : 'none'}
-                aria-hidden="true"
-              />
-              {saved ? 'Saved' : 'Save'}
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#26373E] text-[#C8D3DA]">
+                <Download className="h-5 w-5" aria-hidden="true" />
+              </span>
+
+              <span className="min-w-0">
+                <span className="block text-sm font-extrabold text-white">
+                  {importing ? 'Importing…' : 'Import the original journey'}
+                </span>
+                <span className="mt-0.5 block text-xs leading-5 text-[#91A4AC]">
+                  {journey.authorUsername
+                    ? `Get the exact zones and lessons @${journey.authorUsername} made. `
+                    : 'Get the exact zones and lessons the author made. '}
+                  Your progress stays your own.
+                </span>
+              </span>
             </button>
           </div>
+
+          {importError && (
+            <p role="alert" className="mt-3 text-sm leading-6 text-red-300">
+              {importError}
+            </p>
+          )}
+
+          <button
+            type="button"
+            onClick={onToggleSave}
+            disabled={savePending || importing}
+            aria-pressed={saved}
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-bold text-[#C8D3DA] transition hover:bg-[#26373E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange disabled:opacity-60"
+          >
+            <Bookmark
+              className="h-4 w-4"
+              fill={saved ? 'currentColor' : 'none'}
+              aria-hidden="true"
+            />
+            {saved ? 'Saved for later' : 'Save for later'}
+          </button>
         </div>
       </div>
     </div>
@@ -467,7 +524,18 @@ export default function Explore() {
 
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PublicJourney | null>(null);
-  const closeDetails = useCallback(() => setSelected(null), []);
+  const [importing, setImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const importingRef = useRef(false);
+
+  // The details stay open while an import runs, so the learner lands in the
+  // new journey instead of on a screen they had already closed.
+  const closeDetails = useCallback(() => {
+    if (importingRef.current) return;
+
+    setSelected(null);
+    setImportError(null);
+  }, []);
 
   // public journey id -> saved record id. (If the saved list can't load, the
   // bookmarks just look empty; browsing still works.)
@@ -523,8 +591,43 @@ export default function Explore() {
   // flow as Create (personalise, then generate) with the topic already filled
   // in, so nobody has to retype it.
   const openJourney = useCallback((journey: PublicJourney) => {
+    setImportError(null);
     setSelected(journey);
   }, []);
+
+  // "Import the original journey" copies the author's zones and finished
+  // lessons into the learner's own journeys, then opens the copy.
+  const importOriginal = useCallback(
+    async (journey: PublicJourney) => {
+      if (importingRef.current) return;
+
+      importingRef.current = true;
+      setImporting(true);
+      setImportError(null);
+
+      try {
+        const course = await importJourney(journey.id);
+
+        navigate(`/learn/course/${course.id}`, {
+          state: { newlyCreatedJourneyId: course.id, refreshJourneys: true },
+        });
+      } catch (importErr) {
+        console.error('[Explore] Failed to import journey:', importErr);
+
+        setImportError(
+          importErr instanceof LimitReachedError
+            ? importErr.message
+            : importErr instanceof Error && importErr.message === 'JOURNEY_UNAVAILABLE'
+            ? 'The author has removed this journey, so it can’t be imported.'
+            : 'We couldn’t import this journey. Please try again.',
+        );
+      } finally {
+        importingRef.current = false;
+        setImporting(false);
+      }
+    },
+    [navigate],
+  );
 
   const startJourney = useCallback(
     (journey: PublicJourney) => {
@@ -626,8 +729,11 @@ export default function Explore() {
           journey={selected}
           saved={savedIds.has(selected.id)}
           savePending={pendingSaves.has(selected.id)}
+          importing={importing}
+          importError={importError}
           onClose={closeDetails}
           onStart={() => startJourney(selected)}
+          onImport={() => void importOriginal(selected)}
           onToggleSave={() => void toggleSave(selected)}
         />
       )}

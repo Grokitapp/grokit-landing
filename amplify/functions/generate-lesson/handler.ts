@@ -8,6 +8,7 @@ import { generateClient } from "aws-amplify/data";
 import { getAmplifyDataClientConfig } from "@aws-amplify/backend/function/runtime";
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { assertNoErrors, getErrorMessage } from "../shared/common";
+import { consumeUsage, refundUsage } from "../shared/usage";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
   process.env as Parameters<typeof getAmplifyDataClientConfig>[0],
@@ -104,12 +105,27 @@ export const handler: Handler = async (event, context) => {
   /** Cards are already running and fresh: do not start a second (billed) generation. */
   if (lesson.status === "GENERATING" && isFresh()) return lesson;
 
+  /**
+   * Writing a lesson is a paid model call, so it takes one of today's slots
+   * first. A slot is held exactly while a lesson is GENERATING or READY: it is
+   * taken when the lesson leaves PENDING/FAILED, and given back whenever it
+   * ends up FAILED. A stale GENERATING lesson restarted below already holds its
+   * slot, so it is not charged twice. Practice-only retries above are free.
+   */
+  const needsSlot = lesson.status !== "GENERATING";
+
+  if (needsSlot) await consumeUsage(sub, "lessonsGenerated");
+
   const generating = await client.models.Lesson.update({
     id: lessonId,
     status: "GENERATING",
     generationError: null,
   });
-  assertNoErrors(generating.errors, "LESSON_GENERATING_UPDATE_FAILED");
+
+  if (generating.errors?.length) {
+    if (needsSlot) await refundUsage(sub, "lessonsGenerated");
+    assertNoErrors(generating.errors, "LESSON_GENERATING_UPDATE_FAILED");
+  }
 
   await startWorker("content", async (message) => {
     await client.models.Lesson.update({
@@ -117,6 +133,7 @@ export const handler: Handler = async (event, context) => {
       status: "FAILED",
       generationError: `WORKER_START_FAILED: ${message}`.slice(0, 5000),
     });
+    await refundUsage(sub, "lessonsGenerated");
   });
 
   return generating.data ?? lesson;

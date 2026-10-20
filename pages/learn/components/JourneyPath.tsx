@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { BookOpen, Check, Lock, Trophy } from 'lucide-react';
 
 import type { Phase } from './PhaseCard';
-import grokitMascot from '../../../assets/grokit-hero-mascot.png';
+import grokitMascot from '../../../assets/grokit-node.webp';
 
 // -----------------------------------------------------------------------------
 // Types
@@ -205,6 +205,9 @@ function LessonPathNode({
             <img
               src={grokitMascot}
               alt=""
+              width={32}
+              height={32}
+              decoding="async"
               className="h-8 w-8 object-contain"
             />
           )}

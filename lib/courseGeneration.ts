@@ -2,6 +2,7 @@ import { generateClient } from 'aws-amplify/data';
 import type { Schema } from '../amplify/data/resource';
 import { getProfile } from './profile';
 import { cacheKeys, invalidate, refreshIfCached } from './cache';
+import { LimitReachedError, limitErrorFrom } from './usageLimits';
 import {
   readLessonContent,
   readPractice,
@@ -208,6 +209,10 @@ export async function createCourseFromPrompt(
       USER_POOL,
     );
 
+    const limitError = limitErrorFrom(errors);
+
+    if (limitError) throw limitError;
+
     throwIfErrors(errors, 'COURSE_GENERATION_FAILED');
 
     if (!data) {
@@ -237,6 +242,9 @@ export async function createCourseFromPrompt(
 
     return finished;
   } catch (error) {
+    // An expected outcome, not a failure: pass it on for the screen to explain.
+    if (error instanceof LimitReachedError) throw error;
+
     console.error('[courseGeneration] Course generation failed:', error);
 
     if (
@@ -264,6 +272,10 @@ export async function generateLessonContent(lessonId: string) {
       USER_POOL,
     );
 
+    const limitError = limitErrorFrom(errors);
+
+    if (limitError) throw limitError;
+
     throwIfErrors(errors, 'LESSON_GENERATION_FAILED');
 
     if (!data) {
@@ -290,6 +302,8 @@ export async function generateLessonContent(lessonId: string) {
 
     return finished;
   } catch (error) {
+    if (error instanceof LimitReachedError) throw error;
+
     console.error('[courseGeneration] Lesson generation failed:', error);
 
     if (

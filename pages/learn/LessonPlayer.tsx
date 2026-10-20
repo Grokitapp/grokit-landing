@@ -11,6 +11,7 @@ import {
   listProgressForCourse,
 } from '../../lib/courseGeneration';
 
+import { LimitReachedError } from '../../lib/usageLimits';
 import CardLessonFlow, { type LessonRecord } from './lesson/CardLessonFlow';
 
 // Older article-style lessons still open in their original player.
@@ -201,12 +202,15 @@ function PreparingLesson({
   onReady: () => void;
 }) {
   const [failed, setFailed] = useState(false);
+  // Set when today's lesson allowance is used up (trying again would not help).
+  const [limitMessage, setLimitMessage] = useState<string | null>(null);
   const [tries, setTries] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     setFailed(false);
+    setLimitMessage(null);
 
     generateLessonContent(lesson.id)
       .then(() => {
@@ -214,6 +218,14 @@ function PreparingLesson({
         if (!cancelled) onReady();
       })
       .catch((error) => {
+        if (error instanceof LimitReachedError) {
+          if (!cancelled) {
+            setLimitMessage(error.message);
+            setFailed(true);
+          }
+          return;
+        }
+
         console.error('Failed to prepare lesson', error);
         if (!cancelled) setFailed(true);
       });
@@ -229,12 +241,18 @@ function PreparingLesson({
     return (
       <Centered>
         <GrokitMascot pose="thinking" size={96} />
-        <h1 className="mt-5 text-xl font-extrabold text-white">We couldn’t build this lesson</h1>
-        <p className="mt-2 text-sm leading-6 text-[#91A4AC]">Your journey is safe. Give it another go.</p>
-        <button type="button" onClick={() => setTries((value) => value + 1)} className={retryButton}>
-          <RotateCcw className="h-4 w-4" />
-          Try again
-        </button>
+        <h1 className="mt-5 text-xl font-extrabold text-white">
+          {limitMessage ? 'No more new lessons today' : 'We couldn’t build this lesson'}
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-[#91A4AC]">
+          {limitMessage ?? 'Your journey is safe. Give it another go.'}
+        </p>
+        {!limitMessage && (
+          <button type="button" onClick={() => setTries((value) => value + 1)} className={retryButton}>
+            <RotateCcw className="h-4 w-4" />
+            Try again
+          </button>
+        )}
         <Link to={backHref} className="mt-5 text-sm font-semibold text-[#91A4AC] transition hover:text-white">
           Back to your path
         </Link>

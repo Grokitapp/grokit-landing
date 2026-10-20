@@ -728,7 +728,7 @@ export default function Settings() {
           title="Usage"
           hint={
             hasUsageLimits()
-              ? 'Keep track of your daily and monthly limits.'
+              ? 'Keep track of your daily limits.'
               : 'What you’ve done today and this month.'
           }
         >
@@ -741,6 +741,10 @@ export default function Settings() {
               <UsageMeter
                 label={USAGE_LABELS.coursesCreated}
                 item={usage.items.coursesCreated}
+              />
+              <UsageMeter
+                label={USAGE_LABELS.lessonsGenerated}
+                item={usage.items.lessonsGenerated}
               />
             </>
           ) : usageError ? (
@@ -972,7 +976,7 @@ export function Usage() {
           </h1>
           <p className="mt-1 text-sm text-[#91A4AC]">
             {hasUsageLimits()
-              ? 'Keep track of your daily and monthly limits.'
+              ? 'Keep track of your daily limits.'
               : 'What you’ve done today and this month.'}
           </p>
         </div>
