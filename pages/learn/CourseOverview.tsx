@@ -54,6 +54,8 @@ interface JourneyData {
   description: string;
   topic: string;
   heroImageUrl: string;
+  /** Set when this journey was imported from Explore. */
+  sourceJourneyId: string | null;
   zones: PathZone[];
 }
 
@@ -62,6 +64,7 @@ const EMPTY_JOURNEY: JourneyData = {
   description: '',
   topic: '',
   heroImageUrl: '',
+  sourceJourneyId: null,
   zones: [],
 };
 
@@ -143,6 +146,7 @@ function calculateStats(zones: PathZone[]): JourneyStats {
 function JourneyCard({
   courseId,
   title,
+  sourceJourneyId,
   stats,
   zoneCount,
   onContinue,
@@ -150,6 +154,7 @@ function JourneyCard({
 }: {
   courseId: string;
   title: string;
+  sourceJourneyId: string | null;
   stats: JourneyStats;
   zoneCount: number;
   onContinue: () => void;
@@ -187,7 +192,10 @@ function JourneyCard({
           </h1>
         </div>
 
-        <JourneyMenu journey={{ id: courseId, title }} onPublish={onPublish} />
+        <JourneyMenu
+          journey={{ id: courseId, title, sourceJourneyId }}
+          onPublish={onPublish}
+        />
       </div>
 
       <div className="mt-1 flex items-center gap-3 sm:mt-4 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
@@ -834,6 +842,8 @@ function buildJourney(raw: JourneyRaw): JourneyData {
     description: course.description ?? '',
     topic: course.topic ?? course.title,
     heroImageUrl: course.heroImageUrl ?? '',
+    sourceJourneyId:
+      (course as { sourceJourneyId?: string | null }).sourceJourneyId ?? null,
     zones: mappedZones,
   };
 }
@@ -884,7 +894,11 @@ export default function CourseOverview() {
     // Also opened by "?publish=1", used when returning from adding a username.
     if (!routeState?.openPublish && params.get('publish') !== '1') return;
 
-    setView('publish');
+    // Wait until the journey has loaded so we know whether it was imported.
+    if (!query.data) return;
+
+    // Imported journeys can't be published; just clear the flags.
+    if (!journey.sourceJourneyId) setView('publish');
 
     const nextState = { ...(routeState ?? {}) };
     delete nextState.openPublish;
@@ -896,7 +910,14 @@ export default function CourseOverview() {
       { pathname: location.pathname, search: search ? `?${search}` : '' },
       { replace: true, state: nextState },
     );
-  }, [location.pathname, location.search, location.state, navigate]);
+  }, [
+    location.pathname,
+    location.search,
+    location.state,
+    navigate,
+    query.data,
+    journey.sourceJourneyId,
+  ]);
 
   const stats = useMemo(() => calculateStats(journey.zones), [journey.zones]);
 
@@ -999,6 +1020,7 @@ export default function CourseOverview() {
                 <JourneyCard
                   courseId={courseId}
                   title={journey.title}
+                  sourceJourneyId={journey.sourceJourneyId}
                   stats={stats}
                   zoneCount={journey.zones.length}
                   onContinue={continueJourney}

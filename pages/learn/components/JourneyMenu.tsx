@@ -27,7 +27,11 @@ import {
 // -----------------------------------------------------------------------------
 
 interface JourneyMenuProps {
-  journey: { id: string; title: string };
+  /**
+   * `sourceJourneyId` is set on journeys imported from Explore. Those belong to
+   * someone else's work, so they can't be published back to Explore.
+   */
+  journey: { id: string; title: string; sourceJourneyId?: string | null };
   /** Positioning / visibility classes from the parent (e.g. hover reveal). */
   buttonClassName?: string;
   /**
@@ -383,6 +387,8 @@ export default function JourneyMenu({
     setDialog(kind);
   };
 
+  const canPublish = !journey.sourceJourneyId;
+
   const handlePublishClick = () => {
     setOpen(false);
 
@@ -443,15 +449,17 @@ export default function JourneyMenu({
               Edit name
             </button>
 
-            <button
-              type="button"
-              role="menuitem"
-              onClick={handlePublishClick}
-              className={`${menuItemClasses} text-[#E6EAEC] hover:bg-white/[0.07]`}
-            >
-              <Globe className="h-[18px] w-[18px] text-[#C5CFD3]" aria-hidden="true" />
-              Publish to Explore
-            </button>
+            {canPublish && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={handlePublishClick}
+                className={`${menuItemClasses} text-[#E6EAEC] hover:bg-white/[0.07]`}
+              >
+                <Globe className="h-[18px] w-[18px] text-[#C5CFD3]" aria-hidden="true" />
+                Publish to Explore
+              </button>
+            )}
 
             <button
               type="button"
