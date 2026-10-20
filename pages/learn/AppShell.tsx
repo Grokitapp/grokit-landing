@@ -38,6 +38,7 @@ import { resetGamification, useGamification } from '../../lib/gamification';
 interface Journey {
   id: string;
   title: string;
+  sourceJourneyId?: string | null;
 }
 
 interface AppShellProps {
@@ -227,6 +228,9 @@ export default function AppShell({
             .map((record) => ({
               id: record.id,
               title: record.title,
+              sourceJourneyId:
+                (record as { sourceJourneyId?: string | null }).sourceJourneyId ??
+                null,
             }));
 
           setLoadedCourses(journeys);
