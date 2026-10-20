@@ -33,6 +33,7 @@ export const cacheKeys = {
   notes: 'library:notes',
   publicJourneys: 'explore:public',
   usage: 'settings:usage',
+  myCourseLinks: 'explore:my-course-links',
 } as const;
 
 // useCachedResource's default freshness window (useCachedQuery defaults to 0:

@@ -220,6 +220,8 @@ export async function importJourney(publicJourneyId: string) {
 
   // The new journey must show up in the sidebar and Library.
   invalidate(cacheKeys.myJourneys);
+  // Explore must now treat that listing as already imported.
+  invalidate(cacheKeys.myCourseLinks);
 
   return data;
 }

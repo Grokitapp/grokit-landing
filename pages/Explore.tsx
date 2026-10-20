@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { getCurrentUser } from 'aws-amplify/auth';
 import {
   Bookmark,
   BookOpen,
@@ -23,6 +24,7 @@ import {
   saveJourney,
   unsaveJourney,
 } from '../lib/library';
+import { listCourses } from '../lib/courseGeneration';
 import { LimitReachedError } from '../lib/usageLimits';
 import { SmartImage } from '../components/SmartImage';
 import {
@@ -50,6 +52,33 @@ const FOR_YOU_LIMIT = 12;
 const CATALOGUE_FRESH_MS = 5 * 60_000;
 
 const NO_JOURNEYS: PublicJourney[] = [];
+
+// What the learner already has, so a journey they wrote or imported opens
+// directly instead of offering to save or import it again.
+interface MyCourseLinks {
+  /** Ids of all the learner's own journeys. */
+  ownCourseIds: Set<string>;
+  /** Explore listing id -> the learner's imported copy of it. */
+  imported: Map<string, string>;
+}
+
+async function loadMyCourseLinks(): Promise<MyCourseLinks> {
+  const courses = await listCourses();
+  const ownCourseIds = new Set<string>();
+  const imported = new Map<string, string>();
+
+  for (const course of courses) {
+    if ((course as { archived?: boolean | null }).archived) continue;
+
+    ownCourseIds.add(course.id);
+
+    const listingId = (course as { sourceJourneyId?: string | null }).sourceJourneyId;
+
+    if (listingId) imported.set(listingId, course.id);
+  }
+
+  return { ownCourseIds, imported };
+}
 
 function buildRows(journeys: PublicJourney[]): JourneyRowData[] {
   if (journeys.length === 0) return [];
@@ -110,8 +139,10 @@ const choiceClasses =
 interface TileHandlers {
   /** Opens the details for a journey. */
   onOpen: (journey: PublicJourney) => void;
-  /** Starts a personalised journey on the same topic. */
-  onStart: (journey: PublicJourney) => void;
+  /** Copies the author's journey into the learner's own journeys. */
+  onImport: (journey: PublicJourney) => void;
+  /** True when the journey is already one of the learner's own (written or imported by them). */
+  isMine: (journey: PublicJourney) => boolean;
   isSaved: (journey: PublicJourney) => boolean;
   isSavePending: (journey: PublicJourney) => boolean;
   onToggleSave: (journey: PublicJourney) => void;
@@ -132,7 +163,9 @@ function renderTile(
       byline={journey.authorUsername ? `by @${journey.authorUsername}` : undefined}
       fluid={fluid}
       onOpen={() => handlers.onOpen(journey)}
+      // Nothing to save or import when it is already the learner's own: it just opens.
       action={
+        handlers.isMine(journey) ? undefined : (
         <TileMenu
           label={journey.title}
           items={[
@@ -149,12 +182,13 @@ function renderTile(
               onClick: () => handlers.onToggleSave(journey),
             },
             {
-              label: 'Make it mine',
-              icon: <Sparkles className="h-4 w-4" aria-hidden="true" />,
-              onClick: () => handlers.onStart(journey),
+              label: 'Import this journey',
+              icon: <Download className="h-4 w-4" aria-hidden="true" />,
+              onClick: () => handlers.onImport(journey),
             },
           ]}
         />
+        )
       }
     />
   );
@@ -522,6 +556,46 @@ export default function Explore() {
   const loading = journeysQuery.loading;
   const error = journeysQuery.error;
 
+  // Who is signed in, so a learner's own journeys open directly instead of
+  // offering to save or import them.
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    getCurrentUser()
+      .then(({ userId }) => {
+        if (active) setCurrentUserId(userId);
+      })
+      .catch(() => {
+        // Not critical: without it every journey is treated as someone else's.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const linksQuery = useCachedQuery(cacheKeys.myCourseLinks, loadMyCourseLinks, {
+    staleMs: 30_000,
+  });
+  const links = linksQuery.data;
+
+  // The learner's own journey for this listing (the one they wrote, or the copy
+  // they imported), or null when they don't have one yet.
+  const myCourseIdFor = useCallback(
+    (journey: PublicJourney): string | null => {
+      if (currentUserId !== null && journey.owner === currentUserId) {
+        return journey.courseId;
+      }
+
+      if (links?.ownCourseIds.has(journey.courseId)) return journey.courseId;
+
+      return links?.imported.get(journey.id) ?? null;
+    },
+    [currentUserId, links],
+  );
+
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<PublicJourney | null>(null);
   const [importing, setImporting] = useState(false);
@@ -590,10 +664,22 @@ export default function Explore() {
   // Clicking a card opens its details. "Start this journey" begins the same
   // flow as Create (personalise, then generate) with the topic already filled
   // in, so nobody has to retype it.
-  const openJourney = useCallback((journey: PublicJourney) => {
-    setImportError(null);
-    setSelected(journey);
-  }, []);
+  // A journey the learner wrote, or already imported, skips all of that and
+  // opens their own copy straight away.
+  const openJourney = useCallback(
+    (journey: PublicJourney) => {
+      const mine = myCourseIdFor(journey);
+
+      if (mine) {
+        navigate(`/learn/course/${mine}`);
+        return;
+      }
+
+      setImportError(null);
+      setSelected(journey);
+    },
+    [myCourseIdFor, navigate],
+  );
 
   // "Import the original journey" copies the author's zones and finished
   // lessons into the learner's own journeys, then opens the copy.
@@ -629,6 +715,16 @@ export default function Explore() {
     [navigate],
   );
 
+  // "Import this journey" from a card's menu: opens the details (so progress and
+  // any error are visible) and starts the import right away.
+  const importFromMenu = useCallback(
+    (journey: PublicJourney) => {
+      setSelected(journey);
+      void importOriginal(journey);
+    },
+    [importOriginal],
+  );
+
   const startJourney = useCallback(
     (journey: PublicJourney) => {
       navigate('/learn/personalize', {
@@ -643,7 +739,8 @@ export default function Explore() {
 
   const handlers: TileHandlers = {
     onOpen: openJourney,
-    onStart: startJourney,
+    onImport: importFromMenu,
+    isMine: (journey) => myCourseIdFor(journey) !== null,
     isSaved: (journey) => savedIds.has(journey.id),
     isSavePending: (journey) => pendingSaves.has(journey.id),
     onToggleSave: (journey) => void toggleSave(journey),

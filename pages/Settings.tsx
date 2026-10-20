@@ -167,15 +167,28 @@ function Row({
   title,
   description,
   control,
+  stacked = false,
 }: {
   icon?: typeof Globe;
   title: string;
   description?: string;
   control?: ReactNode;
+  /**
+   * For wide controls (dropdowns, buttons): on phones the control moves under
+   * the text, lined up with it, instead of squeezing the text into a thin
+   * column. From the `sm` breakpoint up it sits on the right as usual.
+   */
+  stacked?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 px-5 py-4">
-      <div className="flex min-w-0 items-start gap-3.5">
+    <div
+      className={`flex px-5 py-4 ${
+        stacked
+          ? 'flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4'
+          : 'items-center justify-between gap-4'
+      }`}
+    >
+      <div className="flex min-w-0 flex-1 items-start gap-3.5">
         {Icon && (
           <span
             aria-hidden="true"
@@ -195,7 +208,15 @@ function Row({
         </div>
       </div>
 
-      {control && <div className="shrink-0">{control}</div>}
+      {control && (
+        <div
+          className={
+            stacked ? (Icon ? 'w-full pl-[54px] sm:w-auto sm:shrink-0 sm:pl-0' : 'w-full sm:w-auto sm:shrink-0') : 'shrink-0'
+          }
+        >
+          {control}
+        </div>
+      )}
     </div>
   );
 }
@@ -236,12 +257,15 @@ function SelectControl({
   onChange,
   options,
   disabled = false,
+  fullWidth = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: ReadonlyArray<{ value: string; label: string }>;
   disabled?: boolean;
+  /** Fill the space next to a sibling button on phones (used for long option names). */
+  fullWidth?: boolean;
 }) {
   return (
     <select
@@ -249,7 +273,7 @@ function SelectControl({
       value={value}
       disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
-      className={`h-11 max-w-[170px] rounded-xl border-2 border-[#37464F] bg-[#131F24] px-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
+      className={`h-11 ${fullWidth ? 'min-w-0 flex-1 sm:w-[230px] sm:flex-none' : 'max-w-[170px]'} rounded-xl border-2 border-[#37464F] bg-[#131F24] px-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60 ${focusRing}`}
     >
       {options.map((option) => (
         <option key={option.value} value={option.value}>
@@ -808,9 +832,11 @@ export default function Settings() {
             icon={Mic}
             title="Reading voice"
             description="Natural voices need an internet connection. The device voice works offline but sounds robotic."
+            stacked
             control={
-              <div className="flex items-center gap-2">
+              <div className="flex w-full items-center gap-2 sm:w-auto">
                 <SelectControl
+                  fullWidth
                   label="Reading voice"
                   value={settings.readAloudVoice}
                   onChange={(readAloudVoice) => {
@@ -832,7 +858,7 @@ export default function Settings() {
                       : voicePreview.stop()
                   }
                   aria-label={voicePreview.status === 'idle' ? 'Preview voice' : 'Stop preview'}
-                  className={`${secondaryButtonClasses} !min-h-11 !px-3`}
+                  className={`${secondaryButtonClasses} !min-h-11 shrink-0 !px-3`}
                 >
                   {voicePreview.status === 'loading' ? (
                     <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -851,7 +877,7 @@ export default function Settings() {
               title="Natural voice today"
               description="Replaying something you've already heard is free. When today's listening runs out, the device voice takes over until midnight."
               control={
-                <span className="text-sm font-extrabold text-white">
+                <span className="whitespace-nowrap text-sm font-extrabold text-white">
                   {Math.min(
                     charactersToMinutes(readAloudUsage.usedCharacters),
                     charactersToMinutes(readAloudUsage.limitCharacters),
