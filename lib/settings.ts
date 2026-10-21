@@ -3,7 +3,7 @@ import { getCurrentUser } from 'aws-amplify/auth';
 import { generateClient } from 'aws-amplify/data';
 
 import type { Schema } from '../amplify/data/resource';
-import { DEFAULT_VOICE_ID, DEVICE_VOICE_ID, findVoice, istDayKey } from '../amplify/functions/shared/voices';
+import { DEVICE_VOICE_ID, findVoice, istDayKey } from '../amplify/functions/shared/voices';
 import {
   FREE_LIMITS,
   counterBucket,
@@ -57,7 +57,9 @@ const DEFAULTS: AppSettings = {
   theme: 'dark',
   soundEffects: true,
   readAloudSpeed: 1,
-  readAloudVoice: DEFAULT_VOICE_ID,
+  // The device voice is free and unlimited, so it is the starting point.
+  // Natural voices are one tap away in Settings (they have a daily limit).
+  readAloudVoice: DEVICE_VOICE_ID,
   autoReadAloud: false,
 };
 

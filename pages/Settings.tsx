@@ -831,7 +831,7 @@ export default function Settings() {
           <Row
             icon={Mic}
             title="Reading voice"
-            description="Natural voices need an internet connection. The device voice works offline but sounds robotic."
+            description="Natural voices sound better but need internet and have a daily listening limit. The device voice is free, unlimited and works offline."
             stacked
             control={
               <div className="flex w-full items-center gap-2 sm:w-auto">
@@ -846,8 +846,8 @@ export default function Settings() {
                     voicePreview.preview(readAloudVoice);
                   }}
                   options={[
+                    { value: DEVICE_VOICE_ID, label: 'Device voice (free, unlimited)' },
                     ...READ_ALOUD_VOICES.map((voice) => ({ value: voice.id, label: voice.label })),
-                    { value: DEVICE_VOICE_ID, label: 'Device voice (free)' },
                   ]}
                 />
                 <button

@@ -65,7 +65,9 @@ function getClient() {
   return dataClient;
 }
 
-type LinkResult = { status: 'ok'; url: string } | { status: 'limit' };
+// `pool` is true when natural voices are resting for EVERYONE this month (the
+// shared budget), false when this learner used up their own daily listening.
+type LinkResult = { status: 'ok'; url: string } | { status: 'limit'; pool: boolean; resetsAt?: string };
 
 // The signed links last an hour; reuse them for 50 minutes so going back to a card is instant.
 const LINK_TTL_MS = 50 * 60 * 1000;
@@ -100,7 +102,14 @@ function fetchLink(request: AudioRequest): Promise<LinkResult> {
       throw new Error(result.errors.map((error) => error.message).join('; '));
     }
 
-    if (result.data?.status === 'limit') return { status: 'limit' };
+    if (result.data?.status === 'limit') {
+      // Only the personal daily limit reports limitCharacters (see read-aloud).
+      return {
+        status: 'limit',
+        pool: result.data.limitCharacters == null,
+        resetsAt: result.data.resetsAt ?? undefined,
+      };
+    }
 
     if (!result.data?.url) throw new Error('READ_ALOUD_FAILED');
 
@@ -203,6 +212,17 @@ function pickDeviceVoice(): SpeechSynthesisVoice | null {
 export type ReadAloudStatus = 'idle' | 'loading' | 'speaking' | 'paused';
 
 const NOTICE_MS = 9000;
+
+/** "Natural voices are back on 1 Nov", from the reset time the server sent. */
+function poolNotice(resetsAt?: string): string {
+  const date = resetsAt ? new Date(resetsAt) : null;
+  const when =
+    date && !Number.isNaN(date.getTime())
+      ? new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short' }).format(date)
+      : 'next month';
+
+  return `Natural voices are resting for everyone this month, so this is your device’s voice. They’re back on ${when}.`;
+}
 
 const NOTICES = {
   limit: 'You’ve used today’s natural-voice listening, so this is your device’s voice. It resets at midnight.',
@@ -330,7 +350,7 @@ export function useReadAloud() {
           if (session.current !== id) return;
 
           if (link.status === 'limit') {
-            showNotice(NOTICES.limit);
+            showNotice(link.pool ? poolNotice(link.resetsAt) : NOTICES.limit);
             speakWithDevice(text, id);
             return;
           }

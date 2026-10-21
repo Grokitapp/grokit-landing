@@ -52,6 +52,8 @@ export function sampleText(voiceId: string): string {
 /** Characters of NEW natural speech per learner per day (about 3 lessons). */
 export const READ_ALOUD_DAILY_CHARACTERS = 20_000;
 
+export const READ_ALOUD_MONTHLY_POOL_CHARACTERS = 625_000;
+
 /** Speech runs at roughly 15 characters a second. Used only to show friendly minutes. */
 const CHARACTERS_PER_MINUTE = 900;
 

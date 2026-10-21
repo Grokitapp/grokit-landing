@@ -23,12 +23,14 @@ import { readLessonContent } from "../shared/lesson-content";
 import { buildSpeech } from "../shared/speech";
 import {
   READ_ALOUD_DAILY_CHARACTERS,
+  READ_ALOUD_MONTHLY_POOL_CHARACTERS,
   findVoice,
   istDayKey,
   nextIstMidnight,
   sampleText,
   type ReadAloudVoice,
 } from "../shared/voices";
+import { istMonthKey, nextMonthStart } from "../shared/usage-limits";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
   process.env as Parameters<typeof getAmplifyDataClientConfig>[0],
@@ -74,6 +76,14 @@ const PARTS = new Set(["prediction", "card", "review", "sample"]);
 const USAGE_TABLE = process.env.READ_ALOUD_USAGE_TABLE_NAME;
 const USAGE_ROW_TTL_SECONDS = 14 * 24 * 3600;
 
+/**
+ * One shared row counts all new natural speech made this month, for every
+ * learner (stored in the same table, under a reserved id that no real
+ * learner has). It must outlive the month, so it keeps for 45 days.
+ */
+const POOL_USER_ID = "__pool__";
+const POOL_ROW_TTL_SECONDS = 45 * 24 * 3600;
+
 export const handler: Handler = async (event, context) => {
   const requestId = context.awsRequestId;
   const bucket = process.env.READ_ALOUD_BUCKET;
@@ -111,6 +121,7 @@ export const handler: Handler = async (event, context) => {
 
   const cached = await exists(bucket, key);
   const day = istDayKey();
+  const poolKey = `pool#${istMonthKey()}`;
   // Voice previews are tiny, fixed and cached for everyone, so they never use up the allowance.
   const counted = part !== "sample";
   let used: number | undefined;
@@ -131,6 +142,24 @@ export const handler: Handler = async (event, context) => {
           usedCharacters: used,
           limitCharacters: READ_ALOUD_DAILY_CHARACTERS,
           resetsAt: nextIstMidnight(),
+        };
+      }
+
+      // The shared monthly budget. Only the personal daily result above carries
+      // limitCharacters, so the app can tell the two apart: no limitCharacters
+      // means "natural voices are resting for everyone until resetsAt".
+      // (Like the daily counter, it fails open: a counting hiccup never stops
+      // anyone from listening.)
+      const poolUsed = await readUsage(POOL_USER_ID, poolKey);
+
+      if (poolUsed >= READ_ALOUD_MONTHLY_POOL_CHARACTERS) {
+        console.log(JSON.stringify({ event: "read_aloud_pool_exhausted", requestId, part, voice: voice.id, poolUsed }));
+
+        return {
+          status: "limit",
+          cached: false,
+          characters: text.length,
+          resetsAt: nextMonthStart(),
         };
       }
     }
@@ -154,6 +183,7 @@ export const handler: Handler = async (event, context) => {
 
     if (counted) {
       await addUsage(sub, day, text.length);
+      await addUsage(POOL_USER_ID, poolKey, text.length, POOL_ROW_TTL_SECONDS);
       used = (used ?? 0) + text.length;
     }
   }
@@ -251,7 +281,12 @@ async function readUsage(sub: string, day: string): Promise<number> {
   }
 }
 
-async function addUsage(sub: string, day: string, characters: number): Promise<void> {
+async function addUsage(
+  sub: string,
+  day: string,
+  characters: number,
+  ttlSeconds: number = USAGE_ROW_TTL_SECONDS,
+): Promise<void> {
   if (!USAGE_TABLE) return;
 
   const now = new Date();
@@ -275,7 +310,7 @@ async function addUsage(sub: string, day: string, characters: number): Promise<v
         ExpressionAttributeValues: {
           ":n": characters,
           ":sub": sub,
-          ":exp": Math.floor(now.getTime() / 1000) + USAGE_ROW_TTL_SECONDS,
+          ":exp": Math.floor(now.getTime() / 1000) + ttlSeconds,
           ":now": now.toISOString(),
           ":type": "ReadAloudUsage",
         },

@@ -69,6 +69,13 @@ export function nextReset(kind: LimitedKind, now: Date = new Date()): string {
   return new Date(nextLocalMidnight - IST_OFFSET_MS).toISOString();
 }
 
+/** ISO time of midnight (India) on the 1st of next month. */
+export function nextMonthStart(now: Date = new Date()): string {
+  const ist = istWallClock(now);
+
+  return new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth() + 1, 1) - IST_OFFSET_MS).toISOString();
+}
+
 /**
  * How a counter row is keyed: one row per learner per action per period.
  * Daily kinds use the day key as given (YYYY-MM-DD, India time). Monthly kinds
