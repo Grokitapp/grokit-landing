@@ -8,6 +8,7 @@ import { generateClient } from "aws-amplify/data";
 import { getAmplifyDataClientConfig } from "@aws-amplify/backend/function/runtime";
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { assertNoErrors, getErrorMessage, parseJsonish } from "../shared/common";
+import { consumeUsage, refundUsage } from "../shared/usage";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
   process.env as Parameters<typeof getAmplifyDataClientConfig>[0],
@@ -48,6 +49,10 @@ export const handler: Handler = async (event, context) => {
       ? undefined
       : parseJsonish(rawProfile);
 
+  // Take today's slot before any paid work starts. Throws the "limit reached"
+  // error when the learner has used their allowance.
+  await consumeUsage(owner, "coursesCreated");
+
   console.info("Starting course generation", { requestId, owner, topicLength: topic.length });
 
   const created = await client.models.Course.create({
@@ -59,10 +64,13 @@ export const handler: Handler = async (event, context) => {
       profileObject && typeof profileObject === "object" ? JSON.stringify(profileObject) : undefined,
     status: "GENERATING",
   });
-  assertNoErrors(created.errors, "COURSE_CREATE_FAILED");
+  if (created.errors?.length || !created.data) {
+    await refundUsage(owner, "coursesCreated");
+    assertNoErrors(created.errors, "COURSE_CREATE_FAILED");
+    throw new Error("COURSE_CREATE_FAILED");
+  }
 
   const course = created.data;
-  if (!course) throw new Error("COURSE_CREATE_FAILED");
 
   try {
     await lambda.send(
@@ -81,6 +89,8 @@ export const handler: Handler = async (event, context) => {
       status: "FAILED",
       generationError: `WORKER_START_FAILED: ${message}`.slice(0, 5000),
     });
+
+    await refundUsage(owner, "coursesCreated");
 
     throw new Error("COURSE_GENERATION_START_FAILED");
   }
