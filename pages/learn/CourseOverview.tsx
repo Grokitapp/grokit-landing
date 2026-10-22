@@ -240,18 +240,41 @@ function JourneyCard({
 }
 
 // -----------------------------------------------------------------------------
-// Gamification rail: stays in view while the path scrolls. It keeps a gap
-// above the first card (matching the journey card on the left) and a gap below
-// the last one. If the cards are taller than the screen, the rail scrolls on
-// its own instead of pushing the streak card off the top.
+// Gamification rail: scrolls up with the page, but only until its last card is
+// in view, then stays put (it never scrolls away). The padding gives the first
+// card the same gap from the top as the journey card on the left, and keeps a
+// gap under the last card.
 // -----------------------------------------------------------------------------
 
 function StickyRail({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(0);
+
+  useEffect(() => {
+    const element = ref.current;
+
+    if (!element) return;
+
+    const update = () => {
+      // A rail that fits pins at the top; a taller one scrolls up just far
+      // enough to show its bottom edge (padding included).
+      setTop(Math.min(0, window.innerHeight - element.offsetHeight));
+    };
+
+    update();
+
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    window.addEventListener('resize', update);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+
   return (
-    <div
-      style={{ maxHeight: '100dvh' }}
-      className="sticky top-0 space-y-4 overflow-y-auto overscroll-contain pb-6 pt-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
+    <div ref={ref} style={{ top }} className="sticky space-y-4 pb-6 pt-5">
       {children}
     </div>
   );
