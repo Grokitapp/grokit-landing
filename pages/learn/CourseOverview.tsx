@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 
 import { NextBadgeCard, StreakCard } from './components/GamificationCards';
+import AdCard from './components/AdCard';
 import JourneyMenu from './components/JourneyMenu';
 import { OPEN_JOURNEY_SHEET_EVENT } from './AppShell';
 import JourneyPath, {
@@ -1084,6 +1085,9 @@ export default function CourseOverview() {
                 <>
                   <StreakCard stats={railStats} />
                   <NextBadgeCard stats={railStats} />
+                  <AdCard
+                    context={{ courseId, canPublish: !journey.sourceJourneyId }}
+                  />
                 </>
               ) : (
                 <div aria-hidden="true" className="space-y-4 animate-pulse">

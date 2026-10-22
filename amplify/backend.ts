@@ -20,6 +20,7 @@ import { leaderboardSync } from "./functions/leaderboard-sync/resource";
 import { leaderboardWeekly } from "./functions/leaderboard-weekly/resource";
 import { readAloud } from "./functions/read-aloud/resource";
 import { importJourney } from "./functions/import-journey/resource";
+import { trackAdEvent } from "./functions/track-ad-event/resource";
 
 const backend = defineBackend({
   auth,
@@ -35,6 +36,7 @@ const backend = defineBackend({
   leaderboardWeekly,
   readAloud,
   importJourney,
+  trackAdEvent,
 });
 
 /* ---------------------------------------------------------------------------
@@ -226,6 +228,28 @@ for (const fn of [
 }
 
 backend.data.resources.cfnResources.amplifyDynamoDbTables["UsageCounter"].timeToLiveAttribute = {
+  attributeName: "expiresAt",
+  enabled: true,
+};
+
+/* ---------------------------------------------------------------------------
+ * Ad tracking
+ *
+ * trackAdEvent counts impressions and clicks straight in DynamoDB (so the
+ * browser can't write the numbers). AdDedupe stops one learner's repeat views
+ * counting twice, and its rows expire on their own after 3 days.
+ * ------------------------------------------------------------------------- */
+
+const adStatTable = backend.data.resources.tables["AdDailyStat"];
+const adDedupeTable = backend.data.resources.tables["AdDedupe"];
+
+backend.trackAdEvent.addEnvironment("AD_STAT_TABLE_NAME", adStatTable.tableName);
+backend.trackAdEvent.addEnvironment("AD_DEDUPE_TABLE_NAME", adDedupeTable.tableName);
+
+adStatTable.grantReadWriteData(backend.trackAdEvent.resources.lambda);
+adDedupeTable.grantReadWriteData(backend.trackAdEvent.resources.lambda);
+
+backend.data.resources.cfnResources.amplifyDynamoDbTables["AdDedupe"].timeToLiveAttribute = {
   attributeName: "expiresAt",
   enabled: true,
 };

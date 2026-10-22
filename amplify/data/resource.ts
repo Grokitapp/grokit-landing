@@ -8,6 +8,7 @@ import { changeUsername } from '../functions/change-username/resource';
 import { leaderboardSync } from '../functions/leaderboard-sync/resource';
 import { readAloud } from '../functions/read-aloud/resource';
 import { importJourney } from '../functions/import-journey/resource';
+import { trackAdEvent } from '../functions/track-ad-event/resource';
 
 const schema = a.schema({
   Course: a
@@ -250,7 +251,8 @@ const schema = a.schema({
       allow.authenticated().to(['read']),
       allow
         .ownerDefinedIn('owner')
-        .identityClaim('sub'),
+        .identityClaim('sub')
+        .to(['read', 'update', 'delete']),
     ]),
 
   // A snapshot of a public journey the learner bookmarked from Explore.
@@ -442,6 +444,68 @@ const schema = a.schema({
         .identityClaim('sub')
         .to(['read']),
     ]),
+
+  // ---------------------------------------------------------------------------
+  // Ads. Campaigns are written by admins (Cognito group "admins"); every
+  // signed-in learner can read them so the app can show the active ones.
+  // ---------------------------------------------------------------------------
+  AdCampaign: a
+    .model({
+      name: a.string().required(), // internal label
+      advertiser: a.string().required(),
+      status: a.enum(['DRAFT', 'ACTIVE', 'PAUSED', 'ENDED']),
+      placement: a.string(), // 'journey-rail' (default)
+      tone: a.string(), // 'orange' | 'teal' | 'violet' | 'sky'
+      icon: a.string(), // 'compass' | 'sparkles' | 'globe' | 'award' | 'crown'
+      eyebrow: a.string(),
+      title: a.string().required(),
+      body: a.string().required(),
+      ctaLabel: a.string().required(),
+      ctaUrl: a.string().required(), // must be https
+      imageUrl: a.string(),
+      startsAt: a.date(),
+      endsAt: a.date(),
+      weight: a.integer(), // relative share between sponsors (default 1)
+    })
+    .authorization((allow) => [
+      allow.authenticated().to(['read']),
+      allow.group('admins'),
+    ]),
+
+  // Impressions and clicks per campaign per day (UTC). Written ONLY by the
+  // trackAdEvent function, so the browser can't inflate them.
+  AdDailyStat: a
+    .model({
+      campaignId: a.string().required(),
+      day: a.string().required(), // YYYY-MM-DD
+      impressions: a.integer(),
+      clicks: a.integer(),
+    })
+    .identifier(['campaignId', 'day'])
+    .authorization((allow) => [allow.group('admins').to(['read'])]),
+
+  // One row per learner per campaign per day per event type, so a learner's
+  // repeat views are not counted twice. Written only by trackAdEvent; rows
+  // expire on their own after 3 days.
+  AdDedupe: a
+    .model({
+      userId: a.string().required(),
+      bucket: a.string().required(),
+      count: a.integer(),
+    })
+    .identifier(['userId', 'bucket'])
+    .authorization((allow) => [allow.group('admins').to(['read'])]),
+
+  // event: 'impression' | 'click'. Returns false when it was a repeat (ignored).
+  trackAdEvent: a
+    .mutation()
+    .arguments({
+      campaignId: a.string().required(),
+      event: a.string().required(),
+    })
+    .returns(a.boolean())
+    .authorization((allow) => [allow.authenticated()])
+    .handler(a.handler.function(trackAdEvent)),
 
   // part: 'prediction' | 'card' | 'review' | 'sample'. The text is built on the
   // server from the learner's own lesson, so it can't be used to read arbitrary
