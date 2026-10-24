@@ -5,6 +5,8 @@ import {
   periodFor,
   type LimitedKind,
 } from '../amplify/functions/shared/usage-limits';
+import { PLANS, nextPlan, type PlanId } from '../amplify/functions/shared/plans';
+import { loadPlan } from './plan';
 import { formatReset, readUsageCount } from './settings';
 
 const WHAT: Record<LimitedKind, string> = {
@@ -12,15 +14,31 @@ const WHAT: Record<LimitedKind, string> = {
   lessonsGenerated: 'new lessons',
 };
 
+/** "Upgrade to Pro for 40 new lessons a day." (empty on Max, where there is nothing above). */
+export function upgradeHint(kind: LimitedKind, plan: PlanId): string {
+  const next = nextPlan(plan);
+
+  if (!next) return '';
+
+  const per = periodFor(kind) === 'month' ? 'a month' : 'a day';
+
+  return ` Upgrade to ${PLANS[next].name} for ${limitFor(kind, next)} ${WHAT[kind]} ${per}.`;
+}
+
 /** The sentence shown to the learner when a daily or monthly limit stops them. */
-export function describeLimit(kind: LimitedKind, limit: number, resetsAt: string): string {
+export function describeLimit(
+  kind: LimitedKind,
+  limit: number,
+  resetsAt: string,
+  plan: PlanId = 'free',
+): string {
   const reset = formatReset(resetsAt);
   const extra =
     kind === 'lessonsGenerated' ? ' Lessons you’ve already opened are still yours to finish.' : '';
 
   const when = periodFor(kind) === 'month' ? 'this month’s' : 'today’s';
 
-  return `You’ve reached ${when} limit of ${limit} ${WHAT[kind]}.${reset ? ` ${reset}.` : ''}${extra}`;
+  return `You’ve reached ${when} limit of ${limit} ${WHAT[kind]}.${reset ? ` ${reset}.` : ''}${extra}${upgradeHint(kind, plan)}`;
 }
 
 /**
@@ -31,13 +49,19 @@ export class LimitReachedError extends Error {
   readonly kind: LimitedKind;
   readonly limit: number;
   readonly resetsAt: string;
+  /** The plan the learner was on when they hit it. */
+  readonly plan: PlanId;
+  /** The plan to offer (null on Max): show an Upgrade button when this is set. */
+  readonly upgradeTo: PlanId | null;
 
-  constructor(kind: LimitedKind, limit: number, resetsAt: string) {
-    super(describeLimit(kind, limit, resetsAt));
+  constructor(kind: LimitedKind, limit: number, resetsAt: string, plan: PlanId = 'free') {
+    super(describeLimit(kind, limit, resetsAt, plan));
     this.name = 'LimitReachedError';
     this.kind = kind;
     this.limit = limit;
     this.resetsAt = resetsAt;
+    this.plan = plan;
+    this.upgradeTo = nextPlan(plan);
   }
 }
 
@@ -65,7 +89,7 @@ export function limitErrorFrom(source: unknown): LimitReachedError | null {
   for (const message of messages) {
     const parsed = parseLimitError(message);
 
-    if (parsed) return new LimitReachedError(parsed.kind, parsed.limit, parsed.resetsAt);
+    if (parsed) return new LimitReachedError(parsed.kind, parsed.limit, parsed.resetsAt, parsed.plan);
   }
 
   return null;
@@ -79,10 +103,11 @@ export function limitErrorFrom(source: unknown): LimitReachedError | null {
  */
 export async function getLimitNotice(kind: LimitedKind): Promise<string | null> {
   try {
-    const used = await readUsageCount(kind);
-    const limit = limitFor(kind);
+    // The limit depends on the plan: a Pro learner must not be stopped at the Free number.
+    const [used, plan] = await Promise.all([readUsageCount(kind), loadPlan()]);
+    const limit = limitFor(kind, plan);
 
-    return used >= limit ? describeLimit(kind, limit, nextReset(kind)) : null;
+    return used >= limit ? describeLimit(kind, limit, nextReset(kind), plan) : null;
   } catch (error) {
     console.warn('[usage] could not check the limit:', error);
 

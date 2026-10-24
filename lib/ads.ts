@@ -19,8 +19,8 @@ const client = generateClient<Schema>();
 /** Master switch. Set to false to hide every ad without touching anything else. */
 export const ADS_ENABLED = true;
 
-/** Flip to true once /pricing and checkout exist; "Remove ads" then links there. */
-export const PRO_AVAILABLE = false;
+/** /pricing exists, so "Remove ads" links there. (Checkout itself is switched on in lib/billing.ts.) */
+export const PRO_AVAILABLE = true;
 
 export const PRICING_PATH = '/pricing';
 

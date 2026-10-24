@@ -233,6 +233,26 @@ backend.data.resources.cfnResources.amplifyDynamoDbTables["UsageCounter"].timeTo
 };
 
 /* ---------------------------------------------------------------------------
+ * Plans (Free, Pro)
+ *
+ * The Subscription table says which plan a learner is on. The functions that
+ * enforce limits read it straight from DynamoDB (shared/get-plan.ts); they
+ * never write it. Only the payment webhook (added with checkout) and the
+ * grant-plan script write it.
+ * ------------------------------------------------------------------------- */
+
+const subscriptionTable = backend.data.resources.tables["Subscription"];
+
+for (const fn of [
+  backend.generateOutline,
+  backend.generateLesson,
+  backend.readAloud,
+]) {
+  fn.addEnvironment("SUBSCRIPTION_TABLE_NAME", subscriptionTable.tableName);
+  subscriptionTable.grantReadData(fn.resources.lambda);
+}
+
+/* ---------------------------------------------------------------------------
  * Ad tracking
  *
  * trackAdEvent counts impressions and clicks straight in DynamoDB (so the

@@ -445,6 +445,34 @@ const schema = a.schema({
         .to(['read']),
     ]),
 
+  // Which plan a learner is on (Free or Pro). One row per learner, keyed by
+  // their id. Written ONLY by the payment webhook (and the grant-plan script),
+  // straight to DynamoDB; the browser can read its own row (to show the plan and
+  // hide ads) but never change it. No row means Free.
+  //   plan:   'free' | 'pro'
+  //   status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'expired'
+  Subscription: a
+    .model({
+      userId: a.string().required(),
+      owner: a.string(),
+      plan: a.string(),
+      status: a.string(),
+      interval: a.string(), // 'month' | 'year'
+      currentPeriodEnd: a.string(), // ISO time; empty = until changed (lifetime / manual grant)
+      trialEndsAt: a.string(),
+      cancelAtPeriodEnd: a.boolean(),
+      provider: a.string(), // 'manual' | 'stripe' | 'razorpay'
+      providerCustomerId: a.string(),
+      providerSubscriptionId: a.string(),
+    })
+    .identifier(['userId'])
+    .authorization((allow) => [
+      allow
+        .ownerDefinedIn('owner')
+        .identityClaim('sub')
+        .to(['read']),
+    ]),
+
   // ---------------------------------------------------------------------------
   // Ads. Campaigns are written by admins (Cognito group "admins"); every
   // signed-in learner can read them so the app can show the active ones.

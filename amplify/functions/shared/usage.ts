@@ -5,6 +5,7 @@ declare const process: {
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 import { getErrorMessage } from "./common";
+import { getPlan } from "./get-plan";
 import { counterBucket, formatLimitError, limitFor, nextReset, periodFor, type LimitedKind } from "./usage-limits";
 import { istDayKey } from "./voices";
 
@@ -39,7 +40,9 @@ const isConditionFailure = (error: unknown): boolean =>
 export async function consumeUsage(sub: string, kind: LimitedKind): Promise<{ used: number; limit: number }> {
   if (!TABLE) throw new Error("USAGE_NOT_CONFIGURED");
 
-  const limit = limitFor(kind);
+  // The limit depends on the learner's plan (Free or Pro), read on the server.
+  const plan = await getPlan(sub);
+  const limit = limitFor(kind, plan);
   const now = new Date();
 
   try {
@@ -73,8 +76,8 @@ export async function consumeUsage(sub: string, kind: LimitedKind): Promise<{ us
     return { used: Number(out.Attributes?.count ?? 1), limit };
   } catch (error) {
     if (isConditionFailure(error)) {
-      console.log(JSON.stringify({ event: "usage_limit_reached", kind, limit }));
-      throw new Error(formatLimitError(kind, limit, nextReset(kind)));
+      console.log(JSON.stringify({ event: "usage_limit_reached", kind, limit, plan }));
+      throw new Error(formatLimitError(kind, limit, nextReset(kind), plan));
     }
 
     console.error("Usage counter write failed", { kind, error: getErrorMessage(error) });

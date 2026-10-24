@@ -7,7 +7,6 @@ import { Amplify } from "aws-amplify";
 import { generateClient } from "aws-amplify/data";
 import { getAmplifyDataClientConfig } from "@aws-amplify/backend/function/runtime";
 import { assertNoErrors, getErrorMessage } from "../shared/common";
-import { consumeUsage, refundUsage } from "../shared/usage";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
   process.env as Parameters<typeof getAmplifyDataClientConfig>[0],
@@ -150,10 +149,9 @@ export const handler: Handler = async (event, context) => {
     msLeft: context.getRemainingTimeInMillis(),
   });
 
-  // An imported journey counts as a new journey for the allowance. Taken
-  // here, after the checks above, so a request that was never going to work
-  // costs nothing.
-  await consumeUsage(owner, "coursesCreated");
+  // Imports do NOT use a journey slot: copying a finished journey costs almost
+  // nothing (no model call). Lessons the author never finished are written
+  // when the learner opens them, and those count against the daily lesson limit.
 
   /** 2. Build the copy (GENERATING until everything is written) */
   const createdLessonIds: string[] = [];
@@ -299,7 +297,6 @@ export const handler: Handler = async (event, context) => {
 
     // Best-effort cleanup so a failed import leaves nothing half-built.
     await rollback(courseId, createdPhaseIds, createdLessonIds);
-    await refundUsage(owner, "coursesCreated");
 
     // The browser shows its own friendly message; the reason is kept in the
     // error so it also shows up in the console and in the logs.

@@ -22,7 +22,6 @@ import { assertNoErrors, getErrorMessage } from "../shared/common";
 import { readLessonContent } from "../shared/lesson-content";
 import { buildSpeech } from "../shared/speech";
 import {
-  READ_ALOUD_DAILY_CHARACTERS,
   READ_ALOUD_MONTHLY_POOL_CHARACTERS,
   findVoice,
   istDayKey,
@@ -31,6 +30,8 @@ import {
   type ReadAloudVoice,
 } from "../shared/voices";
 import { istMonthKey, nextMonthStart } from "../shared/usage-limits";
+import { getPlan } from "../shared/get-plan";
+import { PLANS } from "../shared/plans";
 
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(
   process.env as Parameters<typeof getAmplifyDataClientConfig>[0],
@@ -95,6 +96,14 @@ export const handler: Handler = async (event, context) => {
 
   if (!sub) throw new Error("READ_ALOUD_IDENTITY_MISSING");
 
+  // Free or Pro, read on the server. Each plan has its own daily allowance;
+  // Free draws on the shared monthly pool, Pro has a monthly cap of
+  // their own, so free learners can never use up what paying learners get.
+  const plan = await getPlan(sub);
+  const limits = PLANS[plan].limits;
+  const dailyLimit = limits.voiceCharsPerDay;
+  const monthlyOwnCap = limits.voiceCharsPerMonth; // null on Free
+
   const { part, voiceId } = event.arguments;
   const voice = findVoice(voiceId);
 
@@ -122,6 +131,7 @@ export const handler: Handler = async (event, context) => {
   const cached = await exists(bucket, key);
   const day = istDayKey();
   const poolKey = `pool#${istMonthKey()}`;
+  const ownMonthKey = `month#${istMonthKey()}`;
   // Voice previews are tiny, fixed and cached for everyone, so they never use up the allowance.
   const counted = part !== "sample";
   let used: number | undefined;
@@ -132,17 +142,35 @@ export const handler: Handler = async (event, context) => {
     if (counted) {
       used = await readUsage(sub, day);
 
-      if (used >= READ_ALOUD_DAILY_CHARACTERS) {
-        console.log(JSON.stringify({ event: "read_aloud_limit", requestId, part, voice: voice.id, used }));
+      if (used >= dailyLimit) {
+        console.log(JSON.stringify({ event: "read_aloud_limit", requestId, part, voice: voice.id, used, plan }));
 
         return {
           status: "limit",
           cached: false,
           characters: text.length,
           usedCharacters: used,
-          limitCharacters: READ_ALOUD_DAILY_CHARACTERS,
+          limitCharacters: dailyLimit,
           resetsAt: nextIstMidnight(),
         };
+      }
+
+      // Pro: a monthly cap of their own (never shared with anyone).
+      if (monthlyOwnCap !== null) {
+        const monthUsed = await readUsage(sub, ownMonthKey);
+
+        if (monthUsed >= monthlyOwnCap) {
+          console.log(JSON.stringify({ event: "read_aloud_month_limit", requestId, part, voice: voice.id, monthUsed, plan }));
+
+          return {
+            status: "limit",
+            cached: false,
+            characters: text.length,
+            usedCharacters: monthUsed,
+            limitCharacters: monthlyOwnCap,
+            resetsAt: nextMonthStart(),
+          };
+        }
       }
 
       // The shared monthly budget. Only the personal daily result above carries
@@ -150,9 +178,9 @@ export const handler: Handler = async (event, context) => {
       // means "natural voices are resting for everyone until resetsAt".
       // (Like the daily counter, it fails open: a counting hiccup never stops
       // anyone from listening.)
-      const poolUsed = await readUsage(POOL_USER_ID, poolKey);
+      const poolUsed = monthlyOwnCap === null ? await readUsage(POOL_USER_ID, poolKey) : 0;
 
-      if (poolUsed >= READ_ALOUD_MONTHLY_POOL_CHARACTERS) {
+      if (monthlyOwnCap === null && poolUsed >= READ_ALOUD_MONTHLY_POOL_CHARACTERS) {
         console.log(JSON.stringify({ event: "read_aloud_pool_exhausted", requestId, part, voice: voice.id, poolUsed }));
 
         return {
@@ -183,7 +211,12 @@ export const handler: Handler = async (event, context) => {
 
     if (counted) {
       await addUsage(sub, day, text.length);
-      await addUsage(POOL_USER_ID, poolKey, text.length, POOL_ROW_TTL_SECONDS);
+
+      if (monthlyOwnCap === null) {
+        await addUsage(POOL_USER_ID, poolKey, text.length, POOL_ROW_TTL_SECONDS);
+      } else {
+        await addUsage(sub, ownMonthKey, text.length, POOL_ROW_TTL_SECONDS);
+      }
       used = (used ?? 0) + text.length;
     }
   }
@@ -196,6 +229,7 @@ export const handler: Handler = async (event, context) => {
       part,
       voice: voice.id,
       engine: PREFERRED_ENGINE,
+      plan,
       characters: text.length,
       cached,
       billedCharacters: cached ? 0 : text.length,
@@ -212,7 +246,7 @@ export const handler: Handler = async (event, context) => {
     cached,
     characters: text.length,
     usedCharacters: used,
-    limitCharacters: READ_ALOUD_DAILY_CHARACTERS,
+    limitCharacters: dailyLimit,
   };
 };
 

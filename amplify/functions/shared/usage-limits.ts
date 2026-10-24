@@ -1,29 +1,41 @@
 /**
- * Free-plan limits for actions that cost real money (every AI-written journey
- * or lesson is a paid model call).
+ * Limits for actions that cost real money (every AI-written journey or lesson
+ * is a paid model call). The numbers per plan (Free, Pro) live in
+ * ./plans.ts; this file turns them into counters, resets and error messages.
  *
- *   - New lessons written by the AI: 7 per DAY
- *   - New journeys (created or imported): 3 per MONTH
+ *   - New lessons written by the AI: per DAY
+ *   - New journeys created from a topic: per MONTH (imports from Explore are free)
  *
  * Limits are per learner. Counters reset at midnight India time (daily) or at
  * midnight India time on the 1st (monthly), i.e. a calendar month, not a
  * rolling 30 days.
  *
- * This file has NO imports on purpose: the Lambda functions enforce the limits
- * and the browser shows them, and both read the numbers from here, so what
- * the Usage page says is exactly what is checked.
+ * This file only imports plain constants (./plans.ts has no imports either):
+ * the Lambda functions enforce the limits and the browser shows them, and both
+ * read the numbers from the same place, so what the Usage page says is exactly
+ * what is checked.
  */
+
+import { PLANS, type PlanId } from './plans';
 
 export type LimitedKind = 'lessonsGenerated' | 'coursesCreated';
 
 export type LimitPeriod = 'day' | 'month';
 
-export const FREE_LIMITS: Record<LimitedKind, { limit: number; period: LimitPeriod }> = {
-  /** New lessons written by the AI per day. Opening a finished lesson is always free. */
-  lessonsGenerated: { limit: 7, period: 'day' },
-  /** New journeys per calendar month, whether created from a topic or imported from Explore. */
-  coursesCreated: { limit: 3, period: 'month' },
+const PERIODS: Record<LimitedKind, LimitPeriod> = {
+  /** Opening a finished lesson is always free. */
+  lessonsGenerated: 'day',
+  /** Calendar month. */
+  coursesCreated: 'month',
 };
+
+/** The allowance for one action on one plan. */
+export const limitsForPlan = (plan: PlanId): Record<LimitedKind, { limit: number; period: LimitPeriod }> => ({
+  lessonsGenerated: { limit: PLANS[plan].limits.lessonsPerDay, period: PERIODS.lessonsGenerated },
+  coursesCreated: { limit: PLANS[plan].limits.journeysPerMonth, period: PERIODS.coursesCreated },
+});
+
+export const FREE_LIMITS = limitsForPlan('free');
 
 /**
  * Kept so older imports keep compiling. These are the plain numbers only (the
@@ -34,9 +46,10 @@ export const FREE_DAILY_LIMITS: Record<LimitedKind, number> = {
   coursesCreated: FREE_LIMITS.coursesCreated.limit,
 };
 
-export const limitFor = (kind: LimitedKind): number => FREE_LIMITS[kind].limit;
+/** The limit for this learner's plan (Free when no plan is given). */
+export const limitFor = (kind: LimitedKind, plan: PlanId = 'free'): number => limitsForPlan(plan)[kind].limit;
 
-export const periodFor = (kind: LimitedKind): LimitPeriod => FREE_LIMITS[kind].period;
+export const periodFor = (kind: LimitedKind): LimitPeriod => PERIODS[kind];
 
 // -----------------------------------------------------------------------------
 // India Standard Time periods (UTC+05:30, no daylight saving)
@@ -96,24 +109,36 @@ export const counterBucket = (kind: LimitedKind, dayKey: string): string => {
 //
 // A custom mutation can only fail with a message, so the details travel inside
 // it, in a fixed shape the browser can read back:
-//   USAGE_LIMIT_REACHED|<kind>|<limit>|<ISO reset time>
+//   USAGE_LIMIT_REACHED|<kind>|<limit>|<ISO reset time>|<plan>
+// The plan is last and optional, so older messages still parse (as Free).
 // -----------------------------------------------------------------------------
 
 export const LIMIT_ERROR_CODE = 'USAGE_LIMIT_REACHED';
 
-export function formatLimitError(kind: LimitedKind, limit: number, resetsAt: string): string {
-  return `${LIMIT_ERROR_CODE}|${kind}|${limit}|${resetsAt}`;
+export function formatLimitError(
+  kind: LimitedKind,
+  limit: number,
+  resetsAt: string,
+  plan: PlanId = 'free',
+): string {
+  return `${LIMIT_ERROR_CODE}|${kind}|${limit}|${resetsAt}|${plan}`;
 }
 
-const LIMIT_PATTERN = /USAGE_LIMIT_REACHED\|(lessonsGenerated|coursesCreated)\|(\d+)\|([^\s|"']+)/;
+const LIMIT_PATTERN =
+  /USAGE_LIMIT_REACHED\|(lessonsGenerated|coursesCreated)\|(\d+)\|([^\s|"']+)(?:\|(free|pro))?/;
 
 /** Finds a limit error anywhere in a message (AppSync may wrap it). */
 export function parseLimitError(
   message: string,
-): { kind: LimitedKind; limit: number; resetsAt: string } | null {
+): { kind: LimitedKind; limit: number; resetsAt: string; plan: PlanId } | null {
   const match = LIMIT_PATTERN.exec(message);
 
   if (!match) return null;
 
-  return { kind: match[1] as LimitedKind, limit: Number(match[2]), resetsAt: match[3] };
+  return {
+    kind: match[1] as LimitedKind,
+    limit: Number(match[2]),
+    resetsAt: match[3],
+    plan: (match[4] as PlanId | undefined) ?? 'free',
+  };
 }
